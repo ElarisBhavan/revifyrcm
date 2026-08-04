@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tasks — ReviFlow</title>
+<meta name="description" content="Provider task queue in ReviFlow.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FAF8F3;--paper-2:#F2EFE7;--ink:#0D1A16;--muted:#5D6B67;--dim:#93A19D;
+  --line:rgba(13,26,22,.08);--line-2:rgba(13,26,22,.14);
+  --green:#0E9D73;--green-d:#0A5C46;--green-s:#E2F4EC;
+  --blue:#3B6FF5;--blue-s:#E8EFFE;
+  --amber:#C98A18;--amber-s:#FCF3DA;
+  --coral:#D0603F;--coral-s:#FBEAE4;
+  --teal:#1F93AE;--teal-s:#E3F2F6;
+  --violet:#8B5CF6;--violet-s:#F1EBFE;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --e:cubic-bezier(.22,1,.36,1);--card:rgba(255,255,255,.74);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{min-height:100vh;background:var(--paper);color:var(--ink);font-family:'Manrope',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;text-align:left}
+input,select,textarea{font:inherit}
+:focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:9px}
+
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.aur{position:absolute;border-radius:50%;filter:blur(92px);mix-blend-mode:multiply;opacity:.46}
+.a1{width:54vw;height:54vw;min-width:480px;min-height:480px;top:-26%;left:-12%;background:radial-gradient(circle,rgba(14,157,115,.4),transparent 66%);animation:f1 30s ease-in-out infinite}
+.a2{width:42vw;height:42vw;min-width:380px;min-height:380px;top:-18%;right:-9%;background:radial-gradient(circle,rgba(59,111,245,.3),transparent 66%);animation:f2 36s ease-in-out infinite}
+.a3{width:36vw;height:36vw;min-width:340px;min-height:340px;bottom:-24%;left:30%;background:radial-gradient(circle,rgba(139,92,246,.2),transparent 66%);animation:f3 42s ease-in-out infinite}
+@keyframes f1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(6vw,6vh) scale(1.1)}}
+@keyframes f2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-7vw,5vh) scale(1.12)}}
+@keyframes f3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(7vw,-6vh) scale(1.08)}}
+.mesh{position:absolute;inset:-2px;background-image:linear-gradient(rgba(13,26,22,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(13,26,22,.04) 1px,transparent 1px);background-size:46px 46px;animation:meshD 36s linear infinite;-webkit-mask-image:radial-gradient(120% 70% at 50% 0%,#000,transparent 74%);mask-image:radial-gradient(120% 70% at 50% 0%,#000,transparent 74%)}
+@keyframes meshD{to{background-position:46px 46px}}
+
+.hdr{position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line);background:rgba(250,248,243,.8);backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%)}
+.hin{max-width:1360px;margin:0 auto;padding:11px clamp(14px,2.6vw,32px);display:flex;align-items:center;gap:11px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .mk{width:29px;height:29px;border-radius:9px;background:linear-gradient(140deg,var(--green),var(--blue));display:grid;place-items:center;box-shadow:0 6px 16px -8px rgba(14,157,115,.8)}
+.brand .mk svg{width:16px;height:16px}
+.brand span{font-family:'Sora',sans-serif;font-size:15px;font-weight:600;letter-spacing:-.036em}
+.brand em{font-style:normal;color:var(--green);font-weight:400;font-size:.9em;margin-left:3px}
+.crumb{margin-left:12px;padding-left:12px;border-left:1px solid var(--line-2);font-size:12.4px;color:var(--muted)}
+.crumb b{color:var(--ink);font-weight:600}
+.who{margin-left:14px;display:flex;align-items:center;gap:9px;padding-left:14px;border-left:1px solid var(--line-2)}
+.who .av{width:28px;height:28px;border-radius:9px;background:linear-gradient(140deg,var(--green),var(--blue));display:grid;place-items:center;font-family:'Sora',sans-serif;font-size:11px;font-weight:700;color:#fff}
+.who b{display:block;font-size:12.2px;font-weight:600;line-height:1.2}
+.who small{display:block;font-family:var(--mono);font-size:9.2px;color:var(--dim)}
+.hact{margin-left:auto;display:flex;gap:8px}
+.hbtn{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:99px;border:1px solid var(--line-2);background:rgba(255,255,255,.7);font-size:12.4px;font-weight:600;transition:all .3s var(--e)}
+.hbtn svg{width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s var(--e)}
+.hbtn:hover{border-color:var(--green);background:#fff}
+.hbtn.back:hover{transform:translateX(-2px)}.hbtn.back:hover svg{transform:translateX(-3px)}
+.hbtn.out:hover{border-color:var(--coral);background:var(--coral-s);color:#9B3F24}
+.hbtn.out:hover svg{stroke:var(--coral);transform:translateX(3px)}
+
+.wrap{position:relative;z-index:2;max-width:1360px;margin:0 auto;padding:clamp(18px,2.6vw,30px) clamp(14px,2.6vw,32px) clamp(48px,5vw,76px)}
+.ptop{display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;margin-bottom:clamp(16px,2.2vw,24px);opacity:0;transform:translateY(16px);animation:up .8s var(--e) .06s forwards}
+.ptop>div:first-child{flex:1;min-width:280px}
+@keyframes up{to{opacity:1;transform:none}}
+.ptop h1{font-family:'Sora',sans-serif;font-size:clamp(23px,3vw,34px);line-height:1.06;font-weight:600;letter-spacing:-.042em}
+.ptop h1 em{font-style:normal;color:var(--green)}
+.ptop p{font-size:13.4px;line-height:1.6;color:var(--muted);margin-top:7px;max-width:54ch}
+.ptop .cta{margin-left:auto;flex:none;padding-top:4px}
+.btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:11px;font-size:13.2px;font-weight:600;transition:all .34s var(--e)}
+.btn svg{width:15px;height:15px;fill:none;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.btn.pri{background:linear-gradient(120deg,var(--green-d),var(--green));color:#F3FBF8;box-shadow:0 10px 24px -14px rgba(10,92,70,.95)}
+.btn.pri svg{stroke:#F3FBF8}
+.btn.pri::after{content:'';position:absolute;top:0;left:-120%;width:52%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.4),transparent);transition:left .8s var(--e)}
+.btn.pri:hover{transform:translateY(-2px);box-shadow:0 16px 32px -14px rgba(14,157,115,.85)}
+.btn.pri:hover::after{left:150%}
+.btn.sec{border:1px solid var(--line-2);background:rgba(255,255,255,.72)}
+.btn.sec svg{stroke:var(--green)}
+.btn.sec:hover{border-color:var(--green);background:#fff;transform:translateY(-2px)}
+
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(10px,1.2vw,15px);margin-bottom:clamp(10px,1.2vw,15px)}
+.kpi{position:relative;padding:15px 17px;border-radius:16px;background:var(--card);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid rgba(255,255,255,.75);box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 16px 36px -32px rgba(13,26,22,.5);
+  opacity:0;transform:translateY(18px);animation:up .75s var(--e) forwards;transition:transform .4s var(--e),border-color .4s var(--e)}
+.kpi:hover{transform:translateY(-4px);border-color:rgba(14,157,115,.36)}
+.kpi .top{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.kpi .ic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center}
+.kpi .ic svg{width:14px;height:14px;fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.kpi h3{font-size:10.4px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.kpi b{font-family:'Sora',sans-serif;font-size:clamp(22px,2.4vw,30px);font-weight:600;letter-spacing:-.042em;line-height:1}
+.kpi small{display:block;font-family:var(--mono);font-size:9.8px;color:var(--muted);margin-top:7px}
+
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:clamp(10px,1.2vw,15px);align-items:stretch}
+.grid>.card{display:flex;flex-direction:column;height:clamp(440px,58vh,620px)}
+.grid>.card>.chead{flex:none}
+.tasks::-webkit-scrollbar,.hist::-webkit-scrollbar{width:7px}
+.tasks::-webkit-scrollbar-thumb,.hist::-webkit-scrollbar-thumb{background:#D5DCD9;border-radius:4px}
+.card{position:relative;background:var(--card);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);
+  border:1px solid rgba(255,255,255,.75);border-radius:18px;overflow:hidden;
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 18px 40px -34px rgba(13,26,22,.5);
+  opacity:0;transform:translateY(20px);animation:up .78s var(--e) forwards}
+.chead{display:flex;align-items:center;gap:10px;padding:15px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.chead h2{font-family:'Sora',sans-serif;font-size:14.2px;font-weight:600;letter-spacing:-.03em}
+.chead .sub{margin-left:auto;font-family:var(--mono);font-size:9.8px;color:var(--dim);letter-spacing:.08em}
+.filt{display:flex;gap:2px;padding:3px;border-radius:99px;background:var(--paper-2);border:1px solid var(--line)}
+.filt button{padding:6px 12px;border-radius:99px;font-size:11.4px;font-weight:600;color:var(--muted);transition:all .3s var(--e)}
+.filt button.on{background:var(--green-d);color:#F3FBF8}
+.c7{grid-column:span 7}.c5{grid-column:span 5}.c12{grid-column:span 12}
+
+/* task rows */
+.tasks{padding:8px 0;overflow:auto;flex:1;min-height:0}
+.trow{position:relative;display:flex;align-items:center;gap:13px;padding:13px 18px;border-bottom:1px solid var(--line);
+  opacity:0;transform:translateX(-8px);animation:sl .5s var(--e) forwards;transition:background .3s var(--e)}
+@keyframes sl{to{opacity:1;transform:none}}
+.trow:last-child{border-bottom:none}
+.trow:hover{background:rgba(255,255,255,.85)}
+.trow::before{content:'';position:absolute;left:0;top:0;bottom:0;width:0;background:var(--green);transition:width .3s var(--e)}
+.trow:hover::before{width:3px}
+.pri{width:4px;align-self:stretch;border-radius:99px;flex:none}
+.pri.high{background:var(--coral)}.pri.med{background:var(--amber)}.pri.low{background:var(--teal)}
+.tico{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center}
+.tico svg{width:16px;height:16px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tinfo{min-width:0;flex:1}
+.tinfo b{display:block;font-size:13.2px;font-weight:600;letter-spacing:-.018em;line-height:1.35}
+.tinfo .meta{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:5px;font-family:var(--mono);font-size:9.6px;color:var(--dim)}
+.tinfo .meta span{display:inline-flex;align-items:center;gap:5px}
+.tinfo .meta i{width:5px;height:5px;border-radius:50%;background:currentColor}
+.tat{font-family:var(--mono);font-size:10.2px;color:var(--muted);white-space:nowrap;text-align:right}
+.tat b{display:block;font-weight:600;color:var(--ink)}
+.tat.over b{color:var(--coral)}
+.st{padding:5px 12px;border-radius:8px;font-size:10.6px;font-weight:700;white-space:nowrap;flex:none;min-width:76px;text-align:center;transition:all .3s var(--e)}
+.st.open{background:var(--blue-s);color:#25489E}
+.st.prog{background:var(--amber-s);color:#7A5507}
+.st.res{background:var(--green-s);color:var(--green-d)}
+.st.block{background:var(--coral-s);color:#9B3F24}
+.trow:hover .st{transform:scale(1.05)}
+.tsel{width:26px;height:26px;flex:none;border-radius:8px;display:grid;place-items:center;color:var(--dim);opacity:0;transition:all .3s var(--e)}
+.trow:hover .tsel{opacity:1}
+.tsel svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.tsel:hover{background:var(--green-s);color:var(--green-d)}
+.trow.hide{display:none}
+.empty{padding:36px 18px;text-align:center;color:var(--dim);font-size:12.6px}
+
+/* history */
+.hist{padding:6px 0;overflow:auto;flex:1;min-height:0}
+.hist::-webkit-scrollbar{width:7px}
+.hist::-webkit-scrollbar-thumb{background:#D5DCD9;border-radius:4px}
+.hrow{position:relative;display:flex;gap:12px;padding:12px 18px 12px 0;margin-left:18px;
+  opacity:0;transform:translateX(-6px);animation:sl .45s var(--e) forwards}
+.hrow::before{content:'';position:absolute;left:13px;top:0;bottom:0;width:1px;background:var(--line-2)}
+.hrow:last-child::before{bottom:50%}
+.hdot{position:relative;z-index:1;width:27px;height:27px;flex:none;border-radius:50%;display:grid;place-items:center;background:#fff;border:1px solid var(--line-2)}
+.hdot svg{width:12px;height:12px;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.hdot.new{border-color:rgba(59,111,245,.4);background:var(--blue-s)}.hdot.new svg{stroke:var(--blue)}
+.hdot.ok{border-color:rgba(14,157,115,.4);background:var(--green-s)}.hdot.ok svg{stroke:var(--green-d)}
+.hdot.up{border-color:rgba(201,138,24,.4);background:var(--amber-s)}.hdot.up svg{stroke:var(--amber)}
+.hdot.rt{border-color:rgba(139,92,246,.4);background:var(--violet-s)}.hdot.rt svg{stroke:var(--violet)}
+.hbody{min-width:0;flex:1;padding-top:2px}
+.hbody b{display:block;font-size:12.4px;font-weight:600;letter-spacing:-.016em;line-height:1.35}
+.hbody p{font-size:11.4px;line-height:1.5;color:var(--muted);margin-top:3px}
+.hbody small{display:block;font-family:var(--mono);font-size:9.4px;color:var(--dim);margin-top:5px}
+.hbody .pill{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:6px;background:var(--paper-2);font-family:var(--mono);font-size:9.2px;color:var(--muted);margin-top:6px}
+
+
+/* ══ TASK DETAIL ══ */
+.dhead{padding:18px 20px;border-bottom:1px solid rgba(13,26,22,.1)}
+.dtop{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
+.dtop .mi{width:36px;height:36px;flex:none;border-radius:11px;display:grid;place-items:center}
+.dtop .mi svg{width:18px;height:18px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dtop .tt{min-width:0;flex:1}
+.dtop .tt h3{font-family:'Sora',sans-serif;font-size:16px;font-weight:600;letter-spacing:-.03em;line-height:1.3}
+.dtop .tt small{display:block;font-family:var(--mono);font-size:9.8px;color:var(--dim);margin-top:5px}
+.dchips{display:flex;flex-wrap:wrap;gap:6px}
+.dchip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:8px;font-size:10.6px;font-weight:700;background:rgba(255,255,255,.6);color:var(--muted)}
+.dchip i{width:7px;height:7px;border-radius:50%}
+.dchip.high{background:var(--coral-s);color:#9B3F24}.dchip.high i{background:var(--coral)}
+.dchip.med{background:var(--amber-s);color:#7A5507}.dchip.med i{background:var(--amber)}
+.dchip.low{background:var(--teal-s);color:#146176}.dchip.low i{background:var(--teal)}
+.dchip.over{background:var(--coral-s);color:#9B3F24}
+.dsec{margin-bottom:16px}
+.dsec>h4{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;margin-bottom:8px}
+.dtext{padding:13px 15px;border-radius:12px;background:rgba(255,255,255,.6);border:1px solid rgba(13,26,22,.1);
+  font-size:12.8px;line-height:1.65;color:var(--ink)}
+.dtext.reason{background:rgba(59,111,245,.08);border-color:rgba(59,111,245,.2)}
+.dtext.reason b{color:#25489E}
+.dmeta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:rgba(13,26,22,.1);
+  border:1px solid rgba(13,26,22,.1);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.dmeta>div{background:rgba(255,255,255,.62);padding:11px 13px}
+.dmeta dt{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+.dmeta dd{font-size:12px;font-weight:600;letter-spacing:-.015em}
+.dmeta dd.mono{font-family:var(--mono);font-size:11px;font-weight:500}
+.dtl{position:relative;padding-left:20px;display:grid;gap:11px}
+.dtl::before{content:'';position:absolute;left:5px;top:5px;bottom:5px;width:1px;background:rgba(13,26,22,.14)}
+.dtl div{position:relative;font-size:11.6px;line-height:1.5;color:var(--muted)}
+.dtl div::before{content:'';position:absolute;left:-19px;top:5px;width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid var(--line-2)}
+.dtl div.on::before{border-color:var(--green);background:var(--green)}
+.dtl b{color:var(--ink);font-weight:600}
+.dtl small{display:block;font-family:var(--mono);font-size:9.4px;color:var(--dim);margin-top:2px}
+.dedit{padding:15px;border-radius:13px;background:rgba(14,157,115,.07);border:1px solid rgba(14,157,115,.2)}
+.dedit>h4{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--green-d);font-weight:700;margin-bottom:12px}
+
+/* ══ MODAL (50% opaque) ══ */
+.scrim{position:fixed;inset:0;z-index:90;background:rgba(13,26,22,.34);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+  opacity:0;visibility:hidden;transition:opacity .35s var(--e),visibility .35s}
+.scrim.on{opacity:1;visibility:visible}
+.modal{position:fixed;z-index:91;left:50%;top:50%;width:min(600px,calc(100vw - 26px));max-height:calc(100vh - 56px);overflow:auto;
+  transform:translate(-50%,-46%) scale(.96);opacity:0;visibility:hidden;
+  background:rgba(255,255,255,.5);backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%);
+  border:1px solid rgba(255,255,255,.6);border-radius:20px;
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 40px 90px -30px rgba(13,26,22,.55);
+  transition:opacity .4s var(--e),transform .4s var(--e),visibility .4s}
+.modal.on{opacity:1;visibility:visible;transform:translate(-50%,-50%) scale(1)}
+.mhead{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid rgba(13,26,22,.1)}
+.mhead .mi{width:36px;height:36px;border-radius:11px;background:rgba(14,157,115,.16);display:grid;place-items:center}
+.mhead .mi svg{width:18px;height:18px;stroke:var(--green-d);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mhead h3{font-family:'Sora',sans-serif;font-size:16.5px;font-weight:600;letter-spacing:-.032em}
+.mhead p{font-size:12px;color:var(--muted);margin-top:2px}
+.mclose{margin-left:auto;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:var(--muted);transition:all .3s var(--e)}
+.mclose svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.3;stroke-linecap:round}
+.mclose:hover{background:rgba(255,255,255,.7);color:var(--ink);transform:rotate(90deg)}
+.mbody{padding:20px}
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.f{display:block}.f.full{grid-column:span 2}
+.f span{display:block;font-size:11.2px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.f span u{color:var(--coral);text-decoration:none}
+.f input,.f select,.f textarea{width:100%;padding:11px 13px;border-radius:10px;border:1px solid rgba(13,26,22,.16);
+  background:rgba(255,255,255,.72);font-size:13.2px;color:var(--ink);transition:all .28s var(--e)}
+.f textarea{min-height:82px;resize:vertical}
+.f input:hover,.f select:hover,.f textarea:hover{border-color:rgba(13,26,22,.28)}
+.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--green);background:#fff;box-shadow:0 0 0 3px rgba(14,157,115,.14)}
+.f input.bad,.f select.bad,.f textarea.bad{border-color:var(--coral);box-shadow:0 0 0 3px rgba(208,96,63,.12)}
+.f select{appearance:none;cursor:pointer;padding-right:32px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235D6B67' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 12px center}
+.pseg{display:flex;gap:6px}
+.pseg button{flex:1;padding:10px 8px;border-radius:10px;border:1px solid rgba(13,26,22,.14);background:rgba(255,255,255,.6);
+  font-size:12px;font-weight:600;color:var(--muted);text-align:center;transition:all .3s var(--e)}
+.pseg button:hover{background:#fff}
+.pseg button.on.high{background:var(--coral-s);border-color:rgba(208,96,63,.4);color:#9B3F24}
+.pseg button.on.med{background:var(--amber-s);border-color:rgba(201,138,24,.4);color:#7A5507}
+.pseg button.on.low{background:var(--teal-s);border-color:rgba(31,147,174,.4);color:#146176}
+.route{margin-top:15px;padding:13px 15px;border-radius:12px;background:rgba(59,111,245,.1);border:1px solid rgba(59,111,245,.2);
+  display:flex;gap:11px;font-size:11.8px;line-height:1.6;color:#25489E}
+.route svg{width:15px;height:15px;stroke:var(--blue);fill:none;stroke-width:2;flex:none;margin-top:1px}
+.route b{font-weight:700}
+.mfoot{display:flex;gap:9px;padding:16px 20px;border-top:1px solid rgba(13,26,22,.1);background:rgba(255,255,255,.32)}
+.mfoot .btn{flex:1;justify-content:center}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:95;display:flex;align-items:center;gap:12px;
+  padding:14px 19px;border-radius:13px;background:var(--green-d);color:#F3FBF8;
+  box-shadow:0 22px 44px -20px rgba(10,92,70,.9);opacity:0;pointer-events:none;transition:all .45s var(--e);max-width:calc(100vw - 32px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast svg{width:17px;height:17px;stroke:#7BE8C0;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.toast b{display:block;font-size:13px;font-weight:600}
+.toast small{display:block;font-size:11px;color:rgba(243,251,248,.72);margin-top:2px}
+
+@media (max-width:1050px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .c7,.c5{grid-column:span 12}
+  .crumb,.who{display:none}
+}
+@media (max-width:660px){
+  .kpis{grid-template-columns:minmax(0,1fr)}
+  .fgrid{grid-template-columns:minmax(0,1fr)}
+  .f.full{grid-column:span 1}
+  .ptop .cta{width:100%;margin-left:0}.ptop .cta .btn{width:100%;justify-content:center}
+  .trow{flex-wrap:wrap}
+  .tat{order:5;margin-left:47px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}.card,.kpi,.trow,.hrow,.ptop{opacity:1;transform:none}}
+
+</style>
+<link rel="stylesheet" href="_prefs.css">
+<script src="_prefs.js"></script>
+<link rel="stylesheet" href="../_session.css">
+<script src="../_store.js"></script>
+<script src="../_session.js"></script>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true"><div class="mesh"></div><div class="aur a1"></div><div class="aur a2"></div><div class="aur a3"></div></div>
+
+<header class="hdr">
+  <div class="hin">
+    <div class="brand">
+      <span class="mk"><svg viewBox="0 0 34 34" fill="none"><circle cx="17" cy="17" r="11.8" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M11 17.4h2.6l1.9-4.2 2.7 8 2-5.1 1.3 2.4H23" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>ReviFlow<em>RCM</em></span>
+    </div>
+    <span class="crumb">Provider workspace / <b>Tasks</b></span>
+    <div class="who"><span class="av">DW</span><span><b>Dr. Dana Whitfield</b><small>NPI 1999999984 · Family Medicine</small></span></div>
+    <div class="hact">
+      <span class="rf-who" id="rfWho"></span>
+      <a href="provider-dashboard.html" class="hbtn back"><svg viewBox="0 0 24 24"><path d="M19 12H6M11 6l-6 6 6 6"/></svg>Back</a>
+      <a href="provider-login.html" class="hbtn out">Log out<svg viewBox="0 0 24 24"><path d="M15 12H4M11 6l6 6-6 6"/><path d="M14 4h5a1 1 0 011 1v14a1 1 0 01-1 1h-5"/></svg></a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="ptop">
+    <div>
+      <h1>Tasks assigned to <em>you</em></h1>
+      <p>Everything below is routed to Dr. Dana Whitfield. Assign work to your team and it goes to them and their supervisor at the same time.</p>
+    </div>
+    <div class="cta">
+      <button class="btn pri" id="openAssign"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Assign task</button>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <section class="card c7" style="animation-delay:.2s">
+      <div class="chead">
+        <h2>My tasks</h2>
+        <div class="filt" id="filt">
+          <button class="on" data-f="all">All</button>
+          <button data-f="open">Open</button>
+          <button data-f="prog">In progress</button>
+          <button data-f="res">Resolved</button>
+        </div>
+        <span class="sub" id="tSub">—</span>
+      </div>
+      <div class="tasks" id="tasks"></div>
+    </section>
+
+    <section class="card c5" style="animation-delay:.24s">
+      <div class="chead"><h2>History</h2><span class="sub" id="hSub">ACTIVITY LOG</span></div>
+      <div class="hist" id="hist"></div>
+    </section>
+  </div>
+</main>
+
+<div class="scrim" id="scrim"></div>
+
+<div class="modal" id="mAssign" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="9" y="2" width="6" height="4" rx="1.5"/><path d="M9 13l2 2 4-5"/></svg></span>
+    <div><h3 id="mTitle">Assign task</h3><p>Sent to the assignee and their supervisor.</p></div>
+    <button class="mclose" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+
+  <div class="mbody">
+    <div class="fgrid">
+      <label class="f full"><span>Assign to <u>*</u></span>
+        <select id="aTo">
+          <option value="">Select a team member</option>
+          <optgroup label="Front office">
+            <option data-sup="Rebecca Vaughn · Front Office Supervisor" data-role="Patient Access Specialist">Priya Raman</option>
+            <option data-sup="Rebecca Vaughn · Front Office Supervisor" data-role="Scheduling Coordinator">Owen Delgado</option>
+          </optgroup>
+          <optgroup label="Coding">
+            <option data-sup="Marcus Bello · Coding Supervisor" data-role="Certified Coder">Aisha Haddad</option>
+            <option data-sup="Marcus Bello · Coding Supervisor" data-role="Senior Coder">Tomas Sorensen</option>
+          </optgroup>
+          <optgroup label="Billing and A/R">
+            <option data-sup="Lena Okoro · Revenue Cycle Manager" data-role="A/R Specialist">Grace Whitmore</option>
+            <option data-sup="Lena Okoro · Revenue Cycle Manager" data-role="Denials Analyst">Caleb Nakamura</option>
+          </optgroup>
+          <optgroup label="Clinical">
+            <option data-sup="Dr. Alan Reyes · Medical Director" data-role="Medical Assistant">Rosa Ferreira</option>
+          </optgroup>
+        </select>
+      </label>
+
+      <label class="f full"><span>Task name <u>*</u></span>
+        <input type="text" id="aName" placeholder="e.g. Obtain prior authorisation for MRI — Marshall, Jack"></label>
+
+      <div class="f"><span>Priority</span>
+        <div class="pseg" id="aPri">
+          <button type="button" class="high" data-p="high">High</button>
+          <button type="button" class="med on" data-p="med">Medium</button>
+          <button type="button" class="low" data-p="low">Low</button>
+        </div>
+      </div>
+
+      <label class="f"><span>Status</span>
+        <select id="aStatus">
+          <option>Open</option><option>In progress</option>
+          <option>Blocked</option><option>Resolved</option>
+        </select></label>
+
+      <label class="f"><span>TAT <u>*</u></span>
+        <select id="aTat">
+          <option value="4">4 hours</option>
+          <option value="8">Same day · 8 hours</option>
+          <option value="24" selected>24 hours</option>
+          <option value="48">48 hours</option>
+          <option value="72">72 hours</option>
+          <option value="120">5 business days</option>
+        </select></label>
+
+      <label class="f"><span>Category</span>
+        <select id="aCat">
+          <option>Prior authorisation</option><option>Eligibility</option>
+          <option>Coding query</option><option>Denial appeal</option>
+          <option>Patient outreach</option><option>Documentation</option>
+          <option>Payment posting</option><option>Other</option>
+        </select></label>
+
+      <label class="f full"><span>Description <u>*</u></span>
+        <textarea id="aDesc" placeholder="What needs doing, which patient or claim it relates to, and anything the assignee needs to start."></textarea></label>
+    </div>
+
+    <div class="route" id="route">
+      <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h7"/><path d="M17 15l4 4-4 4" transform="translate(0,-6)"/></svg>
+      <span id="routeText">Select an assignee to see the routing path.</span>
+    </div>
+  </div>
+
+  <div class="mfoot">
+    <button class="btn sec" data-close>Cancel</button>
+    <button class="btn pri" id="aSubmit"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>Assign and notify</button>
+  </div>
+</div>
+
+
+<div class="modal" id="mDetail" role="dialog" aria-modal="true">
+  <div class="dhead">
+    <div class="dtop">
+      <span class="mi" id="dIco"></span>
+      <span class="tt"><h3 id="dName">—</h3><small id="dSub">—</small></span>
+      <button class="mclose" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="dchips" id="dChips"></div>
+  </div>
+
+  <div class="mbody">
+    <div class="dmeta" id="dMeta"></div>
+
+    <div class="dsec">
+      <h4>Description</h4>
+      <div class="dtext" id="dDesc">—</div>
+    </div>
+
+    <div class="dsec">
+      <h4>Reason raised</h4>
+      <div class="dtext reason" id="dReason">—</div>
+    </div>
+
+    <div class="dsec">
+      <h4>Activity</h4>
+      <div class="dtl" id="dTl"></div>
+    </div>
+
+    <div class="dedit">
+      <h4>Update this task</h4>
+      <div class="fgrid">
+        <label class="f"><span>Status</span>
+          <select id="dStatus"><option>Open</option><option>In progress</option><option>Blocked</option><option>Resolved</option></select></label>
+        <label class="f"><span>Priority</span>
+          <select id="dPri"><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select></label>
+        <label class="f"><span>Extend TAT</span>
+          <select id="dTat"><option value="0">Keep current</option><option value="4">+4 hours</option><option value="24">+24 hours</option><option value="48">+48 hours</option></select></label>
+        <label class="f"><span>Reassign to</span>
+          <select id="dReassign">
+            <option value="">Keep with me</option>
+            <option data-sup="Rebecca Vaughn · Front Office Supervisor">Priya Raman</option>
+            <option data-sup="Marcus Bello · Coding Supervisor">Aisha Haddad</option>
+            <option data-sup="Lena Okoro · Revenue Cycle Manager">Caleb Nakamura</option>
+            <option data-sup="Dr. Alan Reyes · Medical Director">Rosa Ferreira</option>
+          </select></label>
+        <label class="f full"><span>Add a note</span>
+          <textarea id="dNote" placeholder="What changed, or what the assignee needs to know"></textarea></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="mfoot">
+    <button class="btn sec" data-close>Close</button>
+    <button class="btn pri" id="dSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Save changes</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+  <span><b id="toastTitle">Task assigned</b><small id="toastSub">Notification sent</small></span>
+</div>
+
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var ME='Dr. Dana Whitfield';
+  var now=new Date();
+  function ago(h){var d=new Date(now);d.setHours(d.getHours()-h);return d;}
+  function ahead(h){var d=new Date(now);d.setHours(d.getHours()+h);return d;}
+  function stamp(d){
+    return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' · '+
+      d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+  }
+  function rel(d){
+    var m=Math.round((d-now)/60000),a=Math.abs(m);
+    var s=a<60?a+'m':a<1440?Math.round(a/60)+'h':Math.round(a/1440)+'d';
+    return m<0?s+' overdue':'in '+s;
+  }
+
+  /* tasks assigned TO the logged-in provider */
+  var TASKS=[
+    {n:'Sign off encounter note — Marshall, Jack R',cat:'Documentation',pri:'high',st:'open',
+     from:'Aisha Haddad · Certified Coder',due:ahead(5),id:'TSK-4821',pt:'MARSJA204 · MRN 821267',
+     desc:'The 07/31 office visit note is complete but unsigned. Coding cannot release the claim until the attestation is applied. Please review the assessment and plan, confirm the level of service supports 99214, and sign.',
+     reason:'Flagged automatically — claim held at scrub because the encounter carries no provider signature. Claim value $245.00 is sitting in unbilled.'},
+    {n:'Review coding query on 99215 — Alvarez, Maria',cat:'Coding query',pri:'high',st:'prog',
+     from:'Tomas Sorensen · Senior Coder',due:ahead(2),id:'TSK-4817',pt:'ALVAMA118 · MRN 447190',
+     desc:'Documentation supports a detailed history and exam, but the medical decision making reads closer to moderate than high complexity. Confirm whether 99215 stands or should be downcoded to 99214.',
+     reason:'Raised during pre-submission review. Upcoding risk on this payer is elevated — three similar claims were denied last quarter.'},
+    {n:'Provide clinical notes for CO-197 appeal — Novak, Walter',cat:'Denial appeal',pri:'high',st:'open',
+     from:'Caleb Nakamura · Denials Analyst',due:ago(3),id:'TSK-4809',pt:'NOVAWA331 · MRN 903277',
+     desc:'Appeal packet is drafted and needs the clinical narrative supporting medical necessity for the procedure performed on 07/12. Two paragraphs is sufficient — the payer wants the indication and what was tried first.',
+     reason:'Claim denied CO-197, prior authorisation not on file. $1,180.00 at risk. Overturn probability scored at 78% if the packet is filed within the appeal window closing in 11 days.'},
+    {n:'Confirm medical necessity for MRI order — Hill, Marcus',cat:'Prior authorisation',pri:'med',st:'open',
+     from:'Priya Raman · Patient Access',due:ahead(19),id:'TSK-4805',pt:'HILLMA772 · MRN 118463',
+     desc:'The payer requires documented conservative therapy before approving lumbar MRI. Confirm the six weeks of physical therapy and the failed NSAID trial so the authorisation can be submitted.',
+     reason:'Authorisation portal rejected the initial submission for insufficient clinical justification. The scan is scheduled in 9 days.'},
+    {n:'Countersign telehealth consent — Raman, Priya',cat:'Documentation',pri:'low',st:'prog',
+     from:'Rosa Ferreira · Medical Assistant',due:ahead(30),id:'TSK-4798',pt:'RAMAPR509 · MRN 660412',
+     desc:'Patient completed the telehealth consent form electronically. It needs a provider countersignature to be filed to the chart.',
+     reason:'Routine compliance step for all first-time telehealth encounters under state rules.'},
+    {n:'Respond to peer-to-peer request — Bello, Aisha',cat:'Prior authorisation',pri:'high',st:'block',
+     from:'Lena Okoro · Revenue Cycle Manager',due:ahead(9),id:'TSK-4791',pt:'BELLAI640 · MRN 275908',
+     desc:'The payer medical director has requested a peer-to-peer discussion before approving the requested therapy. Three call windows were offered; pick one and the team will confirm.',
+     reason:'Blocked pending payer callback. The utilisation review line has not returned two messages left on 07/28 and 07/30.'},
+    {n:'Verify diagnosis order for annual wellness — Chen, Grace',cat:'Coding query',pri:'med',st:'res',
+     from:'Aisha Haddad · Certified Coder',due:ago(22),id:'TSK-4783',pt:'CHENGR255 · MRN 512804',
+     desc:'Primary diagnosis was sequenced behind a chronic condition on a preventive visit. Confirm Z00.00 should lead.',
+     reason:'Sequencing affects whether the visit processes as preventive with no patient cost share.'},
+    {n:'Approve superbill batch for Jul 28',cat:'Documentation',pri:'med',st:'res',
+     from:'Grace Whitmore · A/R Specialist',due:ago(40),id:'TSK-4776',pt:'Batch B-0728 · 22 encounters',
+     desc:'Twenty-two encounters from 07/28 are ready for release. Review the batch summary and approve so claims can go out same-day.',
+     reason:'Standard daily release checkpoint before claims are transmitted to the clearinghouse.'},
+    {n:'Update problem list — Petrova, Elena',cat:'Documentation',pri:'low',st:'res',
+     from:'Rosa Ferreira · Medical Assistant',due:ago(52),id:'TSK-4770',pt:'PETRELE873 · MRN 334019',
+     desc:'Two resolved conditions are still active on the problem list and one new diagnosis from 07/15 has not been added.',
+     reason:'Problem list accuracy affects risk adjustment capture and quality measure attribution.'}
+  ];
+
+  var HISTORY=[
+    {k:'ok',t:'TSK-4783 marked resolved',p:'You confirmed the diagnosis order. Aisha Haddad notified.',w:stamp(ago(22)),tag:'RESOLVED'},
+    {k:'up',t:'TSK-4817 moved to in progress',p:'Coding query opened by Tomas Sorensen.',w:stamp(ago(26)),tag:'STATUS'},
+    {k:'rt',t:'TSK-4791 blocked',p:'Awaiting payer callback for peer-to-peer slot.',w:stamp(ago(31)),tag:'BLOCKED'},
+    {k:'new',t:'TSK-4809 assigned to you',p:'Caleb Nakamura requested clinical notes for the CO-197 appeal.',w:stamp(ago(48)),tag:'ASSIGNED'},
+    {k:'ok',t:'TSK-4776 marked resolved',p:'Superbill batch for Jul 28 approved.',w:stamp(ago(40)),tag:'RESOLVED'},
+    {k:'new',t:'TSK-4805 assigned to you',p:'Priya Raman needs medical necessity confirmed before submitting the auth.',w:stamp(ago(58)),tag:'ASSIGNED'}
+  ];
+
+  var STL={open:'Open',prog:'In progress',res:'Resolved',block:'Blocked'};
+  var CATICON={
+    'Prior authorisation':'<svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6z"/><path d="M9.2 12l2 2 3.6-4"/></svg>',
+    'Eligibility':'<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M3 10h18M7 14h6"/></svg>',
+    'Coding query':'<svg viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>',
+    'Denial appeal':'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>',
+    'Patient outreach':'<svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a12 12 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg>',
+    'Documentation':'<svg viewBox="0 0 24 24"><path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M9 13h6M9 17h4"/></svg>',
+    'Payment posting':'<svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg>',
+    'Other':'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 12h6"/></svg>'
+  };
+  var CATCOL={'Prior authorisation':'var(--coral-s)','Eligibility':'var(--teal-s)','Coding query':'var(--blue-s)',
+    'Denial appeal':'var(--coral-s)','Patient outreach':'var(--violet-s)','Documentation':'var(--green-s)',
+    'Payment posting':'var(--amber-s)','Other':'var(--paper-2)'};
+
+  var filter='all';
+
+  function renderKpis(){
+    var open=TASKS.filter(function(t){return t.st==='open';}).length,
+        prog=TASKS.filter(function(t){return t.st==='prog';}).length,
+        res=TASKS.filter(function(t){return t.st==='res';}).length,
+        over=TASKS.filter(function(t){return t.st!=='res'&&t.due<now;}).length;
+    var d=[
+      ['Open',open,'var(--blue-s)','var(--blue)','awaiting your action','<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'],
+      ['In progress',prog,'var(--amber-s)','var(--amber)','currently being worked','<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9"/><path d="M12 7v5l4 2"/></svg>'],
+      ['Overdue',over,'var(--coral-s)','var(--coral)','past turnaround time','<svg viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>'],
+      ['Resolved',res,'var(--green-s)','var(--green-d)','closed this month','<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>']
+    ];
+    $('kpis').innerHTML=d.map(function(x,i){
+      return '<div class="kpi" style="animation-delay:'+(0.06+i*0.05)+'s">'+
+        '<div class="top"><span class="ic" style="background:'+x[2]+'"><span style="display:grid">'+
+        x[5].replace('<svg','<svg style="stroke:'+x[3]+'"')+'</span></span><h3>'+x[0]+'</h3></div>'+
+        '<b>'+x[1]+'</b><small>'+x[4]+'</small></div>';
+    }).join('');
+  }
+
+  function renderTasks(){
+    var list=TASKS.filter(function(t){return filter==='all'||t.st===filter;});
+    $('tSub').textContent=list.length+' OF '+TASKS.length;
+    if(!list.length){$('tasks').innerHTML='<div class="empty">No tasks in this view</div>';return;}
+    $('tasks').innerHTML=list.map(function(t,i){
+      var over=(t.st!=='res'&&t.due<now);
+      return '<div class="trow" style="animation-delay:'+(0.04+i*0.04)+'s">'+
+        '<span class="pri '+t.pri+'"></span>'+
+        '<span class="tico" style="background:'+(CATCOL[t.cat]||'var(--paper-2)')+'">'+(CATICON[t.cat]||CATICON.Other)+'</span>'+
+        '<span class="tinfo"><b>'+t.n+'</b><span class="meta">'+
+          '<span>'+t.id+'</span><span><i></i>'+t.cat+'</span><span><i></i>from '+t.from+'</span>'+
+        '</span></span>'+
+        '<span class="tat'+(over?' over':'')+'"><b>'+(t.st==='res'?'Closed':rel(t.due))+'</b>'+stamp(t.due)+'</span>'+
+        '<span class="st '+t.st+'">'+STL[t.st]+'</span>'+
+        '<button class="tsel" data-open="'+t.id+'" title="Open task"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>'+
+      '</div>';
+    }).join('');
+  }
+
+  function renderHist(){
+    $('hSub').textContent=HISTORY.length+' EVENTS';
+    var ic={new:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+            ok:'<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>',
+            up:'<svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+            rt:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>'};
+    $('hist').innerHTML=HISTORY.map(function(h,i){
+      return '<div class="hrow" style="animation-delay:'+(0.04+i*0.05)+'s">'+
+        '<span class="hdot '+h.k+'">'+ic[h.k]+'</span>'+
+        '<span class="hbody"><b>'+h.t+'</b><p>'+h.p+'</p>'+
+        '<span class="pill">'+h.tag+'</span><small>'+h.w+'</small></span></div>';
+    }).join('');
+  }
+
+  /* modal */
+  var scrim=$('scrim'),toastT,priority='med';
+  function open(){scrim.classList.add('on');$('mAssign').classList.add('on');document.body.style.overflow='hidden';setTimeout(function(){$('aTo').focus();},380);}
+  function close(){scrim.classList.remove('on');
+    document.querySelectorAll('.modal').forEach(function(m){m.classList.remove('on');});
+    document.body.style.overflow='';}
+  $('openAssign').addEventListener('click',open);
+  scrim.addEventListener('click',close);
+  document.querySelectorAll('[data-close]').forEach(function(b){b.addEventListener('click',close);});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')close();});
+
+  $('aPri').addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;
+    $('aPri').querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');priority=b.dataset.p;
+  });
+
+  $('aTo').addEventListener('change',function(){
+    var o=this.selectedOptions[0];
+    this.classList.remove('bad');
+    if(!o||!o.dataset.sup){$('routeText').textContent='Select an assignee to see the routing path.';return;}
+    $('routeText').innerHTML='Routes to <b>'+o.value+'</b> ('+o.dataset.role+
+      ') and copies their supervisor <b>'+o.dataset.sup+'</b>.';
+  });
+  ['aName','aDesc','aTat'].forEach(function(id){
+    $(id).addEventListener('input',function(){this.classList.remove('bad');});
+  });
+
+  function toast(title,sub){
+    $('toastTitle').textContent=title;$('toastSub').textContent=sub;
+    $('toast').classList.add('on');
+    clearTimeout(toastT);toastT=setTimeout(function(){$('toast').classList.remove('on');},4200);
+  }
+
+  $('aSubmit').addEventListener('click',function(){
+    var to=$('aTo'),name=$('aName'),desc=$('aDesc'),bad=null;
+    [to,name,desc].forEach(function(el){
+      if(!el.value.trim()){el.classList.add('bad');if(!bad)bad=el;}
+    });
+    if(bad){bad.focus();return;}
+
+    var o=to.selectedOptions[0],sup=o.dataset.sup,role=o.dataset.role,
+        tatH=parseInt($('aTat').value,10),
+        stMap={'Open':'open','In progress':'prog','Blocked':'block','Resolved':'res'},
+        st=stMap[$('aStatus').value],
+        id='TSK-'+(4830+Math.floor(Math.random()*60));
+
+    // record in history — assignment, delivery, supervisor copy
+    HISTORY.unshift({k:'rt',t:id+' copied to supervisor',
+      p:sup+' has visibility on this task.',w:stamp(now),tag:'SUPERVISOR'});
+    HISTORY.unshift({k:'up',t:id+' delivered to '+o.value,
+      p:'Appeared in '+o.value.split(' ')[0]+'\u2019s queue · TAT '+tatH+'h · '+priority.toUpperCase()+' priority.',
+      w:stamp(now),tag:'DELIVERED'});
+    HISTORY.unshift({k:'new',t:id+' assigned by you',
+      p:name.value.trim(),w:stamp(now),tag:'ASSIGNED'});
+
+    close();
+    renderHist();
+    toast('Task assigned to '+o.value,'Supervisor '+sup.split(' · ')[0]+' copied · TAT '+tatH+'h');
+
+    // reset the form
+    setTimeout(function(){
+      to.value='';name.value='';desc.value='';
+      $('aStatus').value='Open';$('aTat').value='24';$('aCat').selectedIndex=0;
+      $('aPri').querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
+      $('aPri').querySelector('[data-p="med"]').classList.add('on');priority='med';
+      $('routeText').textContent='Select an assignee to see the routing path.';
+    },420);
+  });
+
+
+  /* ══ task detail ══ */
+  var curTask=null;
+  function openDetail(id){
+    var t=TASKS.filter(function(x){return x.id===id;})[0];
+    if(!t)return;
+    curTask=t;
+    var over=(t.st!=='res'&&t.due<now);
+    $('dIco').style.background=CATCOL[t.cat]||'var(--paper-2)';
+    $('dIco').innerHTML=(CATICON[t.cat]||CATICON.Other).replace('<svg','<svg style="stroke:var(--ink);opacity:.72"');
+    $('dName').textContent=t.n;
+    $('dSub').textContent=t.id+' · '+t.pt;
+    $('dChips').innerHTML=
+      '<span class="dchip '+t.pri+'"><i></i>'+({high:'High',med:'Medium',low:'Low'}[t.pri])+' priority</span>'+
+      '<span class="st '+t.st+'" style="min-width:0">'+STL[t.st]+'</span>'+
+      '<span class="dchip">'+t.cat+'</span>'+
+      (over?'<span class="dchip over">Overdue</span>':'<span class="dchip">'+(t.st==='res'?'Closed':rel(t.due))+'</span>');
+    $('dMeta').innerHTML=
+      '<div><dt>Raised by</dt><dd>'+t.from.split(' · ')[0]+'</dd></div>'+
+      '<div><dt>Their role</dt><dd>'+(t.from.split(' · ')[1]||'—')+'</dd></div>'+
+      '<div><dt>Assigned to</dt><dd>Dr. D. Whitfield</dd></div>'+
+      '<div><dt>Due</dt><dd class="mono">'+stamp(t.due)+'</dd></div>'+
+      '<div><dt>Category</dt><dd>'+t.cat+'</dd></div>'+
+      '<div><dt>Reference</dt><dd class="mono">'+t.pt.split(' · ')[0]+'</dd></div>';
+    $('dDesc').textContent=t.desc;
+    $('dReason').innerHTML='<b>Why this was raised — </b>'+t.reason;
+    $('dTl').innerHTML=
+      '<div class="on"><b>Assigned to you</b> by '+t.from.split(' · ')[0]+'<small>'+stamp(ago(56))+'</small></div>'+
+      (t.st!=='open'?'<div class="on"><b>Status moved to '+STL[t.st]+'</b><small>'+stamp(ago(24))+'</small></div>':'')+
+      (t.st==='res'?'<div class="on"><b>Closed</b> — outcome recorded and originator notified<small>'+stamp(t.due)+'</small></div>'
+        :'<div><b>Awaiting your update</b><small>due '+stamp(t.due)+'</small></div>');
+    $('dStatus').value=STL[t.st];
+    $('dPri').value=t.pri;
+    $('dTat').value='0';
+    $('dReassign').value='';
+    $('dNote').value='';
+    scrim.classList.add('on');$('mDetail').classList.add('on');document.body.style.overflow='hidden';
+  }
+  function closeDetail(){scrim.classList.remove('on');$('mDetail').classList.remove('on');document.body.style.overflow='';}
+
+  $('tasks').addEventListener('click',function(e){
+    var b=e.target.closest('[data-open]');if(!b)return;
+    openDetail(b.dataset.open);
+  });
+
+  $('dSave').addEventListener('click',function(){
+    if(!curTask)return;
+    var stMap2={'Open':'open','In progress':'prog','Blocked':'block','Resolved':'res'},
+        newSt=stMap2[$('dStatus').value],
+        newPri=$('dPri').value,
+        addH=parseInt($('dTat').value,10),
+        re=$('dReassign'),
+        note=$('dNote').value.trim(),
+        changes=[];
+
+    if(newSt!==curTask.st){changes.push('status → '+STL[newSt]);curTask.st=newSt;}
+    if(newPri!==curTask.pri){changes.push('priority → '+({high:'High',med:'Medium',low:'Low'}[newPri]));curTask.pri=newPri;}
+    if(addH){var d=new Date(curTask.due);d.setHours(d.getHours()+addH);curTask.due=d;changes.push('TAT extended '+addH+'h');}
+
+    if(re.value){
+      var sup=re.selectedOptions[0].dataset.sup;
+      HISTORY.unshift({k:'rt',t:curTask.id+' copied to supervisor',
+        p:sup+' has visibility on the reassignment.',w:stamp(now),tag:'SUPERVISOR'});
+      HISTORY.unshift({k:'up',t:curTask.id+' reassigned to '+re.value,
+        p:'Moved out of your queue · '+curTask.n,w:stamp(now),tag:'REASSIGNED'});
+      TASKS=TASKS.filter(function(x){return x.id!==curTask.id;});
+      changes.push('reassigned to '+re.value);
+    }
+    if(note){
+      HISTORY.unshift({k:'new',t:'Note added to '+curTask.id,p:note,w:stamp(now),tag:'NOTE'});
+    }
+    if(changes.length&&!re.value){
+      HISTORY.unshift({k:newSt==='res'?'ok':'up',t:curTask.id+' updated',
+        p:changes.join(' · ')+'. '+curTask.from.split(' · ')[0]+' notified.',w:stamp(now),tag:'UPDATED'});
+    }
+
+    closeDetail();renderKpis();renderTasks();renderHist();
+    toast(changes.length?'Task updated':'Note recorded',
+      (changes.length?changes.join(' · '):'Added to activity log'));
+  });
+
+  $('filt').addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;
+    $('filt').querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');filter=b.dataset.f;renderTasks();
+  });
+
+  renderKpis();renderTasks();renderHist();
+})();
+</script>
+
+</body>
+</html>

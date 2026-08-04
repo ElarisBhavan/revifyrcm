@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patient console — ReviFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../Provider/_prefs.css">
+<script src="../Provider/_prefs.js"></script>
+<style>
+:root{
+  --paper:#FAF8F3;--paper-2:#F2EFE7;--ink:#0D1A16;--muted:#5D6B67;--dim:#93A19D;
+  --line:rgba(13,26,22,.08);--line-2:rgba(13,26,22,.14);
+  --green:#0E9D73;--green-d:#0A5C46;--green-s:#E2F4EC;
+  --blue:#3B6FF5;--blue-s:#E8EFFE;
+  --amber:#C98A18;--amber-s:#FCF3DA;
+  --coral:#D0603F;--coral-s:#FBEAE4;
+  --teal:#1F93AE;--teal-s:#E3F2F6;
+  --violet:#8B5CF6;--violet-s:#F1EBFE;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --e:cubic-bezier(.22,1,.36,1);--card:rgba(255,255,255,.78);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{min-height:100vh;background:var(--paper);color:var(--ink);font-family:'Manrope',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;text-align:left}
+input,select,textarea{font:inherit}
+:focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:9px}
+
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.aur{position:absolute;border-radius:50%;filter:blur(92px);mix-blend-mode:multiply;opacity:.42}
+.a1{width:54vw;height:54vw;min-width:480px;min-height:480px;top:-26%;left:-12%;background:radial-gradient(circle,rgba(14,157,115,.38),transparent 66%);animation:f1 30s ease-in-out infinite}
+.a2{width:42vw;height:42vw;min-width:380px;min-height:380px;top:-18%;right:-9%;background:radial-gradient(circle,rgba(59,111,245,.28),transparent 66%);animation:f2 36s ease-in-out infinite}
+.a3{width:36vw;height:36vw;min-width:340px;min-height:340px;bottom:-24%;left:30%;background:radial-gradient(circle,rgba(139,92,246,.18),transparent 66%);animation:f3 42s ease-in-out infinite}
+@keyframes f1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(6vw,6vh) scale(1.1)}}
+@keyframes f2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-7vw,5vh) scale(1.12)}}
+@keyframes f3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(7vw,-6vh) scale(1.08)}}
+.mesh{position:absolute;inset:-2px;background-image:linear-gradient(rgba(13,26,22,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(13,26,22,.04) 1px,transparent 1px);background-size:46px 46px;animation:meshD 36s linear infinite;-webkit-mask-image:radial-gradient(120% 70% at 50% 0%,#000,transparent 74%);mask-image:radial-gradient(120% 70% at 50% 0%,#000,transparent 74%)}
+@keyframes meshD{to{background-position:46px 46px}}
+
+.hdr{position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line);background:rgba(250,248,243,.84);backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%)}
+.hin{max-width:1400px;margin:0 auto;padding:11px clamp(14px,2.4vw,30px);display:flex;align-items:center;gap:11px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .mk{width:29px;height:29px;border-radius:9px;background:linear-gradient(140deg,var(--green),var(--blue));display:grid;place-items:center;box-shadow:0 6px 16px -8px rgba(14,157,115,.8)}
+.brand .mk svg{width:16px;height:16px}
+.brand span{font-family:'Sora',sans-serif;font-size:15px;font-weight:600;letter-spacing:-.036em}
+.brand em{font-style:normal;color:var(--green);font-weight:400;font-size:.9em;margin-left:3px}
+.crumb{margin-left:12px;padding-left:12px;border-left:1px solid var(--line-2);font-size:12.4px;color:var(--muted)}
+.crumb a{color:var(--blue);font-weight:500}
+.crumb a:hover{text-decoration:underline}
+.crumb b{color:var(--ink);font-weight:600}
+.hact{margin-left:auto;display:flex;gap:8px;align-items:center}
+.hbtn{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:99px;border:1px solid var(--line-2);background:rgba(255,255,255,.7);font-size:12.4px;font-weight:600;white-space:nowrap;transition:all .3s var(--e)}
+.hbtn svg{width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s var(--e)}
+.hbtn:hover{border-color:var(--green);background:#fff}
+.hbtn.back:hover{transform:translateX(-2px)}.hbtn.back:hover svg{transform:translateX(-3px)}
+.hbtn.out:hover{border-color:var(--coral);background:var(--coral-s);color:#9B3F24}
+.hbtn.out:hover svg{stroke:var(--coral);transform:translateX(3px)}
+.btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:8px;padding:10px 17px;border-radius:11px;font-size:12.8px;font-weight:600;white-space:nowrap;transition:all .34s var(--e)}
+.btn svg{width:15px;height:15px;fill:none;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.btn.pri{background:linear-gradient(120deg,var(--green-d),var(--green));color:#F3FBF8;box-shadow:0 10px 24px -14px rgba(10,92,70,.95)}
+.btn.pri svg{stroke:#F3FBF8}
+.btn.pri::after{content:'';position:absolute;top:0;left:-120%;width:52%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.4),transparent);transition:left .8s var(--e)}
+.btn.pri:hover{transform:translateY(-2px)}.btn.pri:hover::after{left:150%}
+.btn.sec{border:1px solid var(--line-2);background:rgba(255,255,255,.74)}
+.btn.sec svg{stroke:var(--green)}
+.btn.sec:hover{border-color:var(--green);background:#fff;transform:translateY(-2px)}
+
+.wrap{position:relative;z-index:2;max-width:1400px;margin:0 auto;padding:clamp(16px,2.2vw,24px) clamp(14px,2.4vw,30px) clamp(46px,5vw,74px)}
+
+/* patient header */
+.phead{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:clamp(14px,1.8vw,20px);
+  opacity:0;transform:translateY(16px);animation:up .8s var(--e) .06s forwards}
+@keyframes up{to{opacity:1;transform:none}}
+.phead>div:first-child{flex:1;min-width:270px}
+.pnamerow{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+.pav{width:52px;height:52px;flex:none;border-radius:16px;display:grid;place-items:center;font-family:'Sora',sans-serif;
+  font-size:18px;font-weight:700;color:#fff;letter-spacing:-.03em;background:linear-gradient(140deg,var(--green),var(--blue));
+  box-shadow:0 14px 28px -16px rgba(10,92,70,.85);transition:transform .45s var(--e)}
+.phead:hover .pav{transform:scale(1.05) rotate(-3deg)}
+.phead h1{font-family:'Sora',sans-serif;font-size:clamp(24px,3.1vw,34px);line-height:1.05;font-weight:600;letter-spacing:-.043em}
+.pmeta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px;font-size:12.2px;color:var(--muted)}
+.pmeta .sepd{color:var(--line-2)}
+.pmeta a{color:var(--blue);font-weight:500}
+.pmeta a:hover{text-decoration:underline}
+.tag{padding:3px 9px;border-radius:6px;font-size:9.8px;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.tag.minor{background:var(--violet-s);color:var(--violet)}
+.tag.adult{background:var(--paper-2);color:var(--muted)}
+.tag.act{background:var(--green-s);color:var(--green-d)}
+.tag.ina{background:var(--paper-2);color:var(--dim)}
+.phead .cta{margin-left:auto;flex:none;display:flex;gap:9px;flex-wrap:wrap;padding-top:5px}
+
+/* tabs */
+.tabs{display:flex;align-items:center;gap:2px;border-bottom:1px solid var(--line-2);margin-bottom:clamp(14px,1.8vw,20px);
+  opacity:0;transform:translateY(16px);animation:up .8s var(--e) .12s forwards}
+.tab{position:relative;padding:12px 16px;font-size:13.2px;font-weight:600;color:var(--muted);transition:color .3s ease}
+.tab::after{content:'';position:absolute;left:16px;right:16px;bottom:-1px;height:2px;background:var(--green);transform:scaleX(0);transition:transform .4s var(--e)}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--green-d)}
+.tab.on::after{transform:scaleX(1)}
+.tab .n{margin-left:7px;padding:2px 7px;border-radius:6px;background:var(--paper-2);font-family:var(--mono);font-size:9.4px;color:var(--muted)}
+.tab.on .n{background:var(--green-s);color:var(--green-d)}
+.tabs .adm{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-size:12.4px;font-weight:600;color:var(--blue);padding:8px 12px;border-radius:9px;transition:background .3s ease}
+.tabs .adm:hover{background:var(--blue-s)}
+.tabs .adm svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round}
+
+/* layout */
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:clamp(12px,1.6vw,20px);align-items:start}
+.card{position:relative;background:var(--card);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);
+  border:1px solid rgba(255,255,255,.78);border-radius:17px;overflow:hidden;
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 18px 40px -34px rgba(13,26,22,.5);
+  opacity:0;transform:translateY(18px);animation:up .76s var(--e) forwards}
+.chead{display:flex;align-items:center;gap:10px;padding:14px 17px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.chead h2{font-family:'Sora',sans-serif;font-size:13.8px;font-weight:600;letter-spacing:-.03em}
+.chead .sub{margin-left:auto;font-family:var(--mono);font-size:9.6px;color:var(--dim);letter-spacing:.08em}
+.cbody{padding:16px}
+.pane{display:none}.pane.on{display:block}
+
+/* filter row */
+.frow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.sel{padding:9px 30px 9px 12px;border-radius:10px;border:1px solid var(--line-2);background:rgba(255,255,255,.8);font-size:12.2px;font-weight:500;
+  appearance:none;cursor:pointer;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235D6B67' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 11px center;transition:all .28s var(--e)}
+.sel:focus{outline:none;border-color:var(--green);background-color:#fff}
+.frow .sp{flex:1}
+.mini{font-family:var(--mono);font-size:10.2px;color:var(--muted);padding:8px 12px;border-radius:99px;background:rgba(255,255,255,.7);border:1px solid var(--line-2)}
+
+/* overview timeline */
+.tl{display:grid}
+.ev{display:grid;grid-template-columns:58px minmax(0,1fr);gap:14px;padding:15px 0;border-bottom:1px solid var(--line);
+  opacity:0;transform:translateX(-8px);animation:sl .5s var(--e) forwards}
+@keyframes sl{to{opacity:1;transform:none}}
+.ev:last-child{border-bottom:none}
+.evd{text-align:right;padding-top:2px}
+.evd b{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--dim)}
+.evd span{display:block;font-family:'Sora',sans-serif;font-size:17px;font-weight:600;letter-spacing:-.03em;line-height:1.1;margin-top:2px}
+.evb{min-width:0}
+.evt{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:5px}
+.evt h3{font-size:13.6px;font-weight:600;letter-spacing:-.02em}
+.evt .lock svg{width:12px;height:12px;stroke:var(--dim);fill:none;stroke-width:2}
+.evt .time{margin-left:auto;font-family:var(--mono);font-size:10.4px;color:var(--dim)}
+.evb .cl{font-family:var(--mono);font-size:9.8px;letter-spacing:.07em;color:var(--dim);text-transform:uppercase}
+.evb .cl b{color:var(--muted)}
+.evb p{font-size:12.4px;line-height:1.55;color:var(--muted);margin-top:4px}
+.evb p b{color:var(--ink);font-weight:600}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:7px;font-size:10.2px;font-weight:700}
+.chip.g{background:var(--green-s);color:var(--green-d)}
+.chip.b{background:var(--blue-s);color:#25489E}
+.chip.a{background:var(--amber-s);color:#7A5507}
+.chip.v{background:var(--violet-s);color:var(--violet)}
+.chip.n{background:var(--paper-2);color:var(--muted)}
+.endnote{padding:26px 10px;text-align:center;font-size:12.4px;color:var(--dim)}
+
+/* billing table */
+.btbl{width:100%;border-collapse:collapse;font-size:12.4px}
+.btbl th{text-align:left;padding:10px 16px;font-size:9.4px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-weight:700;border-bottom:1px solid var(--line-2);white-space:nowrap;background:rgba(250,248,243,.6)}
+.btbl th.r,.btbl td.r{text-align:right}
+.btbl td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top;transition:background .25s ease}
+.btbl tbody tr{opacity:0;transform:translateX(-8px);animation:sl .5s var(--e) forwards}
+.btbl tbody tr:hover td{background:rgba(255,255,255,.94)}
+.btbl tr.tot td{background:rgba(14,157,115,.07);font-weight:700;border-top:2px solid rgba(14,157,115,.28);border-bottom:none}
+.bsvc b{display:block;font-size:12.8px;font-weight:600;letter-spacing:-.016em;line-height:1.35}
+.bsvc small{display:block;font-family:var(--mono);font-size:9.6px;color:var(--dim);margin-top:3px}
+.cpt{display:inline-block;padding:2px 7px;border-radius:5px;background:var(--paper-2);font-family:var(--mono);font-size:10px;font-weight:600;margin-right:5px}
+.docs{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.doc{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:8px;border:1px solid var(--line-2);
+  background:rgba(255,255,255,.85);font-family:var(--mono);font-size:9.8px;font-weight:600;transition:all .3s var(--e)}
+.doc svg{width:12px;height:12px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.doc:hover{transform:translateY(-2px);box-shadow:0 10px 20px -12px rgba(13,26,22,.6)}
+.doc.inv{color:var(--green-d);border-color:rgba(14,157,115,.32)}
+.doc.inv svg{stroke:var(--green-d)}
+.doc.inv:hover{background:var(--green-s)}
+.doc.clm{color:#25489E;border-color:rgba(59,111,245,.32)}
+.doc.clm svg{stroke:var(--blue)}
+.doc.clm:hover{background:var(--blue-s)}
+.doc.rem{color:var(--violet);border-color:rgba(139,92,246,.32)}
+.doc.rem svg{stroke:var(--violet)}
+.doc.rem:hover{background:var(--violet-s)}
+.money{font-family:var(--mono);font-size:11.8px;font-weight:600}
+.money.pos{color:var(--green-d)}.money.neg{color:var(--coral)}.money.zero{color:var(--dim)}
+.mng{padding:6px 12px;border-radius:8px;border:1px solid var(--line-2);background:rgba(255,255,255,.85);font-size:11.2px;font-weight:600;white-space:nowrap;transition:all .3s var(--e)}
+.mng:hover{border-color:var(--green);background:var(--green-s);color:var(--green-d);transform:translateY(-2px)}
+
+/* files */
+.fgridw{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:11px}
+.file{position:relative;display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:14px;border:1px solid var(--line-2);
+  background:rgba(255,255,255,.72);transition:all .36s var(--e);
+  opacity:0;transform:translateY(14px);animation:up .6s var(--e) forwards}
+.file:hover{transform:translateY(-4px);border-color:rgba(14,157,115,.4);box-shadow:0 20px 40px -26px rgba(13,26,22,.5)}
+.file .fi{width:34px;height:34px;border-radius:10px;display:grid;place-items:center}
+.file .fi svg{width:17px;height:17px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.file b{font-size:12.6px;font-weight:600;letter-spacing:-.016em;line-height:1.35;word-break:break-word}
+.file .meta{font-family:var(--mono);font-size:9.4px;color:var(--dim);line-height:1.6}
+.file .by{display:flex;align-items:center;gap:7px;margin-top:auto;padding-top:10px;border-top:1px solid var(--line)}
+.file .by .ua{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-family:var(--mono);font-size:8.8px;font-weight:700;color:#fff;flex:none}
+.file .by small{font-size:10.4px;color:var(--muted);line-height:1.3}
+.file .by small b{display:block;color:var(--ink);font-weight:600;font-size:10.8px}
+.ftag{position:absolute;top:12px;right:12px;padding:3px 8px;border-radius:6px;font-size:8.8px;font-weight:700;letter-spacing:.05em}
+.ftag.auto{background:var(--green-s);color:var(--green-d)}
+.ftag.up{background:var(--blue-s);color:#25489E}
+/* sidebar */
+.side{display:grid;gap:clamp(10px,1.3vw,14px);align-content:start}
+.sbox{background:var(--card);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.78);
+  border-radius:16px;overflow:hidden;box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 16px 36px -32px rgba(13,26,22,.5);
+  opacity:0;transform:translateY(16px);animation:up .74s var(--e) forwards}
+.sh{display:flex;align-items:center;gap:9px;padding:13px 15px;border-bottom:1px solid var(--line);cursor:pointer}
+.sh h3{font-size:12.6px;font-weight:600;letter-spacing:-.02em}
+.sh .ed{margin-left:auto;font-size:11px;color:var(--blue);font-weight:500}
+.sh .ed:hover{text-decoration:underline}
+.sh .cv{width:20px;height:20px;display:grid;place-items:center;color:var(--dim);transition:transform .4s var(--e)}
+.sh .cv svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.sbox.closed .sh .cv{transform:rotate(180deg)}
+.sb{padding:13px 15px;transition:max-height .45s var(--e)}
+.sbox.closed .sb{display:none}
+.srow{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:12.2px}
+.srow span{color:var(--muted)}
+.srow b{margin-left:auto;font-family:var(--mono);font-size:12px;font-weight:600}
+.srow b.pos{color:var(--green-d)}.srow b.neg{color:var(--coral)}
+.srow .q{width:14px;height:14px;border-radius:50%;background:var(--paper-2);display:inline-grid;place-items:center;font-size:8.4px;color:var(--dim);font-weight:700}
+.slink{display:block;margin-top:9px;font-size:11.6px;color:var(--blue);font-weight:500}
+.slink:hover{text-decoration:underline}
+.auto{margin-top:12px;padding:11px 12px;border-radius:11px;background:var(--green-s);border:1px solid rgba(14,157,115,.24)}
+.auto b{display:flex;align-items:center;gap:7px;font-size:11.8px;font-weight:700;color:var(--green-d);margin-bottom:5px}
+.auto b svg{width:13px;height:13px;stroke:var(--green-d);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.auto p{font-size:10.8px;line-height:1.55;color:var(--green-d);opacity:.86}
+.auto a{color:var(--green-d);font-weight:600;text-decoration:underline}
+.ins-t{font-size:11.4px;font-weight:700;color:var(--muted);margin-bottom:7px}
+.ins-n{font-size:12.4px;font-weight:600;color:var(--blue);line-height:1.4;margin-bottom:9px}
+.ins-n:hover{text-decoration:underline}
+.kv{display:flex;gap:10px;padding:4px 0;font-size:11.6px}
+.kv span{color:var(--muted);min-width:96px}
+.kv b{font-family:var(--mono);font-size:11.2px;font-weight:600}
+.insbal{display:flex;align-items:center;gap:9px;padding:11px 0 0;margin-top:11px;border-top:1px solid var(--line);font-size:12.2px;font-weight:600}
+.insbal b{margin-left:auto;font-family:var(--mono)}
+.addpay{display:block;width:100%;margin-top:11px;padding:11px;border-radius:10px;background:var(--green-s);border:1px solid rgba(14,157,115,.26);
+  text-align:center;font-size:12.4px;font-weight:600;color:var(--green-d);transition:all .3s var(--e)}
+.addpay:hover{background:#D2EDE1;transform:translateY(-2px)}
+.ct{padding:11px 0;border-bottom:1px solid var(--line)}
+.ct:last-child{border-bottom:none;padding-bottom:0}
+.ct .cn{font-size:12.2px;font-weight:600;color:var(--blue);margin-bottom:7px}
+.ct .cl{display:flex;gap:10px;padding:3px 0;font-size:11.4px;align-items:flex-start}
+.ct .cl span{color:var(--muted);width:44px;flex:none}
+.ct .cl div{flex:1;min-width:0}
+.ct .cl a{color:var(--ink);word-break:break-all}
+.ct .cl a:hover{color:var(--blue)}
+.ct .cl em{display:flex;align-items:center;gap:6px;font-style:normal;font-family:var(--mono);font-size:9.2px;color:var(--dim);margin-top:3px}
+.ct .cl em svg{width:12px;height:12px;fill:none;stroke-width:2;stroke-linecap:round}
+.ct .cl em svg.ok{stroke:var(--green)}
+.ct .cl em svg.no{stroke:var(--coral)}
+.appt{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:12.2px;border-bottom:1px solid var(--line)}
+.appt:last-child{border-bottom:none}
+.appt .dt{font-family:var(--mono);font-size:11.4px;font-weight:600;color:var(--blue)}
+.appt .rc{margin-left:auto;font-family:var(--mono);font-size:9.2px;color:var(--dim)}
+
+/* modal */
+.scrim{position:fixed;inset:0;z-index:90;background:rgba(13,26,22,.36);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);opacity:0;visibility:hidden;transition:opacity .35s var(--e),visibility .35s}
+.scrim.on{opacity:1;visibility:visible}
+.modal{position:fixed;z-index:91;left:50%;top:50%;width:min(660px,calc(100vw - 24px));max-height:calc(100vh - 46px);overflow:auto;
+  transform:translate(-50%,-46%) scale(.96);opacity:0;visibility:hidden;
+  background:rgba(255,255,255,.56);backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%);
+  border:1px solid rgba(255,255,255,.62);border-radius:20px;
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 40px 90px -30px rgba(13,26,22,.55);
+  transition:opacity .4s var(--e),transform .4s var(--e),visibility .4s}
+.modal.on{opacity:1;visibility:visible;transform:translate(-50%,-50%) scale(1)}
+.modal.wide{width:min(860px,calc(100vw - 24px))}
+.mhead{display:flex;align-items:center;gap:12px;padding:16px 19px;border-bottom:1px solid rgba(13,26,22,.1);position:sticky;top:0;background:rgba(255,255,255,.6);backdrop-filter:blur(20px);z-index:3}
+.mhead .mi{width:33px;height:33px;flex:none;border-radius:11px;background:rgba(14,157,115,.16);display:grid;place-items:center}
+.mhead .mi svg{width:16px;height:16px;stroke:var(--green-d);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mhead h3{font-family:'Sora',sans-serif;font-size:15.4px;font-weight:600;letter-spacing:-.032em}
+.mhead p{font-size:11.4px;color:var(--muted);margin-top:2px}
+.mclose{margin-left:auto;width:31px;height:31px;border-radius:9px;display:grid;place-items:center;color:var(--muted);transition:all .3s var(--e)}
+.mclose svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.3;stroke-linecap:round}
+.mclose:hover{background:rgba(255,255,255,.8);color:var(--ink);transform:rotate(90deg)}
+.mbody{padding:18px 19px}
+.fg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.f{display:block}.f.full{grid-column:span 2}
+.f>span{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.f input,.f select,.f textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(13,26,22,.16);background:rgba(255,255,255,.76);font-size:12.8px;transition:all .28s var(--e)}
+.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--green);background:#fff;box-shadow:0 0 0 3px rgba(14,157,115,.14)}
+.f select{appearance:none;cursor:pointer;padding-right:30px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235D6B67' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 11px center}
+.f textarea{min-height:64px;resize:vertical}
+.calc{margin-top:14px;padding:13px 15px;border-radius:12px;background:rgba(14,157,115,.08);border:1px solid rgba(14,157,115,.2)}
+.calc .cr{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:12.2px;color:var(--green-d)}
+.calc .cr b{margin-left:auto;font-family:var(--mono);font-weight:600}
+.calc .cr.tot{margin-top:7px;padding-top:9px;border-top:1px solid rgba(14,157,115,.24);font-weight:700;font-size:13.4px}
+.drop{margin-top:4px;padding:26px 18px;border-radius:14px;border:2px dashed rgba(13,26,22,.18);background:rgba(255,255,255,.5);
+  text-align:center;cursor:pointer;transition:all .34s var(--e)}
+.drop:hover,.drop.over{border-color:var(--green);background:var(--green-s)}
+.drop .di{width:40px;height:40px;margin:0 auto 11px;border-radius:13px;background:var(--green-s);display:grid;place-items:center;transition:transform .4s var(--e)}
+.drop:hover .di{transform:translateY(-3px) scale(1.06)}
+.drop .di svg{width:20px;height:20px;stroke:var(--green-d);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.drop b{display:block;font-size:13.2px;font-weight:600;margin-bottom:4px}
+.drop small{font-size:11.2px;color:var(--muted)}
+.queue{margin-top:13px;display:grid;gap:7px}
+.qi{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.8);border:1px solid var(--line-2);font-size:12px}
+.qi svg{width:15px;height:15px;stroke:var(--green-d);fill:none;stroke-width:2;flex:none}
+.qi b{flex:1;min-width:0;font-weight:600;word-break:break-all}
+.qi small{font-family:var(--mono);font-size:9.6px;color:var(--dim);flex:none}
+.qi .rm{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;flex:none;color:var(--dim);transition:all .28s var(--e)}
+.qi .rm svg{width:12px;height:12px;stroke:currentColor;stroke-width:2.4}
+.qi .rm:hover{background:var(--coral-s);color:var(--coral)}
+.mfoot{display:flex;gap:9px;padding:14px 19px;border-top:1px solid rgba(13,26,22,.1);background:rgba(255,255,255,.36);position:sticky;bottom:0}
+.mfoot .sp{flex:1}
+
+/* document viewer */
+.dv{background:#fff;border-radius:0;padding:0}
+.paper{background:#fff;color:#111;padding:26px 28px;font-family:'Manrope',sans-serif}
+.paper.form{font-family:var(--mono);font-size:10.4px;line-height:1.5}
+.frm-h{text-align:center;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:10px}
+.frm-h b{display:block;font-family:'Sora',sans-serif;font-size:14px;letter-spacing:.04em}
+.frm-h small{font-size:9px;color:#555;letter-spacing:.08em}
+.fbox{border:1px solid #111;margin-bottom:-1px}
+.fr{display:flex;border-bottom:1px solid #111}
+.fr:last-child{border-bottom:none}
+.fc{flex:1;padding:5px 7px;border-right:1px solid #111;min-width:0}
+.fc:last-child{border-right:none}
+.fc u{display:block;font-size:7.4px;color:#666;text-decoration:none;letter-spacing:.05em;margin-bottom:2px}
+.fc span{display:block;font-size:10.4px;font-weight:600;word-break:break-word;min-height:13px}
+.fc.w2{flex:2}.fc.w3{flex:3}.fc.w05{flex:.5}
+.svct{width:100%;border-collapse:collapse;font-size:9.6px;margin-top:-1px}
+.svct th{border:1px solid #111;padding:4px 5px;font-size:7.2px;color:#555;text-align:left;letter-spacing:.04em;background:#F4F4F2}
+.svct td{border:1px solid #111;padding:6px 5px;font-weight:600}
+.stamp{position:absolute;top:52px;right:34px;transform:rotate(-11deg);border:2.5px solid;border-radius:7px;padding:6px 14px;
+  font-family:'Sora',sans-serif;font-size:14px;font-weight:700;letter-spacing:.06em;opacity:.82}
+.stamp.sub{color:#0A5C46;border-color:#0A5C46}
+.stamp.paid{color:#0A5C46;border-color:#0A5C46}
+/* invoice */
+.inv-h{display:flex;align-items:flex-start;gap:16px;padding-bottom:16px;border-bottom:2px solid #111;margin-bottom:16px}
+.inv-h .lg{width:38px;height:38px;border-radius:11px;background:linear-gradient(140deg,#0E9D73,#3B6FF5);display:grid;place-items:center;flex:none}
+.inv-h .lg svg{width:21px;height:21px}
+.inv-h h4{font-family:'Sora',sans-serif;font-size:16px;font-weight:600;letter-spacing:-.03em}
+.inv-h small{font-size:10px;color:#666;display:block;margin-top:2px}
+.inv-h .rt{margin-left:auto;text-align:right}
+.inv-h .rt b{display:block;font-family:'Sora',sans-serif;font-size:20px;letter-spacing:-.03em}
+.inv-h .rt small{font-family:var(--mono);font-size:9.6px;color:#666}
+.inv-p{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:16px}
+.inv-p u{display:block;font-size:8.4px;color:#666;text-decoration:none;letter-spacing:.09em;margin-bottom:5px}
+.inv-p div p{font-size:11.6px;line-height:1.5}
+.inv-t{width:100%;border-collapse:collapse;font-size:11.4px;margin-bottom:16px}
+.inv-t th{text-align:left;padding:8px 0;font-size:8.4px;color:#666;letter-spacing:.08em;border-bottom:1px solid #111}
+.inv-t th.r,.inv-t td.r{text-align:right}
+.inv-t td{padding:10px 0;border-bottom:1px solid #E4E4E0}
+.inv-tot{margin-left:auto;width:min(260px,100%)}
+.inv-tot div{display:flex;justify-content:space-between;padding:6px 0;font-size:11.8px}
+.inv-tot div.big{margin-top:6px;padding-top:10px;border-top:2px solid #111;font-family:'Sora',sans-serif;font-size:15px;font-weight:600}
+.inv-note{margin-top:20px;padding:12px 14px;border-radius:10px;background:#F4F6F5;font-size:10.4px;line-height:1.6;color:#555}
+/* remit */
+.rem-t{width:100%;border-collapse:collapse;font-size:10.6px}
+.rem-t th{text-align:left;padding:7px 8px;font-size:7.6px;color:#666;letter-spacing:.06em;background:#F2F4F3;border:1px solid #DDD}
+.rem-t th.r,.rem-t td.r{text-align:right}
+.rem-t td{padding:8px;border:1px solid #E6E6E2}
+.rem-t tr.sum td{background:#F4F6F5;font-weight:700}
+.cas{display:inline-block;padding:2px 6px;border-radius:4px;background:#F0E6DC;font-family:var(--mono);font-size:8.8px;font-weight:700;color:#8A4B20}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:95;display:flex;align-items:center;gap:12px;padding:14px 19px;border-radius:13px;background:var(--green-d);color:#F3FBF8;box-shadow:0 22px 44px -20px rgba(10,92,70,.9);opacity:0;pointer-events:none;transition:all .45s var(--e);max-width:calc(100vw - 30px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast.bad{background:#8E3620}
+.toast svg{width:17px;height:17px;stroke:#7BE8C0;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.toast.bad svg{stroke:#FFC4B4}
+.toast b{display:block;font-size:13px;font-weight:600}
+.toast small{display:block;font-size:11px;color:rgba(243,251,248,.74);margin-top:2px}
+
+@media print{
+  .hdr,.phead,.tabs,.side,.scrim,.mhead,.mfoot,.toast{display:none!important}
+  .modal{position:static;transform:none;opacity:1;visibility:visible;max-height:none;box-shadow:none;border:none;background:#fff;width:100%}
+  body{background:#fff}
+}
+@media (max-width:1080px){
+  .cols{grid-template-columns:minmax(0,1fr)}
+  .side{order:-1;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .crumb{display:none}
+}
+@media (max-width:700px){
+  .side{grid-template-columns:minmax(0,1fr)}
+  .fg{grid-template-columns:minmax(0,1fr)}.f.full{grid-column:span 1}
+  .phead .cta{width:100%;margin-left:0}.phead .cta .btn{flex:1;justify-content:center}
+  .btblwrap{overflow-x:auto}.btbl{min-width:760px}
+  .ev{grid-template-columns:46px minmax(0,1fr);gap:11px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}.card,.sbox,.phead,.tabs,.file{opacity:1;transform:none}}
+
+</style>
+<link rel="stylesheet" href="../../_session.css">
+<script src="../../_store.js"></script>
+<script src="../../_session.js"></script>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true"><div class="mesh"></div><div class="aur a1"></div><div class="aur a2"></div><div class="aur a3"></div></div>
+
+<header class="hdr">
+  <div class="hin">
+    <div class="brand">
+      <span class="mk"><svg viewBox="0 0 34 34" fill="none"><circle cx="17" cy="17" r="11.8" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M11 17.4h2.6l1.9-4.2 2.7 8 2-5.1 1.3 2.4H23" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>ReviFlow<em>RCM</em></span>
+    </div>
+    <span class="crumb"><a href="patient-dashboard.html">Clients and contacts</a> / <b id="crumbName">Profile</b></span>
+    <div class="hact">
+      <span class="rf-who" id="rfWho"></span>
+      <a href="patient-dashboard.html" class="hbtn back"><svg viewBox="0 0 24 24"><path d="M19 12H6M11 6l-6 6 6 6"/></svg>Back</a>
+      <a href="../Provider/provider-login.html" class="hbtn out">Log out<svg viewBox="0 0 24 24"><path d="M15 12H4M11 6l6 6-6 6"/><path d="M14 4h5a1 1 0 011 1v14a1 1 0 01-1 1h-5"/></svg></a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="phead">
+    <div>
+      <div class="pnamerow">
+        <span class="pav" id="pAv">--</span>
+        <div>
+          <h1 id="pName">—</h1>
+          <div class="pmeta" id="pMeta"></div>
+        </div>
+      </div>
+    </div>
+    <div class="cta">
+      <button class="btn sec" id="msgBtn"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-4 4V5a2 2 0 012-2h13a2 2 0 012 2z"/></svg>Message</button>
+      <button class="btn pri" id="upBtn"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg>Upload</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" data-t="overview">Overview<span class="n" id="nOv">0</span></button>
+    <button class="tab" data-t="billing">Billing<span class="n" id="nBi">0</span></button>
+    <button class="tab" data-t="files">Files<span class="n" id="nFi">0</span></button>
+    <button class="adm" id="noteBtn"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Administrative Note</button>
+  </div>
+
+  <div class="cols">
+    <div>
+      <!-- OVERVIEW -->
+      <section class="pane on" data-p="overview">
+        <div class="card" style="animation-delay:.18s">
+          <div class="chead">
+            <h2>Appointment history</h2>
+            <span class="sub" id="ovSub">—</span>
+          </div>
+          <div class="cbody">
+            <div class="frow">
+              <select class="sel" id="ovRange"><option value="all">All time</option><option value="365">Last 12 months</option><option value="90">Last 90 days</option><option value="30">Last 30 days</option></select>
+              <select class="sel" id="ovType"><option value="all">All items</option><option value="office">Office visits</option><option value="video">Telehealth</option><option value="note">Notes and plans</option></select>
+              <span class="sp"></span>
+              <span class="mini" id="ovCount">—</span>
+            </div>
+            <div class="tl" id="tl"></div>
+            <p class="endnote" id="ovEnd"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- BILLING -->
+      <section class="pane" data-p="billing">
+        <div class="card" style="animation-delay:.18s">
+          <div class="chead">
+            <h2>Billing detail</h2>
+            <span class="sub" id="biSub">—</span>
+          </div>
+          <div class="btblwrap">
+            <table class="btbl">
+              <thead><tr>
+                <th style="width:34%">Date &amp; service</th>
+                <th class="r">Fee</th>
+                <th class="r">Client payment</th>
+                <th class="r">Insurance paid</th>
+                <th class="r">Write-off</th>
+                <th class="r">Balance</th>
+                <th class="r" style="width:86px">Manage</th>
+              </tr></thead>
+              <tbody id="biRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- FILES -->
+      <section class="pane" data-p="files">
+        <div class="card" style="animation-delay:.18s">
+          <div class="chead">
+            <h2>Files and documents</h2>
+            <span class="sub" id="fiSub">—</span>
+          </div>
+          <div class="cbody">
+            <div class="frow">
+              <select class="sel" id="fiType">
+                <option value="all">All documents</option>
+                <option value="invoice">Invoices</option><option value="claim">Claim forms</option>
+                <option value="remit">Remittances</option><option value="upload">Uploads</option>
+              </select>
+              <span class="sp"></span>
+              <button class="btn sec" id="upBtn2"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg>Upload document</button>
+            </div>
+            <div class="fgridw" id="fiGrid"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="side">
+      <div class="sbox" style="animation-delay:.22s">
+        <div class="sh"><h3>Client billing</h3><span class="cv"><svg viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg></span></div>
+        <div class="sb">
+          <div class="srow"><span>Client balance</span><b id="sbClient">$0</b></div>
+          <div class="srow"><span>Unallocated <i class="q">?</i></span><b id="sbUnal">$0</b></div>
+          <div class="srow"><span>Unpaid invoices</span><b id="sbUnpaid">$0</b></div>
+          <a class="slink" href="#" id="apptReport">Appointment Status Report</a>
+          <div class="auto">
+            <b><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Enrolled in AutoPay</b>
+            <p>Client's default card <span id="sbCard">—</span> will be charged nightly for any outstanding balance. You can also <a href="#" id="addPayNow">add a payment now</a>.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="sbox" style="animation-delay:.26s">
+        <div class="sh"><h3>Insurance</h3><span class="ed">Edit</span><span class="cv"><svg viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg></span></div>
+        <div class="sb" id="insBox"></div>
+      </div>
+
+      <div class="sbox" style="animation-delay:.3s">
+        <div class="sh"><h3>Client info</h3><span class="ed">Edit</span><span class="cv"><svg viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg></span></div>
+        <div class="sb" id="infoBox"></div>
+      </div>
+
+      <div class="sbox" style="animation-delay:.34s">
+        <div class="sh"><h3>Contacts</h3><span class="ed">Edit</span><span class="cv"><svg viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg></span></div>
+        <div class="sb" id="ctBox"></div>
+      </div>
+
+      <div class="sbox" style="animation-delay:.38s">
+        <div class="sh"><h3>Upcoming appointments</h3><span class="ed">Print</span><span class="cv"><svg viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg></span></div>
+        <div class="sb" id="apBox"></div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div class="scrim" id="scrim"></div>
+
+<!-- UPLOAD -->
+<div class="modal" id="mUp" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg></span>
+    <div><h3>Upload documents</h3><p id="upFor">—</p></div>
+    <button class="mclose" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody">
+    <label class="f full" style="margin-bottom:13px"><span>Document type</span>
+      <select id="upType">
+        <option>Intake report</option><option>Lab report</option><option>Insurance card</option>
+        <option>Referral</option><option>Imaging</option><option>Consent form</option>
+        <option>Prior authorisation</option><option>Clinical note</option><option>Other</option>
+      </select></label>
+    <div class="drop" id="drop">
+      <div class="di"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg></div>
+      <b>Drop files here or click to browse</b>
+      <small>PDF, JPG, PNG or DOCX · up to 20 MB each</small>
+      <input type="file" id="upFile" multiple hidden accept=".pdf,.jpg,.jpeg,.png,.docx">
+    </div>
+    <div class="queue" id="queue"></div>
+    <label class="f full" style="margin-top:13px"><span>Note (optional)</span>
+      <textarea id="upNote" placeholder="Anything the care team should know about these documents"></textarea></label>
+  </div>
+  <div class="mfoot">
+    <button class="btn sec" data-close>Cancel</button>
+    <span class="sp"></span>
+    <button class="btn pri" id="upSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Upload</button>
+  </div>
+</div>
+
+<!-- MANAGE BILLING LINE -->
+<div class="modal" id="mEdit" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></span>
+    <div><h3>Manage charge</h3><p id="edSub">—</p></div>
+    <button class="mclose" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody">
+    <div class="fg">
+      <label class="f"><span>Date of service</span><input type="date" id="edDos" min="1900-01-01" max="2100-12-31"></label>
+      <label class="f"><span>Rendering provider</span>
+        <select id="edProv">
+          <option>Dr. Dana Whitfield</option><option>Dr. Alan Reyes</option><option>Dr. Ngozi Okafor</option>
+          <option>Sara Lindqvist, NP</option><option>Marcus Bello, PA</option><option>Dr. Elena Petrova</option>
+        </select></label>
+      <label class="f"><span>CPT code</span><input type="text" id="edCpt" maxlength="7" placeholder="99213"></label>
+      <label class="f"><span>Modifier</span><input type="text" id="edMod" maxlength="4" placeholder="25"></label>
+      <label class="f"><span>Diagnosis (ICD-10)</span><input type="text" id="edDx" maxlength="8" placeholder="E11.65"></label>
+      <label class="f"><span>Units</span><input type="number" id="edUnits" min="1" value="1"></label>
+      <label class="f"><span>Fee (billed)</span><input type="text" id="edFee" inputmode="decimal" placeholder="245.00"></label>
+      <label class="f"><span>Client payment</span><input type="text" id="edPt" inputmode="decimal" placeholder="35.00"></label>
+      <label class="f"><span>Insurance paid</span><input type="text" id="edIns" inputmode="decimal" placeholder="161.00"></label>
+      <label class="f"><span>Insurance write-off</span><input type="text" id="edAdj" inputmode="decimal" placeholder="49.00"></label>
+    </div>
+    <div class="calc">
+      <div class="cr"><span>Billed</span><b id="cFee">$0.00</b></div>
+      <div class="cr"><span>Less client payment</span><b id="cPt">$0.00</b></div>
+      <div class="cr"><span>Less insurance paid</span><b id="cIns">$0.00</b></div>
+      <div class="cr"><span>Less contractual write-off</span><b id="cAdj">$0.00</b></div>
+      <div class="cr tot"><span>Remaining balance</span><b id="cBal">$0.00</b></div>
+    </div>
+  </div>
+  <div class="mfoot">
+    <button class="btn sec" data-close>Cancel</button>
+    <span class="sp"></span>
+    <button class="btn pri" id="edSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Save changes</button>
+  </div>
+</div>
+
+<!-- DOCUMENT VIEWER -->
+<div class="modal wide" id="mDoc" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi" id="docIco"></span>
+    <div><h3 id="docTitle">Document</h3><p id="docSub">—</p></div>
+    <button class="mclose" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="dv" id="docBody"></div>
+  <div class="mfoot">
+    <button class="btn sec" data-close>Close</button>
+    <span class="sp"></span>
+    <button class="btn sec" id="docPrint"><svg viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 19H5a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2h-2"/><path d="M7 15h10v6H7z"/></svg>Print</button>
+    <button class="btn pri" id="docDl"><svg viewBox="0 0 24 24"><path d="M12 3v13M7 12l5 5 5-5"/><path d="M4 20h16"/></svg>Download</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg><span><b id="tT">Saved</b><small id="tS">—</small></span></div>
+
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var qs=new URLSearchParams(location.search),PID=qs.get('id');
+  var PKEY='rf_patients',DKEY='rf_docs_',BKEY='rf_billing_';
+
+  var SESSION={name:'Dr. Dana Whitfield',initials:'DW',role:'provider'};
+  try{var r=localStorage.getItem('rf_session');if(r)SESSION=JSON.parse(r);}catch(e){}
+
+  function seed(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+  function rng(s){return function(){s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
+  function pad(n){return n<10?'0'+n:''+n;}
+  function money(n){return (n<0?'-$':'$')+Math.abs(+n||0).toFixed(2);}
+  function fmtD(d){return d?new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'—';}
+  function fmtS(d){return d?new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'2-digit',day:'2-digit',year:'numeric'}):'—';}
+  function age(dob){if(!dob)return 0;var d=new Date(dob),n=new Date(),a=n.getFullYear()-d.getFullYear();
+    if(n.getMonth()<d.getMonth()||(n.getMonth()===d.getMonth()&&n.getDate()<d.getDate()))a--;return a;}
+  function toast(t,s,bad){$('tT').textContent=t;$('tS').textContent=s||'';
+    var e=$('toast');e.classList.toggle('bad',!!bad);e.classList.add('on');
+    clearTimeout(toast._t);toast._t=setTimeout(function(){e.classList.remove('on');},3400);}
+
+  /* ── patient ── */
+  var LIST=[];try{LIST=JSON.parse(localStorage.getItem(PKEY)||'[]');}catch(e){}
+  var P=LIST.filter(function(x){return x.id===PID;})[0]||LIST[0];
+  if(!P){document.querySelector('.wrap').innerHTML='<p style="padding:60px;text-align:center;color:var(--dim)">Patient record not found. <a href="patient-dashboard.html" style="color:var(--blue)">Return to the client list</a>.</p>';return;}
+
+  var A=age(P.dob),MINOR=A<18;
+  var FULL=P.first+' '+P.last;
+  $('crumbName').textContent=FULL+"'s profile";
+  document.title=FULL+' — ReviFlow';
+  $('pAv').textContent=(P.first[0]+P.last[0]).toUpperCase();
+  $('pName').textContent=FULL;
+  $('upFor').textContent='Attaching to '+FULL+' · '+P.mid;
+  $('pMeta').innerHTML=
+    '<span class="tag '+(MINOR?'minor':'adult')+'">'+(MINOR?'Minor':'Adult')+'</span>'+
+    '<span class="tag '+(P.status==='active'?'act':'ina')+'">'+(P.status==='active'?'Active':'Inactive')+'</span>'+
+    '<span>DOB '+fmtS(P.dob)+' ('+A+' y/o)</span><span class="sepd">|</span>'+
+    '<span>'+(P.nextAppt?'Next appt: <a href="../Provider/schedule.html">'+fmtS(P.nextAppt)+'</a> (30 min · Recurring)':'No upcoming appointment')+'</span>'+
+    '<span class="sepd">|</span><span>Member ID <b style="font-family:var(--mono);color:var(--ink)">'+P.mid+'</b></span>'+
+    '<span class="sepd">|</span><a href="#" id="editLink">Edit</a>';
+
+  /* ── billing ledger (seeded once, then persisted) ── */
+  var CPTS=[['99213','Office visit, established · level 3',245],['99214','Office visit, established · level 4',310],
+            ['99396','Preventive visit, 40–64 years',420],['90837','Psychotherapy, 60 minutes',265],
+            ['99442','Telehealth, 11–20 minutes',150],['99215','Office visit, established · level 5',385]];
+  var DXS=['E11.65','I10','F43.23','Z00.00','M54.5','E78.5'];
+  function buildBilling(){
+    var r=rng(seed('bill-'+P.id)),out=[],n=Math.max(3,Math.min(9,P.visits||6));
+    for(var i=0;i<n;i++){
+      var d=new Date();d.setDate(d.getDate()-Math.round((i+1)*(14+r()*40)));
+      var c=CPTS[Math.floor(r()*CPTS.length)];
+      var fee=c[2],adj=Math.round(fee*(0.26+r()*0.16)*100)/100,
+          copay=P.copay||[0,25,35][Math.floor(r()*3)],
+          allowed=Math.round((fee-adj)*100)/100,
+          insPaid=Math.round(Math.max(0,allowed-copay)*100)/100,
+          ptPaid=(r()<0.78)?copay:0;
+      out.push({
+        id:'CH'+(5000+i),dos:d.toISOString().slice(0,10),
+        cpt:c[0],mod:(r()<0.22?'25':''),desc:c[1],dx:DXS[Math.floor(r()*DXS.length)],units:1,
+        prov:P.clinician,fee:fee,pt:ptPaid,ins:insPaid,adj:adj,
+        inv:'INV-'+(24000+Math.floor(r()*900)),
+        claim:(r()<0.9?('CLM'+(900000+Math.floor(r()*89999))):''),
+        remit:(r()<0.82?('RA-'+(70000+Math.floor(r()*8999))):''),
+        form:(r()<0.16?'UB-04':'CMS-1500'),
+        paidOn:d.toISOString().slice(0,10)
+      });
+    }
+    return out.sort(function(a,b){return b.dos.localeCompare(a.dos);});
+  }
+  var BILL=[];
+  try{BILL=JSON.parse(localStorage.getItem(BKEY+P.id)||'null');}catch(e){}
+  if(!BILL||!BILL.length){BILL=buildBilling();localStorage.setItem(BKEY+P.id,JSON.stringify(BILL));}
+  function saveBill(){try{localStorage.setItem(BKEY+P.id,JSON.stringify(BILL));}catch(e){}}
+  function bal(c){return Math.round(((+c.fee)-(+c.pt)-(+c.ins)-(+c.adj))*100)/100;}
+
+  /* ── documents ── */
+  var DOCS=[];
+  try{DOCS=JSON.parse(localStorage.getItem(DKEY+P.id)||'[]');}catch(e){}
+  function saveDocs(){try{localStorage.setItem(DKEY+P.id,JSON.stringify(DOCS));}catch(e){}}
+
+  /* ══ OVERVIEW ══ */
+  function buildEvents(){
+    var r=rng(seed('ev-'+P.id)),out=[];
+    BILL.forEach(function(c,i){
+      var video=/99442|99443/.test(c.cpt);
+      out.push({date:c.dos,kind:video?'video':'office',
+        title:video?'Telehealth visit':'Office visit',
+        clinician:c.prov,cpt:c.cpt,dx:c.dx,desc:c.desc,
+        time:pad(8+Math.floor(r()*8))+':'+pad(Math.floor(r()*4)*15)+' '+(r()<.5?'AM':'PM'),
+        billed:c.fee,locked:true});
+    });
+    if(BILL.length){
+      out.push({date:BILL[0].dos,kind:'note',title:'Diagnosis and treatment plan',
+        clinician:BILL[0].prov,dx:BILL[0].dx,desc:'Adjustment disorder with mixed anxiety and depressed mood',
+        time:'12:21 PM',locked:true});
+    }
+    return out.sort(function(a,b){return b.date.localeCompare(a.date);});
+  }
+  var EVENTS=buildEvents();
+
+  function renderOverview(){
+    var range=$('ovRange').value,type=$('ovType').value,cut=null;
+    if(range!=='all'){cut=new Date();cut.setDate(cut.getDate()-parseInt(range,10));}
+    var list=EVENTS.filter(function(e){
+      if(cut&&new Date(e.date+'T12:00:00')<cut)return false;
+      if(type!=='all'&&e.kind!==type)return false;
+      return true;
+    });
+    var seen=EVENTS.filter(function(e){return e.kind!=='note';}).length;
+    $('nOv').textContent=seen;
+    $('ovSub').textContent=seen+' APPOINTMENTS SEEN';
+    $('ovCount').textContent=list.length+' item'+(list.length===1?'':'s');
+    $('tl').innerHTML=list.map(function(e,i){
+      var d=new Date(e.date+'T12:00:00');
+      var chips='';
+      if(e.kind==='office')chips+='<span class="chip b">Office visit</span>';
+      if(e.kind==='video')chips+='<span class="chip v">Telehealth</span>';
+      if(e.kind==='note')chips+='<span class="chip n">Clinical note</span>';
+      if(e.cpt)chips+='<span class="chip g">CPT '+e.cpt+'</span>';
+      if(e.dx)chips+='<span class="chip a">'+e.dx+'</span>';
+      if(e.billed)chips+='<span class="chip n">'+money(e.billed)+' billed</span>';
+      return '<div class="ev" style="animation-delay:'+Math.min(.4,i*.04)+'s">'+
+        '<div class="evd"><b>'+d.toLocaleDateString(undefined,{month:'short'}).toUpperCase()+'</b>'+
+          '<span>'+d.getDate()+'</span></div>'+
+        '<div class="evb"><div class="evt"><h3>'+e.title+'</h3>'+
+          (e.locked?'<span class="lock"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8 11V8a4 4 0 018 0v3"/></svg></span>':'')+
+          '<span class="time">'+e.time+'</span></div>'+
+          '<div class="cl">CLINICIAN: <b>'+e.clinician.toUpperCase()+'</b></div>'+
+          (e.desc?'<p>'+(e.dx&&e.kind==='note'?'Diagnosis: <b>'+e.dx+'</b> — ':'')+e.desc+'</p>':'')+
+          '<div class="chips">'+chips+'</div>'+
+        '</div></div>';
+    }).join('');
+    $('ovEnd').textContent=list.length?('There are no more items for '+FULL+' in the selected time period.')
+      :('No items for '+FULL+' in the selected time period.');
+  }
+  $('ovRange').addEventListener('change',renderOverview);
+  $('ovType').addEventListener('change',renderOverview);
+
+  /* ══ BILLING ══ */
+  function renderBilling(){
+    var tF=0,tP=0,tI=0,tA=0,tB=0;
+    $('nBi').textContent=BILL.length;
+    $('biRows').innerHTML=BILL.map(function(c,i){
+      var b=bal(c);tF+=+c.fee;tP+=+c.pt;tI+=+c.ins;tA+=+c.adj;tB+=b;
+      var docs='<button class="doc inv" data-doc="inv" data-i="'+i+'">'+
+          '<svg viewBox="0 0 24 24"><path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M9 13h6M9 17h4"/></svg>'+c.inv+'</button>';
+      if(c.claim)docs+='<button class="doc clm" data-doc="clm" data-i="'+i+'">'+
+          '<svg viewBox="0 0 24 24"><path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M9 12h6M9 16h6"/></svg>'+c.claim+'</button>';
+      if(c.remit)docs+='<button class="doc rem" data-doc="rem" data-i="'+i+'">'+
+          '<svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg>'+c.remit+'</button>';
+      return '<tr style="animation-delay:'+Math.min(.4,i*.045)+'s">'+
+        '<td class="bsvc"><b>'+fmtD(c.dos)+' · '+c.desc+'</b>'+
+          '<small><span class="cpt">'+c.cpt+(c.mod?'-'+c.mod:'')+'</span>'+c.prov+' · Dx '+c.dx+'</small>'+
+          '<div class="docs">'+docs+'</div></td>'+
+        '<td class="r money">'+money(c.fee)+'</td>'+
+        '<td class="r money '+(c.pt>0?'pos':'zero')+'">'+money(c.pt)+'</td>'+
+        '<td class="r money '+(c.ins>0?'pos':'zero')+'">'+money(c.ins)+'</td>'+
+        '<td class="r money zero">'+money(c.adj)+'</td>'+
+        '<td class="r money '+(b>0.004?'neg':'zero')+'">'+money(b)+'</td>'+
+        '<td class="r"><button class="mng" data-edit="'+i+'">Manage</button></td></tr>';
+    }).join('')+
+    '<tr class="tot"><td>Totals · '+BILL.length+' charges</td>'+
+      '<td class="r money">'+money(tF)+'</td><td class="r money">'+money(tP)+'</td>'+
+      '<td class="r money">'+money(tI)+'</td><td class="r money">'+money(tA)+'</td>'+
+      '<td class="r money '+(tB>0.004?'neg':'zero')+'">'+money(tB)+'</td><td></td></tr>';
+    $('biSub').textContent=money(tF)+' BILLED · '+money(tB)+' OUTSTANDING';
+    $('sbClient').textContent=money(Math.max(0,tB));
+    $('sbClient').className=tB>0.004?'neg':'';
+    $('sbUnpaid').textContent=money(Math.max(0,tB));
+    $('sbUnal').textContent=money(0);
+    var open=BILL.filter(function(c){return bal(c)>0.004;}).length;
+    $('insBal').textContent=money(BILL.reduce(function(a,c){return a+Math.max(0,bal(c));},0));
+    $('insOpen').textContent=open+' open charge'+(open===1?'':'s');
+  }
+
+  /* ══ FILES ══ */
+  function allFiles(){
+    var out=DOCS.slice();
+    BILL.forEach(function(c,i){
+      out.push({name:c.inv+'.pdf',type:'invoice',kind:'Invoice',date:c.dos,auto:true,
+        by:'System · payment posted',bi:'SY',idx:i,size:'48 KB'});
+      if(c.claim)out.push({name:c.claim+'.pdf',type:'claim',kind:c.form+' claim form',date:c.dos,auto:true,
+        by:'System · claim submitted',bi:'SY',idx:i,size:'96 KB'});
+      if(c.remit)out.push({name:c.remit+'.pdf',type:'remit',kind:'Remittance advice',date:c.dos,auto:true,
+        by:'System · ERA received',bi:'SY',idx:i,size:'62 KB'});
+    });
+    return out.sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  }
+  var FICOL={invoice:['var(--green-s)','var(--green-d)'],claim:['var(--blue-s)','#3B6FF5'],
+             remit:['var(--violet-s)','#8B5CF6'],upload:['var(--amber-s)','#C98A18']};
+  function renderFiles(){
+    var f=$('fiType').value,list=allFiles().filter(function(d){return f==='all'||d.type===f;});
+    var all=allFiles();
+    $('nFi').textContent=all.length;
+    $('fiSub').textContent=all.length+' DOCUMENTS · '+DOCS.length+' UPLOADED';
+    if(!list.length){$('fiGrid').innerHTML='<p style="padding:30px;color:var(--dim);font-size:12.6px">No documents of this type yet.</p>';return;}
+    $('fiGrid').innerHTML=list.map(function(d,i){
+      var c=FICOL[d.type]||FICOL.upload;
+      return '<div class="file" style="animation-delay:'+Math.min(.4,i*.035)+'s"'+
+        (d.idx!==undefined?' data-doc="'+({invoice:'inv',claim:'clm',remit:'rem'}[d.type])+'" data-i="'+d.idx+'" style="cursor:pointer"':'')+'>'+
+        '<span class="ftag '+(d.auto?'auto':'up')+'">'+(d.auto?'AUTO':'UPLOAD')+'</span>'+
+        '<span class="fi" style="background:'+c[0]+'"><svg viewBox="0 0 24 24" style="stroke:'+c[1]+'"><path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M14 4v5h5"/></svg></span>'+
+        '<b>'+d.name+'</b>'+
+        '<span class="meta">'+d.kind+'<br>'+fmtD(d.date)+' · '+(d.size||'—')+'</span>'+
+        '<span class="by"><span class="ua" style="background:'+(d.auto?'linear-gradient(140deg,#93A19D,#5D6B67)':'linear-gradient(140deg,var(--green),var(--blue))')+'">'+(d.bi||'??')+'</span>'+
+          '<small><b>'+(d.auto?'Generated automatically':(d.byName||'Unknown'))+'</b>'+(d.auto?d.by.split(' · ')[1]||'':'uploaded '+(d.at||''))+'</small></span>'+
+      '</div>';
+    }).join('');
+  }
+  $('fiType').addEventListener('change',renderFiles);
+
+  /* ══ SIDEBAR ══ */
+  $('sbCard').textContent=P.card?(P.card.brand+' ····'+P.card.last4):'(none on file)';
+  $('insBox').innerHTML=
+    '<div class="ins-t">Primary</div>'+
+    '<a class="ins-n" href="#">'+(P.payer||'Self pay')+'</a>'+
+    '<div class="kv"><span>Member ID</span><b>'+(P.memberId||'—')+'</b></div>'+
+    '<div class="kv"><span>Group ID</span><b>'+(P.groupId||'—')+'</b></div>'+
+    '<div class="kv"><span>Copay/Coinsurance</span><b>'+money(P.copay||0)+'</b></div>'+
+    '<a class="slink" href="../Provider/eligibility.html">Request insurance status check</a>'+
+    (P.payer2?'<div class="ins-t" style="margin-top:14px">Secondary</div><a class="ins-n" href="#">'+P.payer2+'</a>'+
+      '<div class="kv"><span>Member ID</span><b>'+(P.memberId2||'—')+'</b></div>':'')+
+    '<div class="insbal"><span>Insurance balance</span><b id="insBal">$0.00</b></div>'+
+    '<div style="font-family:var(--mono);font-size:9.6px;color:var(--dim);margin-top:5px" id="insOpen">—</div>'+
+    '<button class="addpay" id="addIns">Add insurance payment</button>';
+  $('infoBox').innerHTML=
+    '<div class="kv"><span>Sex</span><b style="font-family:inherit;font-weight:500">'+(P.sex||'—')+'</b></div>'+
+    '<div class="kv"><span>Addr.</span><b style="font-family:inherit;font-weight:500;text-align:left">'+(P.addr||'—')+'</b></div>'+
+    '<div class="kv"><span>Clinician</span><b style="font-family:inherit;font-weight:500">'+(P.clinician||'—')+'</b></div>'+
+    '<div class="kv"><span>Member ID</span><b>'+P.mid+'</b></div>';
+  var CT=P.contacts&&P.contacts.length?P.contacts:[{n:P.first+' '+P.last,r:'Self',p:P.phone,e:P.email}];
+  $('ctBox').innerHTML=CT.map(function(c){
+    return '<div class="ct"><div class="cn">'+(c.n||'—')+' '+(c.r||'')+'</div>'+
+      (c.p?'<div class="cl"><span>Phone</span><div><a href="tel:'+c.p.replace(/\D/g,'')+'">'+c.p+'</a>'+
+        '<em>Mobile <svg class="ok" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a12 12 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg>'+
+        '<svg class="ok" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H8l-4 4V5a2 2 0 012-2h13a2 2 0 012 2z"/></svg></em></div></div>':'')+
+      (c.e?'<div class="cl"><span>Email</span><div><a href="mailto:'+c.e+'">'+c.e+'</a>'+
+        '<em>Home <svg class="ok" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 7l9 6 9-6"/></svg></em></div></div>':'')+
+      '</div>';
+  }).join('');
+  $('apBox').innerHTML=P.nextAppt
+    ? '<div class="appt"><span class="dt">'+fmtS(P.nextAppt)+' 2:00 PM</span><span class="rc">RECURRING</span></div>'
+    : '<p style="font-size:11.8px;color:var(--dim)">No upcoming appointments scheduled.</p>';
+  document.querySelectorAll('.sh').forEach(function(h){
+    h.addEventListener('click',function(e){
+      if(e.target.closest('.ed'))return;
+      h.parentNode.classList.toggle('closed');
+    });
+  });
+
+  /* ══ TABS ══ */
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click',function(){
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on');});
+      t.classList.add('on');
+      document.querySelectorAll('.pane').forEach(function(p){p.classList.toggle('on',p.dataset.p===t.dataset.t);});
+      if(t.dataset.t==='billing')renderBilling();
+      if(t.dataset.t==='files')renderFiles();
+    });
+  });
+
+  /* ══ MODALS ══ */
+  var scrim=$('scrim');
+  function openM(id){scrim.classList.add('on');$(id).classList.add('on');document.body.style.overflow='hidden';}
+  function closeM(){scrim.classList.remove('on');
+    document.querySelectorAll('.modal').forEach(function(m){m.classList.remove('on');});
+    document.body.style.overflow='';}
+  scrim.addEventListener('click',closeM);
+  document.querySelectorAll('[data-close]').forEach(function(b){b.addEventListener('click',closeM);});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeM();});
+
+  /* ── upload ── */
+  var QUEUE=[];
+  function paintQueue(){
+    $('queue').innerHTML=QUEUE.map(function(f,i){
+      return '<div class="qi"><svg viewBox="0 0 24 24"><path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg>'+
+        '<b>'+f.name+'</b><small>'+f.size+'</small>'+
+        '<button class="rm" data-q="'+i+'"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
+    }).join('');
+  }
+  function addFiles(files){
+    [].slice.call(files).forEach(function(f){
+      QUEUE.push({name:f.name,size:(f.size/1024<1024?Math.round(f.size/1024)+' KB':(f.size/1048576).toFixed(1)+' MB')});
+    });
+    paintQueue();
+  }
+  $('upBtn').addEventListener('click',function(){openM('mUp');});
+  $('upBtn2').addEventListener('click',function(){openM('mUp');});
+  $('drop').addEventListener('click',function(){$('upFile').click();});
+  $('upFile').addEventListener('change',function(){addFiles(this.files);this.value='';});
+  ['dragenter','dragover'].forEach(function(ev){
+    $('drop').addEventListener(ev,function(e){e.preventDefault();this.classList.add('over');});
+  });
+  ['dragleave','drop'].forEach(function(ev){
+    $('drop').addEventListener(ev,function(e){e.preventDefault();this.classList.remove('over');});
+  });
+  $('drop').addEventListener('drop',function(e){if(e.dataTransfer&&e.dataTransfer.files)addFiles(e.dataTransfer.files);});
+  $('queue').addEventListener('click',function(e){
+    var b=e.target.closest('[data-q]');if(!b)return;
+    QUEUE.splice(+b.dataset.q,1);paintQueue();
+  });
+  $('upSave').addEventListener('click',function(){
+    if(!QUEUE.length){toast('Nothing selected','Choose at least one file to upload',true);return;}
+    var type=$('upType').value,now=new Date();
+    var when=now.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' · '+
+             now.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+    QUEUE.forEach(function(f){
+      DOCS.unshift({name:f.name,type:'upload',kind:type,date:now.toISOString().slice(0,10),
+        size:f.size,auto:false,byName:SESSION.name,bi:SESSION.initials||'??',at:when,
+        note:$('upNote').value.trim()});
+    });
+    saveDocs();
+    var n=QUEUE.length;QUEUE=[];paintQueue();$('upNote').value='';
+    closeM();renderFiles();
+    document.querySelector('.tab[data-t="files"]').click();
+    toast(n+' document'+(n===1?'':'s')+' uploaded','Attributed to '+SESSION.name);
+  });
+
+  /* ── manage charge ── */
+  var EDIT=null;
+  function recalc(){
+    var f=parseFloat($('edFee').value)||0,p=parseFloat($('edPt').value)||0,
+        i=parseFloat($('edIns').value)||0,a=parseFloat($('edAdj').value)||0;
+    $('cFee').textContent=money(f);$('cPt').textContent='-'+money(p);
+    $('cIns').textContent='-'+money(i);$('cAdj').textContent='-'+money(a);
+    $('cBal').textContent=money(f-p-i-a);
+  }
+  ['edFee','edPt','edIns','edAdj'].forEach(function(id){$(id).addEventListener('input',recalc);});
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('[data-edit]');if(!b)return;
+    EDIT=+b.dataset.edit;var c=BILL[EDIT];
+    $('edSub').textContent=fmtD(c.dos)+' · '+c.desc+' · '+c.inv;
+    $('edDos').value=c.dos;$('edProv').value=c.prov;$('edCpt').value=c.cpt;$('edMod').value=c.mod||'';
+    $('edDx').value=c.dx;$('edUnits').value=c.units||1;
+    $('edFee').value=(+c.fee).toFixed(2);$('edPt').value=(+c.pt).toFixed(2);
+    $('edIns').value=(+c.ins).toFixed(2);$('edAdj').value=(+c.adj).toFixed(2);
+    recalc();openM('mEdit');
+  });
+  $('edSave').addEventListener('click',function(){
+    if(EDIT===null)return;
+    var c=BILL[EDIT];
+    c.dos=$('edDos').value||c.dos;c.prov=$('edProv').value;c.cpt=$('edCpt').value.trim()||c.cpt;
+    c.mod=$('edMod').value.trim();c.dx=$('edDx').value.trim()||c.dx;c.units=parseInt($('edUnits').value,10)||1;
+    c.fee=parseFloat($('edFee').value)||0;c.pt=parseFloat($('edPt').value)||0;
+    c.ins=parseFloat($('edIns').value)||0;c.adj=parseFloat($('edAdj').value)||0;
+    BILL.sort(function(a,b){return b.dos.localeCompare(a.dos);});
+    saveBill();closeM();renderBilling();renderFiles();
+    toast('Charge updated',c.cpt+' · balance '+money(bal(c)));
+  });
+
+  /* ══ DOCUMENT VIEWERS ══ */
+  var DOCICO={
+    inv:['var(--green-s)','var(--green-d)','<path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M9 13h6M9 17h4"/>'],
+    clm:['var(--blue-s)','#3B6FF5','<path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M9 12h6M9 16h6"/>'],
+    rem:['var(--violet-s)','#8B5CF6','<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/>']
+  };
+  function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+
+  function invoiceHTML(c){
+    var b=bal(c),paid=(+c.pt)+(+c.ins);
+    return '<div class="paper" style="position:relative">'+
+      (paid>0?'<span class="stamp paid">PAID</span>':'')+
+      '<div class="inv-h"><span class="lg"><svg viewBox="0 0 34 34" fill="none"><circle cx="17" cy="17" r="11.8" stroke="#fff" stroke-width="2.6"/><path d="M11 17.4h2.6l1.9-4.2 2.7 8 2-5.1 1.3 2.4H23" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'+
+        '<div><h4>Northside Medical Group</h4><small>1420 Barton Springs Rd, Austin, TX 78704 · Tax ID 74-2938451</small></div>'+
+        '<div class="rt"><b>INVOICE</b><small>'+esc(c.inv)+'</small></div></div>'+
+      '<div class="inv-p">'+
+        '<div><u>BILL TO</u><p><b>'+esc(FULL)+'</b><br>'+esc(P.addr||'')+'<br>Member ID '+esc(P.mid)+'</p></div>'+
+        '<div><u>INVOICE DETAIL</u><p>Issued '+fmtD(c.dos)+'<br>Service date '+fmtD(c.dos)+'<br>Rendering '+esc(c.prov)+'</p></div>'+
+      '</div>'+
+      '<table class="inv-t"><thead><tr><th>Description</th><th>Code</th><th class="r">Units</th><th class="r">Amount</th></tr></thead>'+
+      '<tbody><tr><td>'+esc(c.desc)+'<br><span style="color:#666;font-size:10px">Diagnosis '+esc(c.dx)+'</span></td>'+
+        '<td>'+esc(c.cpt)+(c.mod?'-'+esc(c.mod):'')+'</td><td class="r">'+(c.units||1)+'</td><td class="r">'+money(c.fee)+'</td></tr></tbody></table>'+
+      '<div class="inv-tot">'+
+        '<div><span>Total billed</span><span>'+money(c.fee)+'</span></div>'+
+        '<div><span>Insurance contractual write-off</span><span>-'+money(c.adj)+'</span></div>'+
+        '<div><span>Insurance payment</span><span>-'+money(c.ins)+'</span></div>'+
+        '<div><span>Client payment</span><span>-'+money(c.pt)+'</span></div>'+
+        '<div class="big"><span>Balance due</span><span>'+money(b)+'</span></div>'+
+      '</div>'+
+      '<p class="inv-note"><b>Payment method:</b> '+(P.card?(P.card.brand+' ending '+P.card.last4+', charged automatically under AutoPay.'):'No card on file.')+
+      '<br>Questions about this invoice? Call (512) 555-0184 or reply to your ReviFlow patient portal message.</p>'+
+    '</div>';
+  }
+
+  function claimHTML(c){
+    var ub=(c.form==='UB-04');
+    return '<div class="paper form" style="position:relative">'+
+      '<span class="stamp sub">SUBMITTED</span>'+
+      '<div class="frm-h"><b>'+(ub?'UB-04 · CMS-1450':'HEALTH INSURANCE CLAIM FORM · CMS-1500 (02-12)')+'</b>'+
+        '<small>'+esc(c.claim)+' · SUBMITTED '+fmtS(c.dos)+' · PAYER '+esc((P.payer||'').toUpperCase())+'</small></div>'+
+      '<div class="fbox">'+
+        '<div class="fr"><div class="fc w2"><u>1. PAYER</u><span>'+esc(P.payer||'—')+'</span></div>'+
+          '<div class="fc"><u>1a. INSURED I.D. NUMBER</u><span>'+esc(P.memberId||'—')+'</span></div></div>'+
+        '<div class="fr"><div class="fc w2"><u>2. PATIENT NAME (Last, First, MI)</u><span>'+esc(P.last+', '+P.first)+'</span></div>'+
+          '<div class="fc"><u>3. BIRTH DATE / SEX</u><span>'+fmtS(P.dob)+' · '+esc((P.sex||'U')[0])+'</span></div>'+
+          '<div class="fc"><u>4. INSURED NAME</u><span>'+esc(P.last+', '+P.first)+'</span></div></div>'+
+        '<div class="fr"><div class="fc w3"><u>5. PATIENT ADDRESS</u><span>'+esc(P.addr||'—')+'</span></div>'+
+          '<div class="fc"><u>6. RELATIONSHIP TO INSURED</u><span>'+(age(P.dob)<18?'Child':'Self')+'</span></div></div>'+
+        '<div class="fr"><div class="fc"><u>11. INSURED GROUP NUMBER</u><span>'+esc(P.groupId||'—')+'</span></div>'+
+          '<div class="fc"><u>12. PATIENT SIGNATURE</u><span>SIGNATURE ON FILE</span></div>'+
+          '<div class="fc"><u>13. INSURED SIGNATURE</u><span>SIGNATURE ON FILE</span></div></div>'+
+        '<div class="fr"><div class="fc w3"><u>21. DIAGNOSIS OR NATURE OF ILLNESS (ICD-10)</u><span>A. '+esc(c.dx)+'</span></div>'+
+          '<div class="fc"><u>'+(ub?'FORM TYPE':'22. RESUBMISSION CODE')+'</u><span>'+(ub?'UB-04':'—')+'</span></div></div>'+
+      '</div>'+
+      '<table class="svct"><thead><tr>'+
+        '<th style="width:15%">24A. DATE(S) OF SERVICE</th><th style="width:8%">24B. POS</th>'+
+        '<th style="width:20%">24D. PROCEDURES / MODIFIER</th><th style="width:10%">24E. DX</th>'+
+        '<th style="width:13%">24F. $ CHARGES</th><th style="width:8%">24G. UNITS</th>'+
+        '<th style="width:26%">24J. RENDERING PROVIDER NPI</th></tr></thead>'+
+      '<tbody><tr><td>'+fmtS(c.dos)+'</td><td>11</td>'+
+        '<td>'+esc(c.cpt)+(c.mod?' · '+esc(c.mod):'')+'</td><td>A</td>'+
+        '<td>'+money(c.fee)+'</td><td>'+(c.units||1)+'</td><td>1999999984</td></tr></tbody></table>'+
+      '<div class="fbox" style="margin-top:-1px">'+
+        '<div class="fr"><div class="fc"><u>25. FEDERAL TAX I.D.</u><span>74-2938451</span></div>'+
+          '<div class="fc"><u>26. PATIENT ACCOUNT NO.</u><span>'+esc(P.mid)+'</span></div>'+
+          '<div class="fc"><u>28. TOTAL CHARGE</u><span>'+money(c.fee)+'</span></div>'+
+          '<div class="fc"><u>29. AMOUNT PAID</u><span>'+money((+c.pt)+(+c.ins))+'</span></div>'+
+          '<div class="fc"><u>30. BALANCE DUE</u><span>'+money(bal(c))+'</span></div></div>'+
+        '<div class="fr"><div class="fc w2"><u>31. SIGNATURE OF PHYSICIAN</u><span>'+esc(c.prov)+' · '+fmtS(c.dos)+'</span></div>'+
+          '<div class="fc w2"><u>32. SERVICE FACILITY LOCATION</u><span>NORTHSIDE MEDICAL GROUP<br>1420 BARTON SPRINGS RD, AUSTIN TX 78704</span></div>'+
+          '<div class="fc w2"><u>33. BILLING PROVIDER INFO &amp; PH #</u><span>NORTHSIDE MEDICAL GROUP<br>(512) 555-0184 · NPI 1234567893</span></div></div>'+
+      '</div>'+
+    '</div>';
+  }
+
+  function remitHTML(c){
+    var allowed=Math.round(((+c.fee)-(+c.adj))*100)/100;
+    return '<div class="paper" style="position:relative">'+
+      '<div class="inv-h"><span class="lg" style="background:linear-gradient(140deg,#8B5CF6,#3B6FF5)">'+
+        '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg></span>'+
+        '<div><h4>Electronic Remittance Advice</h4><small>ANSI X12 835 · '+esc(P.payer||'')+'</small></div>'+
+        '<div class="rt"><b>'+esc(c.remit)+'</b><small>POSTED '+fmtS(c.dos)+'</small></div></div>'+
+      '<div class="inv-p">'+
+        '<div><u>PAYEE</u><p><b>Northside Medical Group</b><br>NPI 1234567893 · Tax ID 74-2938451</p></div>'+
+        '<div><u>PAYMENT</u><p>Method: EFT<br>Trace: '+('99'+String(seed(c.inv)).slice(0,6))+'<br>Effective '+fmtS(c.dos)+'</p></div>'+
+      '</div>'+
+      '<table class="rem-t"><thead><tr>'+
+        '<th>PATIENT</th><th>CLAIM</th><th>SVC</th><th class="r">BILLED</th><th class="r">ALLOWED</th>'+
+        '<th class="r">DEDUCT</th><th class="r">COINS</th><th class="r">PAID</th><th>ADJ</th></tr></thead>'+
+      '<tbody><tr><td>'+esc(P.last+', '+P.first)+'<br><span style="color:#777;font-size:9px">'+esc(P.memberId||'')+'</span></td>'+
+        '<td>'+esc(c.claim||'—')+'</td><td>'+esc(c.cpt)+'</td>'+
+        '<td class="r">'+money(c.fee)+'</td><td class="r">'+money(allowed)+'</td>'+
+        '<td class="r">'+money(0)+'</td><td class="r">'+money(c.pt)+'</td>'+
+        '<td class="r"><b>'+money(c.ins)+'</b></td>'+
+        '<td><span class="cas">CO-45</span> '+money(c.adj)+'</td></tr>'+
+      '<tr class="sum"><td colspan="3">CLAIM TOTAL</td><td class="r">'+money(c.fee)+'</td><td class="r">'+money(allowed)+'</td>'+
+        '<td class="r">'+money(0)+'</td><td class="r">'+money(c.pt)+'</td><td class="r">'+money(c.ins)+'</td>'+
+        '<td>'+money(c.adj)+'</td></tr></tbody></table>'+
+      '<div class="inv-tot" style="margin-top:16px">'+
+        '<div><span>Total billed</span><span>'+money(c.fee)+'</span></div>'+
+        '<div><span>Contractual adjustment (CO-45)</span><span>-'+money(c.adj)+'</span></div>'+
+        '<div><span>Patient responsibility</span><span>'+money(c.pt)+'</span></div>'+
+        '<div class="big"><span>Net paid to provider</span><span>'+money(c.ins)+'</span></div></div>'+
+      '<p class="inv-note"><b>CO-45</b> — charge exceeds the fee schedule or contracted amount. This is a contractual '+
+      'write-off and is not billable to the patient. Posted automatically to the ledger on receipt of the 835.</p>'+
+    '</div>';
+  }
+
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('[data-doc]');if(!b)return;
+    var kind=b.dataset.doc,c=BILL[+b.dataset.i];if(!c)return;
+    var meta=DOCICO[kind];
+    $('docIco').style.background=meta[0];
+    $('docIco').innerHTML='<svg viewBox="0 0 24 24" style="stroke:'+meta[1]+'">'+meta[2]+'</svg>';
+    if(kind==='inv'){$('docTitle').textContent=c.inv;$('docSub').textContent='Invoice · '+FULL+' · '+fmtD(c.dos);$('docBody').innerHTML=invoiceHTML(c);}
+    if(kind==='clm'){$('docTitle').textContent=c.claim;$('docSub').textContent=c.form+' claim form · submitted '+fmtD(c.dos);$('docBody').innerHTML=claimHTML(c);}
+    if(kind==='rem'){$('docTitle').textContent=c.remit;$('docSub').textContent='Remittance advice · 835 · '+fmtD(c.dos);$('docBody').innerHTML=remitHTML(c);}
+    openM('mDoc');
+  });
+  $('docPrint').addEventListener('click',function(){window.print();});
+  $('docDl').addEventListener('click',function(){
+    var w=window.open('','_blank');
+    if(!w){toast('Popup blocked','Allow popups to download the document',true);return;}
+    w.document.write('<!DOCTYPE html><html><head><title>'+$('docTitle').textContent+'</title>'+
+      '<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">'+
+      '<style>'+document.querySelector('style').textContent+'body{background:#fff}</style></head><body>'+
+      $('docBody').innerHTML+'</body></html>');
+    w.document.close();
+    setTimeout(function(){w.print();},600);
+  });
+
+  /* misc actions */
+  ['msgBtn','noteBtn','addIns','addPayNow','apptReport','editLink'].forEach(function(id){
+    var el=$(id);if(!el)return;
+    el.addEventListener('click',function(e){e.preventDefault();
+      toast(this.textContent.trim(),'Opens once that module is connected');});
+  });
+  document.querySelectorAll('.sh .ed').forEach(function(b){
+    b.addEventListener('click',function(e){e.stopPropagation();
+      toast('Edit '+this.closest('.sh').querySelector('h3').textContent,'Inline editing arrives with the record editor');});
+  });
+
+  renderOverview();renderBilling();renderFiles();
+})();
+</script>
+
+</body>
+</html>

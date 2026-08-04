@@ -1,0 +1,9 @@
+{
+  "name": "revifyrcm",
+  "private": true,
+  "version": "1.0.0",
+  "description": "RevifyRCM — ReviFlow platform",
+  "dependencies": {
+    "postgres": "^3.4.4"
+  }
+}

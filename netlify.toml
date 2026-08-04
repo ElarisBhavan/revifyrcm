@@ -1,0 +1,32 @@
+[build]
+  publish = "."
+  command = ""
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Friendly path for the browser
+[[redirects]]
+  from = "/api/eligibility"
+  to   = "/.netlify/functions/eligibility"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth"
+  to   = "/.netlify/functions/auth"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/admin/users"
+  to   = "/.netlify/functions/admin-users"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/bootstrap"
+  to   = "/.netlify/functions/bootstrap"
+  status = 200
+  force = true
