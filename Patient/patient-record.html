@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patient record — ReviFlow</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/logo-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="../_store.js"></script>
+<script src="../_session.js"></script>
+<script src="../_codes.js"></script>
+<script src="../_notify.js"></script>
+<style>
+:root{
+  --paper:#FBFAF6;--paper-2:#F4F2EC;--ink:#0E1A17;--muted:#5F6D69;--dim:#8B9B97;
+  --line:rgba(14,26,23,.09);--line-2:rgba(14,26,23,.15);
+  --green:#0E9D73;--green-d:#0A5C46;--green-s:#E3F5EE;
+  --blue:#3B6FF5;--blue-s:#E9EFFE;--amber:#C08616;--amber-s:#FBF2DC;
+  --coral:#CE5F3E;--coral-s:#FBEAE4;--violet:#8257F0;--violet-s:#F0EAFE;
+  --teal:#1F8FA8;--teal-s:#E2F2F6;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --e:cubic-bezier(.22,1,.36,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{min-height:100vh;background:var(--paper);color:var(--ink);font-family:'Manrope',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select,textarea{font:inherit}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:7px}
+
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg .dots{position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,rgba(14,26,23,.075) 1px,transparent 0);background-size:30px 30px;-webkit-mask-image:radial-gradient(120% 60% at 50% 0%,#000,transparent 72%);mask-image:radial-gradient(120% 60% at 50% 0%,#000,transparent 72%)}
+.bg .bloom{position:absolute;top:-30%;left:50%;transform:translateX(-50%);width:min(1100px,110vw);height:min(680px,72vw);border-radius:50%;filter:blur(90px);background:radial-gradient(circle,rgba(14,157,115,.13),transparent 68%)}
+
+/* ── header ── */
+.hdr{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:13px;padding:12px clamp(14px,2.6vw,34px);border-bottom:1px solid var(--line);background:rgba(251,250,246,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.brand{display:flex;align-items:center;gap:9px}
+.brand img{width:25px;height:25px;object-fit:contain}
+.brand span{font-family:'Sora',sans-serif;font-size:15px;font-weight:600;letter-spacing:-.035em}
+.brand em{font-style:normal;color:var(--green);font-weight:400;font-size:.9em;margin-left:3px}
+.crumb{margin-left:12px;padding-left:12px;border-left:1px solid var(--line-2);font-size:12.6px;color:var(--muted)}
+.crumb b{color:var(--ink);font-weight:600}
+.hact{margin-left:auto;display:flex;gap:8px;align-items:center}
+.rf-who{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.04em}
+.hbtn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:99px;border:1px solid var(--line-2);background:rgba(255,255,255,.7);font-size:12.6px;font-weight:600;white-space:nowrap;transition:all .3s var(--e)}
+.hbtn svg{width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.hbtn:hover{border-color:var(--green);background:#fff}
+.hbtn.out:hover{border-color:var(--coral);background:var(--coral-s);color:#9B3F24}
+.hbtn.out:hover svg{stroke:var(--coral)}
+
+.wrap{position:relative;z-index:2;max-width:1320px;margin:0 auto;padding:clamp(16px,2.4vw,28px) clamp(14px,2.6vw,34px) clamp(40px,5vw,70px)}
+
+/* ── patient banner ── */
+.pbar{display:flex;align-items:flex-start;gap:15px;flex-wrap:wrap;padding:clamp(15px,2vw,20px) clamp(16px,2.2vw,24px);background:#fff;border:1px solid var(--line-2);border-radius:18px;box-shadow:0 16px 40px -34px rgba(11,61,49,.42);margin-bottom:14px;opacity:0;transform:translateY(14px);animation:up .7s var(--e) .05s forwards}
+@keyframes up{to{opacity:1;transform:none}}
+.pav{width:52px;height:52px;flex:none;border-radius:16px;display:grid;place-items:center;font-family:'Sora',sans-serif;font-size:19px;font-weight:600;color:#fff;background:linear-gradient(140deg,var(--green),var(--blue));box-shadow:0 10px 22px -12px rgba(14,157,115,.9)}
+.pid{min-width:0;flex:1}
+.pid h1{font-family:'Sora',sans-serif;font-size:clamp(19px,2.2vw,25px);font-weight:600;letter-spacing:-.04em;line-height:1.15;margin-bottom:6px}
+.pmeta{display:flex;flex-wrap:wrap;gap:5px 12px;font-size:12.4px;color:var(--muted);align-items:center}
+.pmeta b{color:var(--ink);font-weight:600}
+.pmeta .sep{color:var(--line-2)}
+.pmeta .tag{padding:2px 8px;border-radius:6px;font-family:var(--mono);font-size:9.4px;font-weight:700;letter-spacing:.05em;background:var(--green-s);color:var(--green-d)}
+.pmeta .tag.off{background:var(--paper-2);color:var(--dim)}
+.pcta{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:11px;font-size:12.6px;font-weight:600;white-space:nowrap;transition:all .3s var(--e)}
+.btn svg{width:14px;height:14px;fill:none;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.btn.pri{background:var(--green-d);color:#F2FBF7;box-shadow:0 10px 22px -14px rgba(10,92,70,.95)}
+.btn.pri svg{stroke:#F2FBF7}
+.btn.pri:hover{background:var(--green);transform:translateY(-2px)}
+.btn.sec{border:1px solid var(--line-2);background:rgba(255,255,255,.8)}
+.btn.sec svg{stroke:var(--green)}
+.btn.sec:hover{border-color:var(--green);background:#fff;transform:translateY(-2px)}
+.btn.sm{padding:7px 12px;font-size:11.8px}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+/* ── tabs ── */
+.tabs{display:flex;gap:3px;padding:4px;border-radius:14px;background:var(--paper-2);border:1px solid var(--line);margin-bottom:14px;overflow-x:auto;scrollbar-width:none;opacity:0;animation:up .7s var(--e) .12s forwards}
+.tabs::-webkit-scrollbar{display:none}
+.tab{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;font-size:12.8px;font-weight:600;color:var(--muted);white-space:nowrap;transition:all .3s var(--e)}
+.tab:hover{color:var(--ink);background:rgba(255,255,255,.6)}
+.tab.on{background:#fff;color:var(--ink);box-shadow:0 6px 16px -10px rgba(14,26,23,.4)}
+.tab .n{padding:1px 7px;border-radius:99px;background:var(--paper-2);font-family:var(--mono);font-size:9.6px;font-weight:700;color:var(--dim)}
+.tab.on .n{background:var(--green-s);color:var(--green-d)}
+
+.pane{display:none}.pane.on{display:block;animation:fade .4s var(--e)}
+@keyframes fade{from{opacity:0;transform:translateY(9px)}}
+
+/* ── cards ── */
+.card{background:#fff;border:1px solid var(--line-2);border-radius:16px;margin-bottom:13px;overflow:hidden;box-shadow:0 14px 36px -32px rgba(11,61,49,.4);opacity:0;transform:translateY(14px);animation:up .7s var(--e) forwards}
+.chead{display:flex;align-items:center;gap:11px;padding:14px 17px;border-bottom:1px solid var(--line)}
+.chead .ci{width:31px;height:31px;flex:none;border-radius:10px;background:var(--green-s);display:grid;place-items:center}
+.chead .ci svg{width:15px;height:15px;stroke:var(--green-d);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chead h2{font-family:'Sora',sans-serif;font-size:14.4px;font-weight:600;letter-spacing:-.03em}
+.chead p{font-size:11.4px;color:var(--muted);margin-top:1px}
+.chead .sub{margin-left:auto;display:flex;gap:7px;align-items:center;font-family:var(--mono);font-size:9.4px;color:var(--dim);letter-spacing:.07em}
+.cbody{padding:17px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+
+/* ── fields ── */
+.f{display:block;min-width:0}
+.f>span{display:flex;align-items:center;gap:5px;font-size:10.6px;font-weight:600;color:var(--muted);margin-bottom:5px;letter-spacing:.02em}
+.f>span u{color:var(--coral);text-decoration:none}
+.f>span .lk{margin-left:auto;font-family:var(--mono);font-size:8.2px;letter-spacing:.07em;padding:2px 6px;border-radius:4px;background:var(--paper-2);color:var(--dim)}
+.f input,.f select,.f textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--line-2);background:var(--paper);font-size:12.8px;color:var(--ink);transition:all .24s var(--e)}
+.f input:hover,.f select:hover{border-color:#B9C2BF}
+.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--green);background:#fff;box-shadow:0 0 0 3px rgba(14,157,115,.12)}
+.f input[readonly]{background:var(--paper-2);color:var(--muted);cursor:default}
+.f input[readonly]:hover{border-color:var(--line-2)}
+.f select{appearance:none;cursor:pointer;padding-right:29px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235F6D69' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 10px center}
+.f textarea{min-height:56px;resize:vertical}
+.f.full{grid-column:1/-1}
+
+/* ── typeahead ── */
+.ta{position:relative}
+.talist{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:40;max-height:250px;overflow:auto;background:#fff;border:1px solid var(--line-2);border-radius:12px;box-shadow:0 22px 44px -18px rgba(14,26,23,.36);opacity:0;visibility:hidden;transform:translateY(-5px);transition:all .22s var(--e)}
+.talist.on{opacity:1;visibility:visible;transform:none}
+.talist::-webkit-scrollbar{width:6px}
+.talist::-webkit-scrollbar-thumb{background:#D6DDDA;border-radius:3px}
+.tahead{padding:7px 12px;font-family:var(--mono);font-size:8.6px;letter-spacing:.1em;color:var(--dim);background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0}
+.taitem{display:flex;align-items:baseline;gap:10px;width:100%;padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);transition:background .16s}
+.taitem:last-child{border-bottom:none}
+.taitem:hover,.taitem.hi{background:var(--green-s)}
+.taitem b{font-family:var(--mono);font-size:11.4px;font-weight:600;flex:none;min-width:56px}
+.taitem span{font-size:11.8px;color:var(--muted);line-height:1.4}
+.taitem em{margin-left:auto;font-style:normal;font-family:var(--mono);font-size:10.4px;color:var(--green-d);font-weight:600;flex:none}
+
+/* ── tables ── */
+.tw{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:12.4px}
+.tbl th{text-align:left;padding:10px 14px;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-weight:700;background:var(--paper-2);border-bottom:1px solid var(--line-2);white-space:nowrap}
+.tbl th.r,.tbl td.r{text-align:right}
+.tbl th.c,.tbl td.c{text-align:center}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl tbody tr{opacity:0;transform:translateX(-7px);animation:sl .45s var(--e) forwards}
+@keyframes sl{to{opacity:1;transform:none}}
+.tbl tbody tr:hover td{background:var(--paper)}
+.tbl tfoot td{padding:12px 14px;border-top:1.5px solid var(--line-2);font-weight:600;background:var(--paper)}
+.mono{font-family:var(--mono);font-size:11.4px}
+.money{font-family:var(--mono);font-weight:600;white-space:nowrap}
+.money.pos{color:var(--green-d)}.money.warn{color:var(--coral)}.money.zero{color:var(--dim);font-weight:400}
+
+/* ── pills ── */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3.5px 9px;border-radius:6px;font-size:9.8px;font-weight:700;letter-spacing:.03em;white-space:nowrap}
+.pill.ok{background:var(--green-s);color:var(--green-d)}
+.pill.info{background:var(--blue-s);color:#25489E}
+.pill.warn{background:var(--amber-s);color:#7A5507}
+.pill.bad{background:var(--coral-s);color:#9B3F24}
+.pill.vio{background:var(--violet-s);color:#5B32B8}
+.pill.off{background:var(--paper-2);color:var(--dim)}
+
+.ib{width:28px;height:28px;border-radius:8px;border:1px solid var(--line-2);background:#fff;display:inline-grid;place-items:center;transition:all .26s var(--e)}
+.ib svg{width:13px;height:13px;stroke:var(--muted);fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.ib:hover{transform:translateY(-2px)}
+.ib.edit:hover{border-color:var(--amber);background:var(--amber-s)}.ib.edit:hover svg{stroke:var(--amber)}
+.ib.del:hover{border-color:var(--coral);background:var(--coral-s)}.ib.del:hover svg{stroke:var(--coral)}
+.ib.view:hover{border-color:var(--blue);background:var(--blue-s)}.ib.view:hover svg{stroke:var(--blue)}
+.ib.ok:hover{border-color:var(--green);background:var(--green-s)}.ib.ok:hover svg{stroke:var(--green-d)}
+.acts{display:inline-flex;gap:5px}
+
+.empty{padding:44px 20px;text-align:center;color:var(--dim);font-size:12.6px;line-height:1.75}
+.empty svg{width:28px;height:28px;stroke:var(--dim);fill:none;stroke-width:1.6;margin-bottom:11px}
+.empty b{display:block;font-family:'Sora',sans-serif;font-size:14.6px;color:var(--ink);margin-bottom:5px}
+
+/* ── insurance ── */
+.insgrid{display:grid;gap:13px}
+.inscard{border:1px solid var(--line-2);border-radius:14px;overflow:hidden;background:var(--paper)}
+.inscard.primary{border-color:rgba(14,157,115,.4)}
+.inshead{display:flex;align-items:center;gap:10px;padding:12px 15px;background:#fff;border-bottom:1px solid var(--line)}
+.inshead .rank{padding:3px 10px;border-radius:7px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em}
+.rank.p1{background:var(--green-s);color:var(--green-d)}
+.rank.p2{background:var(--blue-s);color:#25489E}
+.rank.p3{background:var(--violet-s);color:#5B32B8}
+.inshead b{font-family:'Sora',sans-serif;font-size:13.4px;font-weight:600;letter-spacing:-.026em}
+.inshead .acts{margin-left:auto}
+.insbody{padding:14px 15px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.insbody dt{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
+.insbody dd{font-size:12.2px;font-weight:600;word-break:break-word}
+.insbody dd.mono{font-family:var(--mono);font-size:11.4px;font-weight:500}
+
+/* ── encounter lines ── */
+.encbox{border:1px solid var(--line-2);border-radius:14px;margin-bottom:11px;overflow:hidden;background:#fff}
+.enchead{display:flex;align-items:center;gap:12px;padding:12px 15px;border-bottom:1px solid var(--line);background:var(--paper)}
+.enchead .d{text-align:center;flex:none;min-width:42px}
+.enchead .d b{display:block;font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.08em}
+.enchead .d span{font-family:'Sora',sans-serif;font-size:19px;font-weight:600;letter-spacing:-.04em;line-height:1}
+.enchead .who{min-width:0;flex:1}
+.enchead .who b{display:block;font-size:13px;font-weight:600;letter-spacing:-.018em}
+.enchead .who small{display:block;font-family:var(--mono);font-size:9.6px;color:var(--dim);margin-top:2px}
+.linetbl{width:100%;border-collapse:collapse;font-size:12.2px}
+.linetbl th{text-align:left;padding:8px 14px;font-size:8.8px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-weight:700;border-bottom:1px solid var(--line)}
+.linetbl td{padding:10px 14px;border-bottom:1px solid var(--line)}
+.linetbl tr:last-child td{border-bottom:none}
+.encfoot{display:flex;align-items:center;gap:9px;padding:11px 15px;border-top:1px solid var(--line);background:var(--paper);flex-wrap:wrap}
+.encfoot .sp{flex:1}
+
+/* ── modal ── */
+.scrim{position:fixed;inset:0;z-index:90;background:rgba(14,26,23,.36);backdrop-filter:blur(6px);opacity:0;visibility:hidden;transition:all .32s var(--e)}
+.scrim.on{opacity:1;visibility:visible}
+.modal{position:fixed;z-index:91;left:50%;top:50%;width:min(620px,calc(100vw - 22px));max-height:calc(100vh - 44px);overflow:auto;transform:translate(-50%,-46%) scale(.96);opacity:0;visibility:hidden;background:rgba(255,255,255,.62);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);border:1px solid rgba(255,255,255,.7);border-radius:19px;box-shadow:0 40px 90px -30px rgba(14,26,23,.55);transition:all .38s var(--e)}
+.modal.on{opacity:1;visibility:visible;transform:translate(-50%,-50%) scale(1)}
+.modal.wide{width:min(900px,calc(100vw - 22px))}
+.mhead{display:flex;align-items:center;gap:11px;padding:16px 19px;border-bottom:1px solid rgba(14,26,23,.1)}
+.mhead .mi{width:32px;height:32px;flex:none;border-radius:10px;background:var(--green-s);display:grid;place-items:center}
+.mhead .mi svg{width:16px;height:16px;stroke:var(--green-d);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mhead h3{font-family:'Sora',sans-serif;font-size:15px;font-weight:600;letter-spacing:-.03em}
+.mhead p{font-size:11.2px;color:var(--muted);margin-top:1px}
+.mx{margin-left:auto;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--muted);transition:all .3s var(--e)}
+.mx svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.3;stroke-linecap:round}
+.mx:hover{background:rgba(255,255,255,.85);transform:rotate(90deg)}
+.mbody{padding:18px 19px}
+.mfoot{display:flex;gap:8px;padding:14px 19px;border-top:1px solid rgba(14,26,23,.1);background:rgba(255,255,255,.4);flex-wrap:wrap}
+.mfoot .sp{flex:1}
+.subhead{display:flex;align-items:center;gap:9px;margin:17px 0 11px;font-size:9.6px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--dim)}
+.subhead:first-child{margin-top:0}
+.subhead::after{content:'';flex:1;height:1px;background:rgba(14,26,23,.11)}
+.hint{display:flex;gap:9px;padding:11px 13px;border-radius:11px;background:var(--blue-s);border:1px solid rgba(59,111,245,.2);font-size:11.4px;line-height:1.6;color:#25489E}
+.hint svg{width:14px;height:14px;stroke:var(--blue);fill:none;stroke-width:2;flex:none;margin-top:1px}
+.hint.warn{background:var(--amber-s);border-color:rgba(192,134,22,.24);color:#7A5507}
+.hint.warn svg{stroke:var(--amber)}
+
+/* ── files ── */
+.drop{padding:26px 18px;border-radius:14px;border:2px dashed rgba(14,26,23,.17);background:var(--paper);text-align:center;cursor:pointer;transition:all .3s var(--e);margin-bottom:14px}
+.drop:hover,.drop.over{border-color:var(--green);background:var(--green-s)}
+.drop .di{width:38px;height:38px;margin:0 auto 10px;border-radius:12px;background:var(--green-s);display:grid;place-items:center;transition:transform .38s var(--e)}
+.drop:hover .di{transform:translateY(-3px) scale(1.06)}
+.drop .di svg{width:19px;height:19px;stroke:var(--green-d);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.drop b{display:block;font-size:13px;font-weight:600;margin-bottom:3px}
+.drop small{font-size:11px;color:var(--muted)}
+.fitem{display:flex;align-items:center;gap:12px;padding:12px 15px;border-bottom:1px solid var(--line);transition:background .2s}
+.fitem:last-child{border-bottom:none}
+.fitem:hover{background:var(--paper)}
+.fico{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;background:var(--paper-2)}
+.fico svg{width:16px;height:16px;fill:none;stroke-width:1.9;stroke:var(--muted);stroke-linecap:round;stroke-linejoin:round}
+.fico.claim{background:var(--green-s)}.fico.claim svg{stroke:var(--green-d)}
+.fico.ins{background:var(--blue-s)}.fico.ins svg{stroke:var(--blue)}
+.fico.chart{background:var(--violet-s)}.fico.chart svg{stroke:var(--violet)}
+.fico.ref{background:var(--amber-s)}.fico.ref svg{stroke:var(--amber)}
+.finfo{min-width:0;flex:1}
+.finfo b{display:block;font-size:12.6px;font-weight:600;letter-spacing:-.014em}
+.finfo small{display:block;font-family:var(--mono);font-size:9.4px;color:var(--dim);margin-top:2px}
+
+/* ── history ── */
+.hrow{display:flex;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);opacity:0;transform:translateX(-7px);animation:sl .45s var(--e) forwards}
+.hrow:last-child{border-bottom:none}
+.hdot{width:30px;height:30px;flex:none;border-radius:10px;display:grid;place-items:center;background:var(--paper-2)}
+.hdot svg{width:14px;height:14px;fill:none;stroke-width:2;stroke:var(--muted);stroke-linecap:round;stroke-linejoin:round}
+.hdot.g{background:var(--green-s)}.hdot.g svg{stroke:var(--green-d)}
+.hdot.b{background:var(--blue-s)}.hdot.b svg{stroke:var(--blue)}
+.hdot.a{background:var(--amber-s)}.hdot.a svg{stroke:var(--amber)}
+.hdot.c{background:var(--coral-s)}.hdot.c svg{stroke:var(--coral)}
+.hbody2{min-width:0;flex:1}
+.hbody2 b{display:block;font-size:12.6px;font-weight:600;letter-spacing:-.014em}
+.hbody2 p{font-size:11.6px;color:var(--muted);line-height:1.55;margin-top:2px}
+.hbody2 small{display:block;font-family:var(--mono);font-size:9.4px;color:var(--dim);margin-top:4px}
+
+/* ── document paper ── */
+.dv{background:#fff;max-height:64vh;overflow:auto}
+.paper{background:#fff;color:#111;padding:24px 26px;font-family:var(--mono);font-size:10.4px;line-height:1.5}
+.frm-h{text-align:center;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:10px}
+.frm-h b{display:block;font-family:'Sora',sans-serif;font-size:14px;letter-spacing:.04em}
+.frm-h small{font-size:9px;color:#555;letter-spacing:.08em}
+.fbox{border:1px solid #111;margin-bottom:-1px}
+.fr{display:flex;border-bottom:1px solid #111}.fr:last-child{border-bottom:none}
+.fc{flex:1;padding:5px 7px;border-right:1px solid #111;min-width:0}.fc:last-child{border-right:none}
+.fc u{display:block;font-size:7.2px;color:#666;text-decoration:none;letter-spacing:.05em;margin-bottom:2px}
+.fc span{display:block;font-size:10.2px;font-weight:600;word-break:break-word;min-height:13px}
+.fc.w2{flex:2}.fc.w3{flex:3}
+.svct{width:100%;border-collapse:collapse;font-size:9.4px;margin-top:-1px}
+.svct th{border:1px solid #111;padding:4px 5px;font-size:7px;color:#555;text-align:left;background:#F4F4F2}
+.svct td{border:1px solid #111;padding:6px 5px;font-weight:600}
+.stamp{position:absolute;top:40px;right:28px;transform:rotate(-11deg);border:2.5px solid #0A5C46;border-radius:7px;padding:5px 13px;font-family:'Sora',sans-serif;font-size:12.4px;font-weight:700;letter-spacing:.06em;color:#0A5C46;opacity:.8}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,18px);z-index:95;display:flex;align-items:center;gap:11px;padding:13px 18px;border-radius:13px;background:var(--green-d);color:#F2FBF7;box-shadow:0 22px 44px -20px rgba(11,61,49,.9);opacity:0;pointer-events:none;transition:all .42s var(--e);max-width:calc(100vw - 28px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast.bad{background:#9B3F24}
+.toast svg{width:16px;height:16px;stroke:#7BE8C0;fill:none;stroke-width:2.4;flex:none}
+.toast.bad svg{stroke:#FFC9B6}
+.toast b{display:block;font-size:12.8px;font-weight:600}
+.toast small{display:block;font-size:10.8px;opacity:.76;margin-top:1px}
+
+@media (max-width:1000px){
+  .grid3{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .insbody{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .crumb{display:none}
+  .tbl{min-width:720px}
+}
+@media (max-width:640px){
+  .grid2,.grid3{grid-template-columns:minmax(0,1fr)}
+  .insbody{grid-template-columns:minmax(0,1fr)}
+  .pcta{width:100%;margin-left:0}
+  .pcta .btn{flex:1;justify-content:center}
+}
+@media print{
+  .hdr,.tabs,.pbar,.pcta,.scrim,.mhead,.mfoot,.toast{display:none!important}
+  .modal{position:static;transform:none;opacity:1;visibility:visible;box-shadow:none;border:none;width:100%;max-height:none;background:#fff}
+  .dv{max-height:none;overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}.card,.pbar,.tabs{opacity:1;transform:none}}
+
+</style>
+<link rel="stylesheet" href="../_session.css">
+</head>
+<body>
+
+<div class="bg" aria-hidden="true"><div class="dots"></div><div class="bloom"></div></div>
+
+<header class="hdr">
+  <div class="brand">
+    <img src="../assets/logo-64.png" alt="ReviFlow RCM">
+    <span>ReviFlow<em>RCM</em></span>
+  </div>
+  <span class="crumb"><a href="patient-dashboard.html">Clients</a> / <b id="crumbName">Record</b></span>
+  <div class="hact">
+    <span class="rf-who" id="rfWho"></span>
+    <a href="../Provider/schedule.html" class="hbtn"><svg viewBox="0 0 24 24"><path d="M19 12H6M11 6l-6 6 6 6"/></svg>Schedule</a>
+    <a href="../Provider/provider-dashboard.html" class="hbtn">Workspace</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="pbar">
+    <span class="pav" id="pAv">--</span>
+    <div class="pid">
+      <h1 id="pName">—</h1>
+      <div class="pmeta" id="pMeta"></div>
+    </div>
+    <div class="pcta">
+      <button class="btn sec" id="editDemo"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg>Edit demographics</button>
+      <button class="btn pri" id="upBtn"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg>Upload</button>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-t="overview">Overview</button>
+    <button class="tab" data-t="insurance">Insurance<span class="n" id="nIns">0</span></button>
+    <button class="tab" data-t="enc">Encounters<span class="n" id="nEnc">0</span></button>
+    <button class="tab" data-t="billing">Billing<span class="n" id="nBil">0</span></button>
+    <button class="tab" data-t="files">Files<span class="n" id="nFil">0</span></button>
+    <button class="tab" data-t="history">History</button>
+  </div>
+
+  <!-- ═══════════ OVERVIEW ═══════════ -->
+  <section class="pane on" data-p="overview">
+    <div class="card" style="animation-delay:.05s">
+      <div class="chead">
+        <span class="ci"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
+        <div><h2>Patient information</h2><p>Demographics on file for this chart.</p></div>
+        <span class="sub" id="demoStamp">—</span>
+      </div>
+      <div class="cbody"><dl class="grid3" id="ptGrid"></dl></div>
+    </div>
+
+    <div class="card" style="animation-delay:.1s">
+      <div class="chead">
+        <span class="ci" style="background:var(--blue-s)"><svg viewBox="0 0 24 24" style="stroke:var(--blue)"><circle cx="9" cy="9" r="3.4"/><path d="M2 20c0-3.4 3-5.6 7-5.6s7 2.2 7 5.6"/><circle cx="18" cy="8" r="2.6"/><path d="M17 20c0-2.6 1.2-4.4 3.6-4.4"/></svg></span>
+        <div><h2>Subscriber information</h2><p>The policy holder, when it is not the patient.</p></div>
+        <span class="sub" id="subRel">—</span>
+      </div>
+      <div class="cbody"><dl class="grid3" id="subGrid"></dl></div>
+    </div>
+
+    <div class="card" style="animation-delay:.15s">
+      <div class="chead">
+        <span class="ci" style="background:var(--violet-s)"><svg viewBox="0 0 24 24" style="stroke:var(--violet)"><path d="M4 6h16M4 12h10M4 18h7"/></svg></span>
+        <div><h2>Administrative</h2><p>Practice, referral and record provenance.</p></div>
+      </div>
+      <div class="cbody"><dl class="grid3" id="admGrid"></dl></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ INSURANCE ═══════════ -->
+  <section class="pane" data-p="insurance">
+    <div class="card" style="animation-delay:.05s">
+      <div class="chead">
+        <span class="ci"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg></span>
+        <div><h2>Coverage</h2><p>Primary, secondary and tertiary policies.</p></div>
+        <span class="sub">
+          <button class="btn sec sm" id="swapBtn"><svg viewBox="0 0 24 24"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg>Swap</button>
+          <button class="btn pri sm" id="addIns"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add policy</button>
+        </span>
+      </div>
+      <div class="cbody"><div class="insgrid" id="insList"></div></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ ENCOUNTERS ═══════════ -->
+  <section class="pane" data-p="enc">
+    <div class="card" style="animation-delay:.05s">
+      <div class="chead">
+        <span class="ci"><svg viewBox="0 0 24 24"><path d="M7 4h10l3 3v13a1 1 0 01-1 1H5a1 1 0 01-1-1V7z"/><path d="M9 13l2 2 4-5"/></svg></span>
+        <div><h2>Encounters</h2><p>One per visit. Add procedures and diagnoses, then lock.</p></div>
+        <span class="sub" id="encSub">—</span>
+      </div>
+      <div class="cbody" id="encWrap"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ BILLING ═══════════ -->
+  <section class="pane" data-p="billing">
+    <div class="card" style="animation-delay:.05s">
+      <div class="chead">
+        <span class="ci"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20M6 15h5"/></svg></span>
+        <div><h2>Billing</h2><p>Locked encounters become billable charges.</p></div>
+        <span class="sub" id="bilSub">—</span>
+      </div>
+      <div class="tw">
+        <table class="tbl">
+          <thead><tr>
+            <th style="width:12%">Date of service</th><th style="width:17%">CPT &amp; Dx</th>
+            <th>POS</th><th class="r">Fee</th><th class="r">Patient</th>
+            <th class="r">Insurance</th><th class="r">Write-off</th><th class="r">Outstanding</th>
+            <th style="width:15%">Claim</th><th class="r" style="width:76px"></th>
+          </tr></thead>
+          <tbody id="bilRows"></tbody>
+          <tfoot id="bilFoot"></tfoot>
+        </table>
+      </div>
+      <div class="empty" id="bilEmpty" hidden>
+        <svg viewBox="0 0 24 24" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg><br>
+        <b>Nothing to bill yet</b>Lock an encounter in the Encounters tab and its charges appear here.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ FILES ═══════════ -->
+  <section class="pane" data-p="files">
+    <div class="card" style="animation-delay:.05s">
+      <div class="chead">
+        <span class="ci"><svg viewBox="0 0 24 24"><path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg></span>
+        <div><h2>Files</h2><p>Charts, referrals, insurance cards and generated forms.</p></div>
+        <span class="sub" id="filSub">—</span>
+      </div>
+      <div class="cbody">
+        <div class="drop" id="drop">
+          <div class="di"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg></div>
+          <b>Drop files here or click to browse</b>
+          <small>Charts, demographics, referrals, insurance cards — any format</small>
+          <input type="file" id="fileIn" hidden multiple>
+        </div>
+      </div>
+      <div id="filList"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ HISTORY ═══════════ -->
+  <section class="pane" data-p="history">
+    <div class="card" style="animation-delay:.05s">
+      <div class="chead">
+        <span class="ci" style="background:var(--amber-s)"><svg viewBox="0 0 24 24" style="stroke:var(--amber)"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+        <div><h2>Activity history</h2><p>Every change to this chart, with who and when.</p></div>
+        <span class="sub" id="hisSub">—</span>
+      </div>
+      <div id="hisList"></div>
+    </div>
+  </section>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<div class="toast" id="toast"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg><span><b id="tT">—</b><small id="tS"></small></span></div>
+
+<!-- DEMOGRAPHICS -->
+<div class="modal wide" id="mDemo" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
+    <div><h3>Patient and subscriber</h3><p>Everything on the demographic sheet.</p></div>
+    <button class="mx" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody">
+    <div class="subhead">Patient</div>
+    <div class="grid3">
+      <label class="f"><span>Internal ID <span class="lk">AUTO</span></span><input type="text" id="d_iid" readonly></label>
+      <label class="f"><span>First name <u>*</u></span><input type="text" id="d_first"></label>
+      <label class="f"><span>Middle name</span><input type="text" id="d_middle"></label>
+      <label class="f"><span>Last name <u>*</u></span><input type="text" id="d_last"></label>
+      <label class="f"><span>Date of birth <u>*</u></span><input type="date" id="d_dob" min="1900-01-01" max="2100-12-31"></label>
+      <label class="f"><span>Sex</span><select id="d_sex"><option value="">—</option><option>Female</option><option>Male</option><option>Other</option><option>Unknown</option></select></label>
+      <label class="f"><span>Contact number</span><input type="tel" id="d_phone"></label>
+      <label class="f"><span>Email</span><input type="email" id="d_email"></label>
+      <label class="f"><span>Relationship to subscriber</span><select id="d_rel"><option>Self</option><option>Spouse</option><option>Child</option><option>Other dependent</option></select></label>
+      <label class="f full"><span>Address</span><input type="text" id="d_addr" placeholder="Street, city, state, ZIP"></label>
+    </div>
+
+    <div class="subhead">Subscriber</div>
+    <div class="grid3">
+      <label class="f"><span>First name</span><input type="text" id="s_first"></label>
+      <label class="f"><span>Last name</span><input type="text" id="s_last"></label>
+      <label class="f"><span>Date of birth</span><input type="date" id="s_dob" min="1900-01-01" max="2100-12-31"></label>
+      <label class="f"><span>Phone</span><input type="tel" id="s_phone"></label>
+      <label class="f"><span>Email</span><input type="email" id="s_email"></label>
+      <label class="f"><span>Employment status</span><select id="s_emp"><option value="">—</option><option>Employed full time</option><option>Employed part time</option><option>Self employed</option><option>Retired</option><option>Student</option><option>Unemployed</option></select></label>
+      <label class="f full"><span>Subscriber address</span><input type="text" id="s_addr"></label>
+    </div>
+
+    <div class="subhead">Administrative</div>
+    <div class="grid3">
+      <label class="f"><span>Preferred location</span><select id="a_loc"><option value="">—</option></select></label>
+      <label class="f"><span>Race</span><select id="a_race"><option value="">—</option><option>American Indian or Alaska Native</option><option>Asian</option><option>Black or African American</option><option>Native Hawaiian or Pacific Islander</option><option>White</option><option>More than one race</option><option>Declined to specify</option></select></label>
+      <label class="f"><span>Ethnicity</span><select id="a_eth"><option value="">—</option><option>Hispanic or Latino</option><option>Not Hispanic or Latino</option><option>Declined to specify</option></select></label>
+      <label class="f"><span>Preferred language</span><select id="a_lang"><option value="">—</option><option>English</option><option>Spanish</option><option>Vietnamese</option><option>Mandarin</option><option>Tagalog</option><option>Arabic</option><option>French</option><option>Hindi</option><option>Tamil</option><option>Other</option></select></label>
+      <label class="f"><span>Referred by</span><input type="text" id="a_ref" placeholder="Provider, practice or source"></label>
+      <label class="f"><span>Demo created <span class="lk">LOCKED</span></span><input type="text" id="a_created" readonly></label>
+    </div>
+  </div>
+  <div class="mfoot">
+    <button class="btn sec" data-close>Cancel</button>
+    <span class="sp"></span>
+    <button class="btn pri" id="demoSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Save</button>
+  </div>
+</div>
+
+<!-- INSURANCE -->
+<div class="modal wide" id="mIns" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg></span>
+    <div><h3 id="insTitle">Add policy</h3><p>Details used on every claim and eligibility check.</p></div>
+    <button class="mx" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody">
+    <div class="grid3">
+      <label class="f"><span>Rank <u>*</u></span><select id="i_rank"><option value="1">Primary</option><option value="2">Secondary</option><option value="3">Tertiary</option></select></label>
+      <label class="f"><span>Insurance name <u>*</u></span><input type="text" id="i_name" placeholder="Blue Cross Blue Shield of Texas"></label>
+      <label class="f"><span>Payer ID</span><input type="text" id="i_payer" placeholder="84980"></label>
+      <label class="f"><span>Member ID <u>*</u></span><input type="text" id="i_member"></label>
+      <label class="f"><span>Group number</span><input type="text" id="i_group"></label>
+      <label class="f"><span>Group name</span><input type="text" id="i_gname"></label>
+      <label class="f"><span>Plan number</span><input type="text" id="i_plan"></label>
+      <label class="f"><span>Effective date</span><input type="date" id="i_eff" min="1900-01-01" max="2100-12-31"></label>
+      <label class="f"><span>Term date</span><input type="date" id="i_term" min="1900-01-01" max="2100-12-31"></label>
+      <label class="f"><span>Coverage</span><select id="i_cov"><option value="">—</option><option>Individual</option><option>Individual + spouse</option><option>Individual + child</option><option>Family</option></select></label>
+      <label class="f"><span>Copay</span><input type="text" id="i_copay" inputmode="decimal" placeholder="30"></label>
+      <label class="f"><span>Coinsurance %</span><input type="text" id="i_coins" inputmode="decimal" placeholder="20"></label>
+      <label class="f"><span>Authorisation #</span><input type="text" id="i_auth"></label>
+      <label class="f"><span>Referral #</span><input type="text" id="i_referral"></label>
+      <label class="f"><span>Contact number</span><input type="tel" id="i_phone"></label>
+      <label class="f full"><span>Payer address</span><input type="text" id="i_addr"></label>
+    </div>
+  </div>
+  <div class="mfoot">
+    <button class="btn sec" data-close>Cancel</button>
+    <span class="sp"></span>
+    <button class="btn pri" id="insSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Save policy</button>
+  </div>
+</div>
+
+<!-- SWAP -->
+<div class="modal" id="mSwap" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><path d="M7 8h13l-3-3M17 16H4l3 3"/></svg></span>
+    <div><h3>Swap coverage order</h3><p>Choose which policy becomes primary.</p></div>
+    <button class="mx" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody"><div id="swapList"></div></div>
+  <div class="mfoot"><button class="btn sec" data-close>Cancel</button><span class="sp"></span></div>
+</div>
+
+<!-- BILLING EDIT -->
+<div class="modal" id="mBill" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg></span>
+    <div><h3>Adjust charge</h3><p id="bilSubT">—</p></div>
+    <button class="mx" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody">
+    <div class="grid2">
+      <label class="f"><span>Responsibility</span>
+        <select id="b_resp"><option value="ins">Insurance</option><option value="self">Self pay</option></select></label>
+      <label class="f"><span>Place of service</span><select id="b_pos"></select></label>
+      <label class="f"><span>Fee</span><input type="text" id="b_fee" inputmode="decimal"></label>
+      <label class="f"><span>Patient responsibility</span><input type="text" id="b_pat" inputmode="decimal"></label>
+      <label class="f"><span>Patient paid</span><input type="text" id="b_paid" inputmode="decimal"></label>
+      <label class="f"><span>Write-off</span><input type="text" id="b_wo" inputmode="decimal"></label>
+      <label class="f"><span>Insurance paid</span><input type="text" id="b_inspaid" inputmode="decimal"></label>
+    </div>
+    <div class="hint" id="b_preview" style="margin-top:15px">
+      <svg viewBox="0 0 24 24" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+      <span id="b_prevText">—</span>
+    </div>
+  </div>
+  <div class="mfoot">
+    <button class="btn sec" data-close>Cancel</button>
+    <span class="sp"></span>
+    <button class="btn pri" id="bilSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Save</button>
+  </div>
+</div>
+
+<!-- CLAIM FORM -->
+<div class="modal wide" id="mClaim" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M9 13l2 2 4-5"/></svg></span>
+    <div><h3 id="clTitle">Claim</h3><p id="clSub">—</p></div>
+    <button class="mx" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="dv" id="clBody"></div>
+  <div class="mfoot">
+    <button class="btn sec" data-close>Close</button>
+    <button class="btn sec" id="clEdit"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg>Edit</button>
+    <span class="sp"></span>
+    <button class="btn sec" id="clPrint"><svg viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 19H5a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2h-2"/><path d="M7 15h10v6H7z"/></svg>Print</button>
+    <button class="btn pri" id="clSubmit"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg>Submit claim</button>
+  </div>
+</div>
+
+<!-- CLAIM FIELD EDIT -->
+<div class="modal wide" id="mClaimEdit" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg></span>
+    <div><h3>Edit claim fields</h3><p id="ceSub">—</p></div>
+    <button class="mx" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody"><div class="grid2" id="ceGrid"></div></div>
+  <div class="mfoot">
+    <button class="btn sec" data-close>Cancel</button>
+    <span class="sp"></span>
+    <button class="btn pri" id="ceSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Apply changes</button>
+  </div>
+</div>
+
+
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var QS=new URLSearchParams(location.search);
+  var P=null, APPTS=[], ENCS=[], CLAIMS=[], PROVS=[], ORGS=[], ORG=null, HIST=[], FILES=[];
+  var SESS=null, EDIT_INS=null, EDIT_BILL=null, CLAIM_CTX=null;
+  var FKEY='rf_files_';
+
+  /* ── helpers ── */
+  function esc(v){return String(v==null?'':v).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function money(n){return '$'+(Math.round((+n||0)*100)/100).toFixed(2);}
+  function num(v){return Math.round((parseFloat(v)||0)*100)/100;}
+  function today(){var d=new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function fmtD(d){return d?new Date(d+'T12:00:00').toLocaleDateString(undefined,
+    {month:'short',day:'numeric',year:'numeric'}):'—';}
+  function fmtShort(d){return d?new Date(d+'T12:00:00').toLocaleDateString(undefined,
+    {month:'2-digit',day:'2-digit',year:'numeric'}):'—';}
+  function fmtTS(d){return d?new Date(d).toLocaleString(undefined,
+    {month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';}
+  function ageOf(dob){
+    if(!dob)return '';
+    var d=new Date(dob),n=new Date(),a=n.getFullYear()-d.getFullYear();
+    if(n.getMonth()<d.getMonth()||(n.getMonth()===d.getMonth()&&n.getDate()<d.getDate()))a--;
+    return a;
+  }
+  function hhmm(m){var h=Math.floor(m/60),x=m%60,ap=h>=12?'PM':'AM';
+    return (h%12||12)+':'+String(x).padStart(2,'0')+' '+ap;}
+  function toast(t,s,bad){
+    $('tT').textContent=t;$('tS').textContent=s||'';
+    $('toast').classList.toggle('bad',!!bad);$('toast').classList.add('on');
+    clearTimeout(toast._t);toast._t=setTimeout(function(){$('toast').classList.remove('on');},3600);
+  }
+  function dl(label,val,mono){
+    return '<div><dt>'+esc(label)+'</dt><dd'+(mono?' class="mono"':'')+'>'+
+      (val==null||val===''?'<span style="color:var(--dim);font-weight:400">—</span>':esc(val))+'</dd></div>';
+  }
+
+  /* ── modal plumbing ── */
+  var scrim=$('scrim');
+  function openM(id){scrim.classList.add('on');$(id).classList.add('on');document.body.style.overflow='hidden';}
+  function closeM(){scrim.classList.remove('on');
+    document.querySelectorAll('.modal').forEach(function(m){m.classList.remove('on');});
+    document.body.style.overflow='';}
+  scrim.addEventListener('click',closeM);
+  document.addEventListener('click',function(e){if(e.target.closest('[data-close]'))closeM();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeM();});
+
+  /* ── tabs ── */
+  $('tabs').addEventListener('click',function(e){
+    var b=e.target.closest('.tab');if(!b)return;
+    this.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('on',x===b);});
+    document.querySelectorAll('.pane').forEach(function(p){
+      p.classList.toggle('on',p.dataset.p===b.dataset.t);});
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  /* ══════════ BOOT ══════════ */
+  (async function boot(){
+    if(typeof RFStore==='undefined'){
+      document.querySelector('.wrap').innerHTML=
+        '<div class="empty"><b>Shared data layer did not load</b>'+
+        '_store.js could not be found from this page. It belongs at the package root, one level above /Patient.</div>';
+      return;
+    }
+    await RFStore.ready();
+    SESS=RFStore.getSession();
+    $('rfWho').textContent=SESS?((SESS.name||SESS.username)+'').toUpperCase():'';
+
+    ORGS=await RFStore.orgs();
+    PROVS=await RFStore.providers();
+    var mine=PROVS.filter(function(x){return x.id===(SESS&&SESS.provider_ref);})[0];
+    ORG=ORGS.filter(function(o){return o.id===((mine&&mine.org_id)||(SESS&&SESS.org_id));})[0]||ORGS[0]||null;
+
+    P=await RFStore.findPatient({
+      ref:QS.get('ref')||QS.get('id'),
+      memberId:QS.get('member'),
+      last:QS.get('last'),first:QS.get('first')
+    });
+
+    if(!P){
+      /* booked from the schedule but never registered — create the shell record */
+      var r=await RFStore.savePatientRec({
+        first_name:QS.get('first')||'',last_name:QS.get('last')||'New patient',
+        dob:QS.get('dob')||'',member_id:QS.get('member')||'',
+        relationship:'Self',insurances:[],
+        preferred_location:ORG?ORG.name:''
+      });
+      P=await RFStore.patient(r.id);
+      await RFStore.logHistory(P.id,'created','Chart created from the schedule');
+    }
+
+    await reload();
+    paintAll();
+  })();
+
+  async function reload(){
+    APPTS=await RFStore.apptsForPatient(P.id,P.last_name,P.first_name,P.member_id);
+    ENCS=await RFStore.encounters(P.id);
+    var all=await RFStore.claims({});
+    CLAIMS=all.filter(function(c){return String(c.patient_ref)===String(P.id);});
+    HIST=await RFStore.history(P.id);
+    try{FILES=JSON.parse(localStorage.getItem(FKEY+P.id)||'[]');}catch(e){FILES=[];}
+
+    /* every appointment that has no encounter yet gets one */
+    for(var i=0;i<APPTS.length;i++){
+      var a=APPTS[i];
+      if(a.status==='Cancelled')continue;
+      var has=ENCS.filter(function(e){return String(e.appt_id)===String(a.id);})[0];
+      if(!has){
+        var prov=PROVS.filter(function(x){return String(x.id)===String(a.provider_id);})[0];
+        await RFStore.saveEncounter({
+          patient_ref:P.id,appt_id:a.id,dos:a.date,
+          clinician:(prov&&prov.full_name)||'—',
+          clinician_id:a.provider_id||null,
+          pos:a.kind==='video'?'10':'11',
+          status:'open',lines:[]
+        });
+      }
+    }
+    ENCS=await RFStore.encounters(P.id);
+  }
+
+  function paintAll(){
+    paintHeader();paintOverview();paintInsurance();
+    paintEncounters();paintBilling();paintFiles();paintHistory();
+  }
+
+  /* ══════════ HEADER ══════════ */
+  function paintHeader(){
+    var full=[P.first_name,P.last_name].filter(Boolean).join(' ')||'Unnamed patient';
+    document.title=full+' — ReviFlow';
+    $('crumbName').textContent=full;
+    $('pName').textContent=full;
+    $('pAv').textContent=((P.first_name||'?')[0]+(P.last_name||'?')[0]).toUpperCase();
+
+    var a=ageOf(P.dob),ins=(P.insurances||[]).filter(function(x){return x.rank==='1';})[0];
+    var t=today();
+    var next=APPTS.filter(function(x){return x.date>=t&&x.status!=='Cancelled';})
+                  .sort(function(x,y){return x.date.localeCompare(y.date)||x.start-y.start;})[0];
+
+    $('pMeta').innerHTML=
+      '<span class="tag'+(ins?'':' off')+'">'+(ins?'INSURED':'SELF PAY')+'</span>'+
+      '<span>'+(P.dob?fmtShort(P.dob)+(a!==''?' · '+a+' y/o':''):'DOB not on file')+'</span>'+
+      '<span class="sep">|</span>'+
+      '<span>'+(next
+        ? 'Next appt <b>'+fmtShort(next.date)+'</b> · '+hhmm(next.start)
+        : '<span style="color:var(--dim)">No future appointments</span>')+'</span>'+
+      (P.phone?'<span class="sep">|</span><span>'+esc(P.phone)+'</span>':'');
+  }
+
+  /* ══════════ OVERVIEW ══════════ */
+  function paintOverview(){
+    $('demoStamp').textContent=P.created_at?('CREATED '+fmtTS(P.created_at).toUpperCase()):'';
+    $('ptGrid').innerHTML=
+      dl('Internal ID',P.internal_id,true)+
+      dl('First name',P.first_name)+dl('Middle name',P.middle_name)+
+      dl('Last name',P.last_name)+
+      dl('Date of birth',P.dob?fmtShort(P.dob):'')+
+      dl('Sex',P.sex)+
+      dl('Contact number',P.phone,true)+
+      dl('Email',P.email)+
+      dl('Relationship to subscriber',P.relationship||'Self')+
+      '<div style="grid-column:1/-1"><dt>Address</dt><dd>'+
+        (P.address?esc(P.address):'<span style="color:var(--dim);font-weight:400">—</span>')+'</dd></div>';
+
+    var self=(P.relationship||'Self')==='Self';
+    $('subRel').textContent=self?'SAME AS PATIENT':'DEPENDENT COVERAGE';
+    $('subGrid').innerHTML= self
+      ? '<div style="grid-column:1/-1"><dt>Subscriber</dt><dd style="font-weight:500">'+
+        'The patient is the policy holder. Subscriber details mirror the patient record.</dd></div>'
+      : dl('First name',P.sub_first)+dl('Last name',P.sub_last)+
+        dl('Date of birth',P.sub_dob?fmtShort(P.sub_dob):'')+
+        dl('Phone',P.sub_phone,true)+dl('Email',P.sub_email)+
+        dl('Employment status',P.sub_employment)+
+        '<div style="grid-column:1/-1"><dt>Address</dt><dd>'+
+          (P.sub_address?esc(P.sub_address):'<span style="color:var(--dim);font-weight:400">—</span>')+'</dd></div>';
+
+    $('admGrid').innerHTML=
+      dl('Preferred location',P.preferred_location)+
+      dl('Race',P.race)+dl('Ethnicity',P.ethnicity)+
+      dl('Preferred language',P.language)+
+      dl('Referred by',P.referred_by)+
+      dl('Demo created',P.created_at?fmtTS(P.created_at):'',true);
+  }
+  /* ══════════ INSURANCE ══════════ */
+  var RANKL={'1':'Primary','2':'Secondary','3':'Tertiary'};
+
+  function paintInsurance(){
+    var list=(P.insurances||[]).slice().sort(function(a,b){return (a.rank||'9').localeCompare(b.rank||'9');});
+    $('nIns').textContent=list.length;
+    if(!list.length){
+      $('insList').innerHTML='<div class="empty">'+
+        '<svg viewBox="0 0 24 24" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg><br>'+
+        '<b>No coverage on file</b>Add a policy, or bill this patient as self pay.</div>';
+      return;
+    }
+    $('insList').innerHTML=list.map(function(x,i){
+      return '<div class="inscard'+(x.rank==='1'?' primary':'')+'">'+
+        '<div class="inshead">'+
+          '<span class="rank p'+x.rank+'">'+RANKL[x.rank].toUpperCase()+'</span>'+
+          '<b>'+esc(x.name)+'</b>'+
+          (x.payer_id?'<span class="pill off">'+esc(x.payer_id)+'</span>':'')+
+          '<span class="acts">'+
+            '<button class="ib edit" data-iedit="'+i+'" title="Edit policy">'+
+              '<svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg></button>'+
+            '<button class="ib del" data-idel="'+i+'" title="Remove policy">'+
+              '<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg></button>'+
+          '</span></div>'+
+        '<dl class="insbody">'+
+          dl('Member ID',x.member_id,true)+dl('Group number',x.group_no,true)+
+          dl('Group name',x.group_name)+dl('Plan number',x.plan_no,true)+
+          dl('Effective',x.effective?fmtShort(x.effective):'')+
+          dl('Term',x.term?fmtShort(x.term):'Open ended')+
+          dl('Coverage',x.coverage)+
+          dl('Copay',x.copay?money(x.copay):'')+
+          dl('Coinsurance',x.coinsurance?x.coinsurance+'%':'')+
+          dl('Authorisation #',x.auth_no,true)+dl('Referral #',x.referral_no,true)+
+          dl('Contact',x.phone,true)+
+          '<div style="grid-column:1/-1"><dt>Payer address</dt><dd>'+
+            (x.address?esc(x.address):'<span style="color:var(--dim);font-weight:400">—</span>')+'</dd></div>'+
+        '</dl></div>';
+    }).join('');
+  }
+
+  function blankIns(){
+    ['i_name','i_payer','i_member','i_group','i_gname','i_plan','i_eff','i_term',
+     'i_copay','i_coins','i_auth','i_referral','i_phone','i_addr'].forEach(function(id){$(id).value='';});
+    $('i_cov').value='';
+  }
+  $('addIns').addEventListener('click',function(){
+    EDIT_INS=null;blankIns();
+    var used=(P.insurances||[]).map(function(x){return x.rank;});
+    $('i_rank').value=['1','2','3'].filter(function(r){return used.indexOf(r)<0;})[0]||'1';
+    $('insTitle').textContent='Add policy';
+    openM('mIns');
+  });
+
+  $('insSave').addEventListener('click',async function(){
+    if(!$('i_name').value.trim()){toast('Insurance name required','',true);$('i_name').focus();return;}
+    if(!$('i_member').value.trim()){toast('Member ID required','',true);$('i_member').focus();return;}
+    var rec={
+      rank:$('i_rank').value,name:$('i_name').value.trim(),
+      payer_id:$('i_payer').value.trim(),member_id:$('i_member').value.trim(),
+      group_no:$('i_group').value.trim(),group_name:$('i_gname').value.trim(),
+      plan_no:$('i_plan').value.trim(),effective:$('i_eff').value,term:$('i_term').value,
+      coverage:$('i_cov').value,copay:num($('i_copay').value),coinsurance:num($('i_coins').value),
+      auth_no:$('i_auth').value.trim(),referral_no:$('i_referral').value.trim(),
+      phone:$('i_phone').value.trim(),address:$('i_addr').value.trim()
+    };
+    P.insurances=P.insurances||[];
+    /* the rank is exclusive — anything already holding it steps aside */
+    P.insurances.forEach(function(x,k){
+      if(x.rank===rec.rank && k!==EDIT_INS){
+        var free=['1','2','3'].filter(function(r){
+          return r!==rec.rank && !P.insurances.some(function(y,j){return j!==k&&y.rank===r;});})[0];
+        x.rank=free||'3';
+      }
+    });
+    if(EDIT_INS!=null)P.insurances[EDIT_INS]=rec; else P.insurances.push(rec);
+    if(rec.rank==='1'){P.member_id=rec.member_id;P.payer=rec.name;}
+
+    await RFStore.savePatientRec(P);
+    await RFStore.logHistory(P.id, EDIT_INS!=null?'insurance_updated':'insurance_added',
+      RANKL[rec.rank]+' · '+rec.name+' · member '+rec.member_id);
+    HIST=await RFStore.history(P.id);
+    closeM();paintHeader();paintInsurance();paintBilling();paintHistory();
+    toast(EDIT_INS!=null?'Policy updated':'Policy added',RANKL[rec.rank]+' · '+rec.name);
+    EDIT_INS=null;
+  });
+
+  /* swap coverage order */
+  $('swapBtn').addEventListener('click',function(){
+    var list=P.insurances||[];
+    if(list.length<2){toast('Nothing to swap','At least two policies are needed');return;}
+    $('swapList').innerHTML=list.map(function(x,i){
+      return '<button class="fitem" data-swap="'+i+'" style="width:100%;text-align:left;border-radius:11px">'+
+        '<span class="fico ins"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg></span>'+
+        '<span class="finfo"><b>'+esc(x.name)+'</b>'+
+          '<small>'+esc(x.member_id||'')+' · currently '+RANKL[x.rank].toLowerCase()+'</small></span>'+
+        '<span class="pill '+(x.rank==='1'?'ok':'off')+'">'+RANKL[x.rank]+'</span></button>';
+    }).join('');
+    openM('mSwap');
+  });
+
+  $('swapList').addEventListener('click',async function(e){
+    var b=e.target.closest('[data-swap]');if(!b)return;
+    var i=+b.dataset.swap,list=P.insurances;
+    var chosen=list[i];
+    if(chosen.rank==='1'){toast('Already primary',esc(chosen.name));return;}
+    var wasPrimary=list.filter(function(x){return x.rank==='1';})[0];
+    var oldRank=chosen.rank;
+    chosen.rank='1';
+    if(wasPrimary)wasPrimary.rank=oldRank;
+    P.member_id=chosen.member_id;P.payer=chosen.name;
+    await RFStore.savePatientRec(P);
+    await RFStore.logHistory(P.id,'insurance_swapped',
+      chosen.name+' is now primary'+(wasPrimary?', '+wasPrimary.name+' moved to '+RANKL[oldRank].toLowerCase():''));
+    HIST=await RFStore.history(P.id);
+    closeM();paintHeader();paintInsurance();paintBilling();paintHistory();
+    toast('Coverage reordered',chosen.name+' is now primary');
+  });
+
+  /* ══════════ DEMOGRAPHICS EDIT ══════════ */
+  $('editDemo').addEventListener('click',function(){
+    $('d_iid').value=P.internal_id||'';
+    $('d_first').value=P.first_name||'';$('d_middle').value=P.middle_name||'';
+    $('d_last').value=P.last_name||'';$('d_dob').value=P.dob||'';
+    $('d_sex').value=P.sex||'';$('d_phone').value=P.phone||'';
+    $('d_email').value=P.email||'';$('d_rel').value=P.relationship||'Self';
+    $('d_addr').value=P.address||'';
+    $('s_first').value=P.sub_first||'';$('s_last').value=P.sub_last||'';
+    $('s_dob').value=P.sub_dob||'';$('s_phone').value=P.sub_phone||'';
+    $('s_email').value=P.sub_email||'';$('s_emp').value=P.sub_employment||'';
+    $('s_addr').value=P.sub_address||'';
+    $('a_loc').innerHTML='<option value="">—</option>'+
+      ORGS.map(function(o){return '<option'+(P.preferred_location===o.name?' selected':'')+'>'+esc(o.name)+'</option>';}).join('');
+    $('a_race').value=P.race||'';$('a_eth').value=P.ethnicity||'';
+    $('a_lang').value=P.language||'';$('a_ref').value=P.referred_by||'';
+    $('a_created').value=P.created_at?fmtTS(P.created_at):'—';
+    openM('mDemo');
+  });
+
+  $('demoSave').addEventListener('click',async function(){
+    if(!$('d_last').value.trim()){toast('Last name required','',true);$('d_last').focus();return;}
+    var before={first:P.first_name,last:P.last_name,phone:P.phone,addr:P.address};
+    Object.assign(P,{
+      first_name:$('d_first').value.trim(),middle_name:$('d_middle').value.trim(),
+      last_name:$('d_last').value.trim(),dob:$('d_dob').value,sex:$('d_sex').value,
+      phone:$('d_phone').value.trim(),email:$('d_email').value.trim(),
+      relationship:$('d_rel').value,address:$('d_addr').value.trim(),
+      sub_first:$('s_first').value.trim(),sub_last:$('s_last').value.trim(),
+      sub_dob:$('s_dob').value,sub_phone:$('s_phone').value.trim(),
+      sub_email:$('s_email').value.trim(),sub_employment:$('s_emp').value,
+      sub_address:$('s_addr').value.trim(),
+      preferred_location:$('a_loc').value,race:$('a_race').value,
+      ethnicity:$('a_eth').value,language:$('a_lang').value,
+      referred_by:$('a_ref').value.trim()
+    });
+    await RFStore.savePatientRec(P);
+    var changed=[];
+    if(before.first!==P.first_name||before.last!==P.last_name)
+      changed.push('name → '+P.first_name+' '+P.last_name);
+    if(before.phone!==P.phone)changed.push('phone → '+(P.phone||'cleared'));
+    if(before.addr!==P.address)changed.push('address updated');
+    await RFStore.logHistory(P.id,'demographics_edited',
+      changed.length?changed.join(' · '):'Demographic fields updated');
+    HIST=await RFStore.history(P.id);
+    closeM();paintHeader();paintOverview();paintHistory();
+    toast('Demographics saved','Chart updated');
+  });
+
+  /* ══════════ TYPEAHEAD ══════════ */
+  function typeahead(input, kind, onPick){
+    var box=document.createElement('div');
+    box.className='talist';
+    input.parentNode.appendChild(box);
+    var hi=-1, items=[];
+
+    function close(){box.classList.remove('on');hi=-1;}
+    function paint(q){
+      items=(kind==='cpt')?RFCodes.findCpt(q):RFCodes.findIcd(q);
+      if(!items.length){
+        box.innerHTML='<div class="tahead">NO MATCH FOR '+esc(q).toUpperCase()+'</div>';
+        box.classList.add('on');return;
+      }
+      box.innerHTML='<div class="tahead">'+items.length+
+        (kind==='cpt'?' PROCEDURE':' DIAGNOSIS')+(items.length===1?'':'ES')+'</div>'+
+        items.map(function(c,i){
+          return '<button type="button" class="taitem" data-i="'+i+'">'+
+            '<b>'+esc(c.code)+'</b><span>'+esc(c.desc)+'</span>'+
+            (kind==='cpt'?'<em>'+money(c.fee)+'</em>':'')+'</button>';
+        }).join('');
+      box.classList.add('on');
+    }
+    input.addEventListener('focus',function(){paint(this.value);});
+    input.addEventListener('input',function(){paint(this.value);});
+    input.addEventListener('keydown',function(e){
+      if(!box.classList.contains('on'))return;
+      var els=[].slice.call(box.querySelectorAll('.taitem'));
+      if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+        e.preventDefault();
+        hi+=(e.key==='ArrowDown'?1:-1);
+        if(hi<0)hi=els.length-1; if(hi>=els.length)hi=0;
+        els.forEach(function(x,i){x.classList.toggle('hi',i===hi);});
+        if(els[hi])els[hi].scrollIntoView({block:'nearest'});
+      }
+      if(e.key==='Enter'){e.preventDefault();var t=els[hi]||els[0];if(t)t.click();}
+      if(e.key==='Escape')close();
+    });
+    box.addEventListener('mousedown',function(e){e.preventDefault();});
+    box.addEventListener('click',function(e){
+      var b=e.target.closest('[data-i]');if(!b)return;
+      var c=items[+b.dataset.i];if(!c)return;
+      onPick(c);close();
+    });
+    input.addEventListener('blur',function(){setTimeout(close,140);});
+    return {close:close};
+  }
+
+  /* ══════════ ENCOUNTERS ══════════ */
+  function paintEncounters(){
+    $('nEnc').textContent=ENCS.length;
+    var open=ENCS.filter(function(e){return e.status==='open';}).length;
+    $('encSub').textContent=ENCS.length
+      ? (ENCS.length+' ENCOUNTER'+(ENCS.length===1?'':'S')+(open?' · '+open+' OPEN':''))
+      : '';
+
+    if(!ENCS.length){
+      $('encWrap').innerHTML='<div class="empty">'+
+        '<svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M7 4h10l3 3v13a1 1 0 01-1 1H5a1 1 0 01-1-1V7z"/></svg><br>'+
+        '<b>No encounters yet</b>An encounter is created automatically for every appointment. '+
+        'Book one in the schedule and it appears here.</div>';
+      return;
+    }
+
+    $('encWrap').innerHTML=ENCS.map(function(e){
+      var d=new Date(e.dos+'T12:00:00');
+      var locked=e.status==='locked';
+      var lines=e.lines||[];
+      return '<div class="encbox" data-enc="'+e.id+'">'+
+        '<div class="enchead">'+
+          '<span class="d"><b>'+d.toLocaleDateString(undefined,{month:'short'}).toUpperCase()+'</b>'+
+            '<span>'+d.getDate()+'</span></span>'+
+          '<span class="who"><b>'+fmtD(e.dos)+'</b>'+
+            '<small>'+esc(e.clinician||'—').toUpperCase()+
+              ' · POS '+esc(e.pos||'11')+'</small></span>'+
+          '<span class="pill '+(locked?'ok':'warn')+'">'+(locked?'LOCKED':'OPEN')+'</span>'+
+        '</div>'+
+        '<table class="linetbl"><thead><tr>'+
+          '<th style="width:32%">Description · procedure</th>'+
+          '<th style="width:32%">Dx · description</th>'+
+          '<th style="width:11%">Units</th><th style="width:14%">Fee</th>'+
+          '<th style="width:11%"></th></tr></thead><tbody>'+
+        (lines.length?lines.map(function(l,li){
+          return '<tr>'+
+            '<td><b class="mono">'+esc(l.cpt)+'</b><div style="font-size:11.4px;color:var(--muted);margin-top:2px">'+
+              esc(l.cpt_desc||RFCodes.cptDesc(l.cpt))+'</div></td>'+
+            '<td><b class="mono">'+esc(l.dx||'—')+'</b><div style="font-size:11.4px;color:var(--muted);margin-top:2px">'+
+              esc(l.dx_desc||RFCodes.icdDesc(l.dx)||'—')+'</div></td>'+
+            '<td class="mono">'+(l.units||1)+'</td>'+
+            '<td class="money">'+money((l.fee||0)*(l.units||1))+'</td>'+
+            '<td class="r">'+(locked?'':
+              '<button class="ib del" data-lrm="'+e.id+':'+li+'" title="Remove line">'+
+              '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>')+'</td></tr>';
+        }).join(''):'<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--dim);font-size:12px">'+
+          'No procedures added yet.</td></tr>')+
+        '</tbody></table>'+
+        (locked?'':
+        '<div style="padding:12px 14px;border-top:1px solid var(--line);background:var(--paper)">'+
+          '<div class="grid3" style="gap:9px">'+
+            '<label class="f ta"><span>Description · CPT</span>'+
+              '<input type="text" class="lcpt" data-e="'+e.id+'" placeholder="Type a code or description" autocomplete="off"></label>'+
+            '<label class="f ta"><span>Dx · description</span>'+
+              '<input type="text" class="ldx" data-e="'+e.id+'" placeholder="Type a code or description" autocomplete="off"></label>'+
+            '<label class="f"><span>Units</span>'+
+              '<input type="number" class="lun" data-e="'+e.id+'" min="1" value="1"></label>'+
+          '</div>'+
+          '<div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">'+
+            '<span class="mono" style="font-size:10.6px;color:var(--dim)" id="fee'+e.id+'">Fee will fill from the CPT</span>'+
+            '<span style="flex:1"></span>'+
+            '<button class="btn sec sm" data-ladd="'+e.id+'">'+
+              '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add line</button>'+
+          '</div>'+
+        '</div>')+
+        '<div class="encfoot">'+
+          '<span class="mono" style="font-size:10.6px;color:var(--muted)">'+
+            lines.length+' line'+(lines.length===1?'':'s')+' · '+
+            money(lines.reduce(function(x,l){return x+(l.fee||0)*(l.units||1);},0))+'</span>'+
+          '<span class="sp"></span>'+
+          (locked
+            ? '<button class="btn sec sm" data-unlock="'+e.id+'">'+
+              '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8 11V8a4 4 0 018 0"/></svg>Unlock</button>'
+            : '<button class="btn pri sm" data-lock="'+e.id+'"'+(lines.length?'':' disabled')+'>'+
+              '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>Lock encounter</button>')+
+        '</div></div>';
+    }).join('');
+
+    /* wire the typeaheads for every open encounter */
+    document.querySelectorAll('.lcpt').forEach(function(el){
+      if(el._ta)return;el._ta=true;
+      typeahead(el,'cpt',function(c){
+        el.value=c.code+' — '+c.desc;
+        el.dataset.code=c.code;el.dataset.fee=c.fee;
+        var lab=$('fee'+el.dataset.e);
+        if(lab)lab.textContent='Fee '+money(c.fee)+' from the fee schedule';
+      });
+    });
+    document.querySelectorAll('.ldx').forEach(function(el){
+      if(el._ta)return;el._ta=true;
+      typeahead(el,'icd',function(c){
+        el.value=c.code+' — '+c.desc;el.dataset.code=c.code;
+      });
+    });
+  }
+
+  document.addEventListener('click',async function(ev){
+    var add=ev.target.closest('[data-ladd]'),
+        rm=ev.target.closest('[data-lrm]'),
+        lk=ev.target.closest('[data-lock]'),
+        ul=ev.target.closest('[data-unlock]');
+
+    if(add){
+      var eid=+add.dataset.ladd;
+      var box=add.closest('.encbox');
+      var cpt=box.querySelector('.lcpt'),dx=box.querySelector('.ldx'),un=box.querySelector('.lun');
+      var code=cpt.dataset.code||cpt.value.trim().split(' ')[0];
+      if(!code){toast('Choose a procedure','Pick a CPT from the list',true);cpt.focus();return;}
+      var e=await RFStore.encounter(eid);if(!e)return;
+      e.lines=e.lines||[];
+      e.lines.push({
+        cpt:code,cpt_desc:RFCodes.cptDesc(code)||cpt.value.split(' — ')[1]||'',
+        dx:dx.dataset.code||dx.value.trim().split(' ')[0]||'',
+        dx_desc:RFCodes.icdDesc(dx.dataset.code||dx.value.trim().split(' ')[0])||'',
+        units:parseInt(un.value,10)||1,
+        fee:parseFloat(cpt.dataset.fee)||RFCodes.cptFee(code)||0
+      });
+      await RFStore.saveEncounter(e);
+      await RFStore.logHistory(P.id,'encounter_line_added',
+        fmtShort(e.dos)+' · '+code+' '+(RFCodes.cptDesc(code)||''));
+      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);
+      paintEncounters();paintHistory();
+      toast('Line added',code+' · '+money(RFCodes.cptFee(code)));
+      return;
+    }
+
+    if(rm){
+      var parts=rm.dataset.lrm.split(':');
+      var e2=await RFStore.encounter(+parts[0]);if(!e2)return;
+      var gone=e2.lines.splice(+parts[1],1)[0];
+      await RFStore.saveEncounter(e2);
+      await RFStore.logHistory(P.id,'encounter_line_removed',
+        fmtShort(e2.dos)+' · '+(gone?gone.cpt:'line')+' removed');
+      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);
+      paintEncounters();paintHistory();
+      return;
+    }
+
+    if(lk){
+      var e3=await RFStore.encounter(+lk.dataset.lock);if(!e3)return;
+      if(!(e3.lines||[]).length){toast('Nothing to lock','Add at least one procedure',true);return;}
+      e3.status='locked';e3.locked_at=new Date().toISOString();
+      e3.locked_by=SESS?(SESS.name||SESS.username):'system';
+      await RFStore.saveEncounter(e3);
+      await RFStore.logHistory(P.id,'encounter_locked',
+        fmtShort(e3.dos)+' · '+e3.lines.length+' line(s) · '+
+        money(e3.lines.reduce(function(x,l){return x+(l.fee||0)*(l.units||1);},0)));
+      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);
+      paintEncounters();paintBilling();paintHistory();
+      toast('Encounter locked','Charges are now in Billing');
+      return;
+    }
+
+    if(ul){
+      var e4=await RFStore.encounter(+ul.dataset.unlock);if(!e4)return;
+      var claimed=CLAIMS.filter(function(c){return String(c.enc_id)===String(e4.id);})[0];
+      if(claimed){toast('Cannot unlock','Delete claim '+claimed.claim_no+' first',true);return;}
+      e4.status='open';
+      await RFStore.saveEncounter(e4);
+      await RFStore.logHistory(P.id,'encounter_unlocked',fmtShort(e4.dos));
+      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);
+      paintEncounters();paintBilling();paintHistory();
+      toast('Encounter unlocked','Removed from Billing');
+      return;
+    }
+  });
+
+  /* ══════════ BILLING ══════════ */
+  var POSL={'11':'Office','02':'Telehealth','10':'Telehealth home','12':'Home',
+            '19':'Off campus OP','22':'On campus OP','21':'Inpatient','23':'ER',
+            '81':'Lab','99':'Other'};
+
+  /* one billable charge per locked encounter */
+  function charges(){
+    return ENCS.filter(function(e){return e.status==='locked';}).map(function(e){
+      var fee=(e.lines||[]).reduce(function(x,l){return x+(l.fee||0)*(l.units||1);},0);
+      var b=e.billing||{};
+      var ins=(P.insurances||[]).filter(function(x){return x.rank==='1';})[0];
+      var resp=b.resp||(ins?'ins':'self');
+      var copay=ins?num(ins.copay):0;
+
+      /* self pay puts the whole fee on the patient */
+      var patResp = b.pat_resp!=null ? num(b.pat_resp) : (resp==='self'?fee:copay);
+      var wo=num(b.writeoff);
+      var patPaid=num(b.pat_paid);
+      var insPaid=num(b.ins_paid);
+      var insResp=Math.max(0,fee-patResp-wo);
+      var insBal=Math.max(0,insResp-insPaid);
+      var patBal=Math.max(0,patResp-patPaid);
+
+      return {
+        enc:e, dos:e.dos, pos:e.pos||'11', resp:resp,
+        lines:e.lines||[], fee:fee,
+        patResp:patResp, patPaid:patPaid, patBal:patBal,
+        insResp:insResp, insPaid:insPaid, insBal:insBal,
+        wo:wo, out:patBal+insBal,
+        claim:CLAIMS.filter(function(c){return String(c.enc_id)===String(e.id);})[0]||null
+      };
+    }).sort(function(a,b){return (b.dos||'').localeCompare(a.dos||'');});
+  }
+
+  function paintBilling(){
+    var rows=charges();
+    $('nBil').textContent=rows.length;
+    $('bilEmpty').hidden=rows.length>0;
+    $('bilSub').textContent=rows.length?(rows.length+' CHARGE'+(rows.length===1?'':'S')):'';
+
+    if(!rows.length){$('bilRows').innerHTML='';$('bilFoot').innerHTML='';return;}
+
+    var T={fee:0,pat:0,ins:0,wo:0,out:0};
+    $('bilRows').innerHTML=rows.map(function(r,i){
+      T.fee+=r.fee;T.pat+=r.patBal;T.ins+=r.insBal;T.wo+=r.wo;T.out+=r.out;
+      var codes=r.lines.map(function(l){return l.cpt;}).join(', ');
+      var dxs=[].concat.apply([],r.lines.map(function(l){return l.dx?[l.dx]:[];}))
+        .filter(function(v,k,a){return a.indexOf(v)===k;}).join(', ');
+
+      return '<tr style="animation-delay:'+Math.min(.4,i*.04)+'s">'+
+        '<td><b>'+fmtShort(r.dos)+'</b>'+
+          '<div style="font-size:10.6px;color:var(--dim);margin-top:2px">'+esc(r.enc.clinician||'')+'</div></td>'+
+        '<td><b class="mono">'+esc(codes)+'</b>'+
+          (dxs?'<div class="mono" style="font-size:10.6px;color:var(--muted);margin-top:2px">'+esc(dxs)+'</div>':'')+'</td>'+
+        '<td>'+esc(POSL[r.pos]||r.pos)+'</td>'+
+        '<td class="r money">'+money(r.fee)+'</td>'+
+        '<td class="r"><span class="money'+(r.patBal>0?' warn':' zero')+'">'+money(r.patBal)+'</span>'+
+          (r.patResp>0?'<div style="font-size:9.6px;margin-top:2px;font-family:var(--mono);color:'+
+            (r.patPaid>=r.patResp?'var(--green-d)':'var(--coral)')+'">'+
+            money(r.patResp)+' '+(r.patPaid>=r.patResp?'paid':(r.patPaid>0?'part paid':'unpaid'))+'</div>':'')+'</td>'+
+        '<td class="r"><span class="money'+(r.insBal>0?'':' zero')+'">'+money(r.insBal)+'</span>'+
+          (r.resp==='self'?'<div style="font-size:9.6px;margin-top:2px;font-family:var(--mono);color:var(--dim)">SELF PAY</div>':'')+'</td>'+
+        '<td class="r money'+(r.wo?'':' zero')+'">'+money(r.wo)+'</td>'+
+        '<td class="r money'+(r.out>0?' warn':' pos')+'">'+money(r.out)+'</td>'+
+        '<td>'+(r.claim
+          ? '<span class="pill '+claimPill(r.claim.status)+'">'+esc(r.claim.claim_no)+'</span>'+
+            '<div style="font-size:9.6px;margin-top:3px;font-family:var(--mono);color:var(--muted)">'+
+            (r.claim.status||'submitted').toUpperCase()+'</div>'
+          : (r.resp==='self'
+              ? '<span class="pill off">SELF PAY</span>'
+              : '<button class="btn sec sm" data-mkclaim="'+r.enc.id+'">'+
+                '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Create claim</button>'))+'</td>'+
+        '<td class="r"><span class="acts">'+
+          '<button class="ib edit" data-bedit="'+r.enc.id+'" title="Adjust fee and balances">'+
+            '<svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg></button>'+
+          (r.claim?'<button class="ib view" data-cview="'+r.claim.id+'" title="View claim">'+
+            '<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>':'')+
+        '</span></td></tr>';
+    }).join('');
+
+    $('bilFoot').innerHTML='<tr><td colspan="3">Totals · '+rows.length+' charge'+(rows.length===1?'':'s')+'</td>'+
+      '<td class="r money">'+money(T.fee)+'</td>'+
+      '<td class="r money">'+money(T.pat)+'</td>'+
+      '<td class="r money">'+money(T.ins)+'</td>'+
+      '<td class="r money">'+money(T.wo)+'</td>'+
+      '<td class="r money'+(T.out>0?' warn':' pos')+'">'+money(T.out)+'</td>'+
+      '<td colspan="2"></td></tr>';
+  }
+
+  function claimPill(s){
+    return {submitted:'info',pending:'warn',accepted:'info',received:'info',
+            'in-process':'warn',paid:'ok',denied:'bad',rejected:'bad'}[s]||'info';
+  }
+
+  /* adjust a charge */
+  document.addEventListener('click',async function(ev){
+    var be=ev.target.closest('[data-bedit]');if(!be)return;
+    var e=await RFStore.encounter(+be.dataset.bedit);if(!e)return;
+    EDIT_BILL=e.id;
+    var r=charges().filter(function(x){return String(x.enc.id)===String(e.id);})[0];
+    if(!r)return;
+    $('bilSubT').textContent=fmtD(r.dos)+' · '+r.lines.map(function(l){return l.cpt;}).join(', ');
+    $('b_resp').value=r.resp;
+    $('b_pos').innerHTML=RFCodes.pos.map(function(p){
+      return '<option value="'+p.code+'"'+(r.pos===p.code?' selected':'')+'>'+p.code+' — '+p.desc+'</option>';}).join('');
+    $('b_fee').value=r.fee.toFixed(2);
+    $('b_pat').value=r.patResp.toFixed(2);
+    $('b_paid').value=r.patPaid.toFixed(2);
+    $('b_wo').value=r.wo.toFixed(2);
+    $('b_inspaid').value=r.insPaid.toFixed(2);
+    previewBill();
+    openM('mBill');
+  });
+
+  function previewBill(){
+    var fee=num($('b_fee').value),pat=num($('b_pat').value),
+        paid=num($('b_paid').value),wo=num($('b_wo').value),ip=num($('b_inspaid').value);
+    if($('b_resp').value==='self'){pat=fee-wo;$('b_pat').value=pat.toFixed(2);}
+    var insResp=Math.max(0,fee-pat-wo);
+    var out=Math.max(0,pat-paid)+Math.max(0,insResp-ip);
+    $('b_prevText').innerHTML='Fee <b>'+money(fee)+'</b> · patient <b>'+money(Math.max(0,pat-paid))+
+      '</b> · insurance <b>'+money(Math.max(0,insResp-ip))+'</b> · write-off <b>'+money(wo)+
+      '</b> · outstanding <b>'+money(out)+'</b>';
+  }
+  ['b_resp','b_fee','b_pat','b_paid','b_wo','b_inspaid'].forEach(function(id){
+    var el=$(id);if(el)el.addEventListener('input',previewBill);
+    if(el)el.addEventListener('change',previewBill);
+  });
+
+  $('bilSave').addEventListener('click',async function(){
+    if(!EDIT_BILL)return;
+    var e=await RFStore.encounter(EDIT_BILL);if(!e)return;
+    var before=(e.billing||{});
+    e.pos=$('b_pos').value;
+    e.billing={
+      resp:$('b_resp').value,
+      pat_resp:num($('b_pat').value),
+      pat_paid:num($('b_paid').value),
+      writeoff:num($('b_wo').value),
+      ins_paid:num($('b_inspaid').value)
+    };
+    /* changing the fee rewrites the first line so the claim stays truthful */
+    var newFee=num($('b_fee').value);
+    var curFee=(e.lines||[]).reduce(function(x,l){return x+(l.fee||0)*(l.units||1);},0);
+    if(Math.abs(newFee-curFee)>0.004 && e.lines.length){
+      var diff=newFee-curFee;
+      e.lines[0].fee=Math.max(0,num(e.lines[0].fee)+diff/(e.lines[0].units||1));
+    }
+    await RFStore.saveEncounter(e);
+    var bits=[];
+    if(before.resp!==e.billing.resp)bits.push('responsibility → '+(e.billing.resp==='self'?'self pay':'insurance'));
+    if(Math.abs(newFee-curFee)>0.004)bits.push('fee '+money(curFee)+' → '+money(newFee));
+    if(num(before.pat_paid)!==e.billing.pat_paid)bits.push('patient paid '+money(e.billing.pat_paid));
+    if(num(before.writeoff)!==e.billing.writeoff)bits.push('write-off '+money(e.billing.writeoff));
+    await RFStore.logHistory(P.id,'fee_edited',
+      fmtShort(e.dos)+' · '+(bits.length?bits.join(' · '):'balances adjusted'));
+    ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);
+    closeM();paintBilling();paintHistory();
+    toast('Charge updated',fmtShort(e.dos));
+    EDIT_BILL=null;
+  });
+
+  /* ══════════ CLAIM ══════════ */
+  function claimDraft(e){
+    var r=charges().filter(function(x){return String(x.enc.id)===String(e.id);})[0];
+    var ins=(P.insurances||[]).filter(function(x){return x.rank==='1';})[0]||{};
+    var prov=PROVS.filter(function(x){return String(x.id)===String(e.clinician_id);})[0]||PROVS[0]||{};
+    return {
+      enc_id:e.id, appt_id:e.appt_id, form:'CMS-1500',
+      dos:e.dos, pos:e.pos||'11',
+      patient_ref:P.id, patient_first:P.first_name, patient_last:P.last_name,
+      patient_dob:P.dob, patient_mid:P.internal_id,
+      payer:ins.name||'', payer_id:ins.payer_id||'',
+      member_id:ins.member_id||P.member_id||'', group_id:ins.group_no||'',
+      prior_auth:ins.auth_no||'', referral:ins.referral_no||'',
+      provider_id:prov.id||null, provider_name:e.clinician||prov.full_name||'',
+      provider_npi:prov.npi||'',
+      org_id:ORG?ORG.id:null, org_name:ORG?ORG.name:'', org_npi:(ORG&&ORG.npi)||'',
+      tax_id:(ORG&&ORG.tax_id)||'',
+      dx:(e.lines||[]).map(function(l){return l.dx;}).filter(Boolean)
+         .filter(function(v,i,a){return a.indexOf(v)===i;}),
+      lines:(e.lines||[]).map(function(l){
+        return {from:e.dos,to:e.dos,pos:e.pos||'11',cpt:l.cpt,mod:l.mod||'',
+                dx:'A',units:l.units||1,charge:l.fee||0};
+      }),
+      total:r?r.fee:0,
+      status:'draft'
+    };
+  }
+
+  function claimHTML(c){
+    var L=c.lines||[],dx=c.dx||[];
+    function fc(n,label,val,w){
+      return '<div class="fc'+(w?' '+w:'')+'"><u>'+n+'. '+label+'</u><span>'+
+        esc(val==null||val===''?'—':val)+'</span></div>';
+    }
+    return '<div class="paper" style="position:relative">'+
+      (c.status&&c.status!=='draft'
+        ?'<span class="stamp">'+String(c.status).toUpperCase()+'</span>':'')+
+      '<div class="frm-h"><b>HEALTH INSURANCE CLAIM FORM</b>'+
+        '<small>APPROVED BY NUCC 02/12 · '+esc(c.claim_no||'DRAFT')+'</small></div>'+
+      '<div class="fbox">'+
+        '<div class="fr">'+fc('1','INSURANCE PLAN',c.payer,'w2')+fc('1a',"INSURED'S I.D.",c.member_id,'w2')+'</div>'+
+        '<div class="fr">'+fc('2','PATIENT NAME',c.patient_last+', '+c.patient_first,'w2')+
+          fc('3','BIRTH DATE',c.patient_dob?fmtShort(c.patient_dob):'')+
+          fc('11','GROUP NUMBER',c.group_id)+'</div>'+
+        '<div class="fr">'+fc('5','PATIENT ADDRESS',P.address,'w3')+
+          fc('6','RELATIONSHIP',P.relationship||'Self')+'</div>'+
+        '<div class="fr">'+fc('21','DIAGNOSIS (ICD-10)',
+            dx.length?dx.map(function(d,i){return String.fromCharCode(65+i)+'. '+d;}).join('   '):'','w3')+
+          fc('23','PRIOR AUTH',c.prior_auth)+'</div>'+
+      '</div>'+
+      '<table class="svct"><thead><tr>'+
+        '<th style="width:15%">24A. DATE</th><th style="width:7%">24B. POS</th>'+
+        '<th style="width:26%">24D. PROCEDURE</th><th style="width:8%">24E. DX</th>'+
+        '<th style="width:14%">24F. CHARGES</th><th style="width:8%">24G. UNITS</th>'+
+        '<th style="width:22%">24J. NPI</th></tr></thead><tbody>'+
+      L.map(function(l){
+        return '<tr><td>'+fmtShort(l.from||c.dos)+'</td><td>'+esc(l.pos||'11')+'</td>'+
+          '<td>'+esc(l.cpt)+(l.mod?' · '+esc(l.mod):'')+
+            '<div style="font-weight:400;font-size:8.6px;color:#555">'+esc(RFCodes.cptDesc(l.cpt))+'</div></td>'+
+          '<td>'+esc(l.dx||'A')+'</td><td>'+money((+l.charge||0)*(+l.units||1))+'</td>'+
+          '<td>'+(l.units||1)+'</td><td>'+esc(c.provider_npi||'—')+'</td></tr>';
+      }).join('')+'</tbody></table>'+
+      '<div class="fbox" style="margin-top:-1px">'+
+        '<div class="fr">'+fc('25','FEDERAL TAX I.D.',c.tax_id)+
+          fc('26','PATIENT ACCOUNT',c.patient_mid)+
+          fc('27','ACCEPT ASSIGNMENT','YES')+
+          fc('28','TOTAL CHARGE',money(c.total))+'</div>'+
+        '<div class="fr">'+fc('31','SIGNATURE OF PHYSICIAN',
+            c.provider_name+' · '+fmtShort(c.dos),'w2')+
+          fc('33','BILLING PROVIDER',c.org_name+' · NPI '+(c.org_npi||'—'),'w2')+'</div>'+
+      '</div></div>';
+  }
+
+  document.addEventListener('click',async function(ev){
+    var mk=ev.target.closest('[data-mkclaim]'),cv=ev.target.closest('[data-cview]');
+
+    if(mk){
+      var e=await RFStore.encounter(+mk.dataset.mkclaim);if(!e)return;
+      var d=claimDraft(e);
+      if(!d.payer){toast('No insurance on file','Add a policy, or set the charge to self pay',true);return;}
+      CLAIM_CTX={draft:d,saved:null};
+      $('clTitle').textContent='Claim for review';
+      $('clSub').textContent=fmtD(d.dos)+' · '+d.payer+' · '+money(d.total);
+      $('clBody').innerHTML=claimHTML(d);
+      $('clSubmit').hidden=false;
+      $('clSubmit').innerHTML='<svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg>Submit claim';
+      openM('mClaim');
+      return;
+    }
+
+    if(cv){
+      var c=await RFStore.claim(+cv.dataset.cview);if(!c)return;
+      CLAIM_CTX={draft:null,saved:c};
+      $('clTitle').textContent=c.claim_no;
+      $('clSub').textContent=fmtD(c.dos)+' · '+(c.payer||'')+' · '+(c.status||'submitted').toUpperCase();
+      $('clBody').innerHTML=claimHTML(c);
+      $('clSubmit').hidden=true;
+      openM('mClaim');
+      return;
+    }
+  });
+
+  $('clPrint').addEventListener('click',function(){window.print();});
+
+  /* edit fields before submitting */
+  var CE_FIELDS=[
+    ['payer','Payer name'],['member_id',"Insured's ID"],['group_id','Group number'],
+    ['prior_auth','Prior authorisation'],['pos','Place of service'],
+    ['provider_name','Rendering provider'],['provider_npi','Rendering NPI'],
+    ['org_name','Billing provider'],['org_npi','Billing NPI'],['tax_id','Federal tax ID']
+  ];
+  $('clEdit').addEventListener('click',function(){
+    var c=(CLAIM_CTX&&(CLAIM_CTX.draft||CLAIM_CTX.saved));if(!c)return;
+    $('ceSub').textContent=fmtD(c.dos)+' · '+(c.claim_no||'draft');
+    $('ceGrid').innerHTML=CE_FIELDS.map(function(f){
+      return '<label class="f"><span>'+esc(f[1])+'</span>'+
+        '<input type="text" id="ce_'+f[0]+'" value="'+esc(c[f[0]]||'')+'"></label>';
+    }).join('')+
+      '<label class="f full"><span>Diagnosis codes</span>'+
+        '<input type="text" id="ce_dx" value="'+esc((c.dx||[]).join(', '))+'" style="text-transform:uppercase"></label>';
+    openM('mClaimEdit');
+  });
+
+  $('ceSave').addEventListener('click',function(){
+    var c=(CLAIM_CTX&&(CLAIM_CTX.draft||CLAIM_CTX.saved));if(!c)return;
+    CE_FIELDS.forEach(function(f){
+      var el=$('ce_'+f[0]);if(el)c[f[0]]=el.value.trim();
+    });
+    c.dx=$('ce_dx').value.split(',').map(function(x){return x.trim().toUpperCase();}).filter(Boolean);
+    (c.lines||[]).forEach(function(l){l.pos=c.pos||l.pos;});
+    closeM();
+    setTimeout(function(){
+      $('clBody').innerHTML=claimHTML(c);
+      $('clSub').textContent=fmtD(c.dos)+' · '+(c.payer||'')+' · '+money(c.total);
+      openM('mClaim');
+      toast('Claim updated','Review and submit when ready');
+    },240);
+  });
+
+  $('clSubmit').addEventListener('click',async function(){
+    var d=CLAIM_CTX&&CLAIM_CTX.draft;if(!d)return;
+    this.disabled=true;
+    d.status='submitted';
+    var r=await RFStore.saveClaim(d);
+    this.disabled=false;
+    if(!r.ok){toast('Could not submit',r.error||'',true);return;}
+    await RFStore.logHistory(P.id,'claim_submitted',
+      r.claim_no+' · '+fmtShort(d.dos)+' · '+money(d.total)+' to '+d.payer);
+    var all=await RFStore.claims({});
+    CLAIMS=all.filter(function(c){return String(c.patient_ref)===String(P.id);});
+    HIST=await RFStore.history(P.id);
+    closeM();paintBilling();paintFiles();paintHistory();
+    toast('Claim '+r.claim_no+' submitted','Now in the Claims queue');
+  });
+
+  /* ══════════ FILES ══════════ */
+  function saveFiles(){try{localStorage.setItem(FKEY+P.id,JSON.stringify(FILES));}catch(e){}}
+
+  function paintFiles(){
+    var auto=CLAIMS.map(function(c){
+      return {name:c.claim_no+' · CMS-1500.pdf',kind:'claim',date:c.dos,
+              by:c.created_name||c.created_by,tag:'AUTO',cid:c.id,size:'32 KB'};
+    });
+    var all=auto.concat(FILES).sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+    $('nFil').textContent=all.length;
+    $('filSub').textContent=all.length?(all.length+' FILE'+(all.length===1?'':'S')):'';
+    if(!all.length){
+      $('filList').innerHTML='<div class="empty">'+
+        '<svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg><br>'+
+        '<b>No files yet</b>Upload charts, referrals or insurance cards. '+
+        'Claim forms are filed here automatically.</div>';
+      return;
+    }
+    var ICO={claim:'claim',insurance:'ins',chart:'chart',referral:'ref'};
+    $('filList').innerHTML=all.map(function(f,i){
+      return '<div class="fitem" style="animation-delay:'+Math.min(.4,i*.03)+'s"'+
+        (f.cid?' data-cview="'+f.cid+'" style="cursor:pointer"':'')+'>'+
+        '<span class="fico '+(ICO[f.kind]||'')+'"><svg viewBox="0 0 24 24">'+
+          '<path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M15 4v4h4"/></svg></span>'+
+        '<span class="finfo"><b>'+esc(f.name)+'</b>'+
+          '<small>'+fmtShort(f.date)+' · '+esc(f.by||'')+' · '+esc(f.size||'')+'</small></span>'+
+        '<span class="pill '+(f.tag==='AUTO'?'ok':'off')+'">'+esc(f.tag||'FILE')+'</span>'+
+        (f.tag==='AUTO'?'':'<button class="ib del" data-frm="'+FILES.indexOf(f)+'">'+
+          '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>')+
+        '</div>';
+    }).join('');
+  }
+
+  function guessKind(n){
+    n=n.toLowerCase();
+    if(/insur|card|policy/.test(n))return 'insurance';
+    if(/refer/.test(n))return 'referral';
+    if(/chart|note|record|demo/.test(n))return 'chart';
+    return 'chart';
+  }
+  async function addFiles(list){
+    for(var i=0;i<list.length;i++){
+      var f=list[i];
+      FILES.unshift({
+        name:f.name,kind:guessKind(f.name),date:today(),
+        by:SESS?(SESS.name||SESS.username):'—',tag:'UPLOAD',
+        size:(f.size<1024?f.size+' B':f.size<1048576?Math.round(f.size/1024)+' KB':
+              (f.size/1048576).toFixed(1)+' MB')
+      });
+      await RFStore.logHistory(P.id,'file_uploaded',f.name);
+    }
+    saveFiles();
+    HIST=await RFStore.history(P.id);
+    paintFiles();paintHistory();
+    toast(list.length+' file'+(list.length===1?'':'s')+' uploaded','Filed against this chart');
+  }
+  $('drop').addEventListener('click',function(){$('fileIn').click();});
+  $('upBtn').addEventListener('click',function(){
+    document.querySelector('.tab[data-t="files"]').click();
+    setTimeout(function(){$('fileIn').click();},260);
+  });
+  $('fileIn').addEventListener('change',function(){if(this.files.length)addFiles(this.files);this.value='';});
+  ['dragenter','dragover'].forEach(function(k){
+    $('drop').addEventListener(k,function(e){e.preventDefault();this.classList.add('over');});});
+  ['dragleave','drop'].forEach(function(k){
+    $('drop').addEventListener(k,function(e){e.preventDefault();this.classList.remove('over');});});
+  $('drop').addEventListener('drop',function(e){
+    if(e.dataTransfer&&e.dataTransfer.files.length)addFiles(e.dataTransfer.files);});
+  document.addEventListener('click',async function(e){
+    var b=e.target.closest('[data-frm]');if(!b)return;
+    e.stopPropagation();
+    var f=FILES.splice(+b.dataset.frm,1)[0];
+    saveFiles();
+    if(f)await RFStore.logHistory(P.id,'file_removed',f.name);
+    HIST=await RFStore.history(P.id);
+    paintFiles();paintHistory();
+  });
+
+  /* ══════════ HISTORY ══════════ */
+  var HICO={
+    created:['g','<path d="M12 5v14M5 12h14"/>'],
+    demographics_edited:['b','<path d="M4 20h4l10-10-4-4L4 16z"/>'],
+    insurance_added:['g','<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/>'],
+    insurance_updated:['b','<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/>'],
+    insurance_swapped:['b','<path d="M7 8h13l-3-3M17 16H4l3 3"/>'],
+    encounter_line_added:['g','<path d="M12 5v14M5 12h14"/>'],
+    encounter_line_removed:['c','<path d="M6 6l12 12M18 6L6 18"/>'],
+    encounter_locked:['g','<rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8 11V8a4 4 0 018 0v3"/>'],
+    encounter_unlocked:['a','<rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8 11V8a4 4 0 018 0"/>'],
+    fee_edited:['a','<path d="M4 20h4l10-10-4-4L4 16z"/>'],
+    claim_submitted:['g','<path d="M5 12h13M13 6l6 6-6 6"/>'],
+    file_uploaded:['b','<path d="M12 16V4M7 9l5-5 5 5"/>'],
+    file_removed:['c','<path d="M6 6l12 12M18 6L6 18"/>']
+  };
+  function paintHistory(){
+    $('hisSub').textContent=HIST.length?(HIST.length+' EVENT'+(HIST.length===1?'':'S')):'';
+    if(!HIST.length){
+      $('hisList').innerHTML='<div class="empty">'+
+        '<svg viewBox="0 0 24 24" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><br>'+
+        '<b>Nothing recorded yet</b>Edits to this chart are logged here with who made them.</div>';
+      return;
+    }
+    $('hisList').innerHTML=HIST.map(function(h,i){
+      var ic=HICO[h.what]||['b','<circle cx="12" cy="12" r="9"/>'];
+      return '<div class="hrow" style="animation-delay:'+Math.min(.4,i*.03)+'s">'+
+        '<span class="hdot '+ic[0]+'"><svg viewBox="0 0 24 24">'+ic[1]+'</svg></span>'+
+        '<span class="hbody2"><b>'+esc(String(h.what||'').replace(/_/g,' '))+'</b>'+
+          (h.detail?'<p>'+esc(h.detail)+'</p>':'')+
+          '<small>'+fmtTS(h.at)+' · '+esc(h.by||'')+'</small></span></div>';
+    }).join('');
+  }
+
+  /* insurance edit / delete */
+  document.addEventListener('click',async function(e){
+    var ed=e.target.closest('[data-iedit]'),rm=e.target.closest('[data-idel]');
+    if(ed){
+      EDIT_INS=+ed.dataset.iedit;
+      var x=P.insurances[EDIT_INS];if(!x)return;
+      $('insTitle').textContent='Edit policy';
+      $('i_rank').value=x.rank||'1';$('i_name').value=x.name||'';
+      $('i_payer').value=x.payer_id||'';$('i_member').value=x.member_id||'';
+      $('i_group').value=x.group_no||'';$('i_gname').value=x.group_name||'';
+      $('i_plan').value=x.plan_no||'';$('i_eff').value=x.effective||'';
+      $('i_term').value=x.term||'';$('i_cov').value=x.coverage||'';
+      $('i_copay').value=x.copay||'';$('i_coins').value=x.coinsurance||'';
+      $('i_auth').value=x.auth_no||'';$('i_referral').value=x.referral_no||'';
+      $('i_phone').value=x.phone||'';$('i_addr').value=x.address||'';
+      openM('mIns');return;
+    }
+    if(rm){
+      var i=+rm.dataset.idel,pol=P.insurances[i];
+      if(!confirm('Remove '+pol.name+' from this chart?'))return;
+      P.insurances.splice(i,1);
+      await RFStore.savePatientRec(P);
+      await RFStore.logHistory(P.id,'insurance_removed',pol.name+' · '+RANKL[pol.rank]);
+      HIST=await RFStore.history(P.id);
+      paintHeader();paintInsurance();paintBilling();paintHistory();
+      toast('Policy removed',pol.name);
+    }
+  });
+
+})();
+</script>
+
+</body>
+</html>

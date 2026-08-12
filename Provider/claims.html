@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claims — ReviFlow</title>
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/logo-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_prefs.css">
+<script src="_prefs.js"></script>
+<script src="../_notify.js"></script>
+<script src="../_store.js"></script>
+<script src="../_session.js"></script>
+<style>
+
+:root{
+  --paper:#FBFAF6;--paper-2:#F4F2EC;--ink:#0E1A17;--muted:#606E6A;--dim:#8A9A97;
+  --line:rgba(14,26,23,.09);--line-2:rgba(14,26,23,.16);
+  --accent:#0E9D73;--accent-soft:#E4F5EE;--accent-deep:#0B3D31;
+  --indigo:#5A6CFF;--indigo-soft:#EDEFFF;--amber:#B8791A;--amber-soft:#FBF0DC;
+  --danger:#C4573B;--danger-soft:#FBEAE5;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{min-height:100vh;background:var(--paper);color:var(--ink);font-family:'Manrope',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden;display:flex;flex-direction:column}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select{font:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:8px}
+
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg .dots{position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,rgba(14,26,23,.10) 1px,transparent 0);background-size:28px 28px;-webkit-mask-image:radial-gradient(110% 74% at 50% 0%,#000,transparent 70%);mask-image:radial-gradient(110% 74% at 50% 0%,#000,transparent 70%)}
+.bg .bloom{position:absolute;top:-28%;left:50%;transform:translateX(-50%);width:min(1040px,104vw);height:min(700px,74vw);border-radius:50%;filter:blur(84px);background:radial-gradient(circle,rgba(14,157,115,.16),rgba(14,157,115,.05) 46%,transparent 70%);animation:breathe 13s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.85;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.05)}}
+.bg .bloom2{position:absolute;bottom:-34%;right:-13%;width:min(560px,64vw);height:min(560px,64vw);border-radius:50%;filter:blur(64px);background:radial-gradient(circle,rgba(90,108,255,.11),transparent 68%)}
+
+.hdr{position:relative;z-index:3;display:flex;align-items:center;gap:14px;padding:clamp(14px,2vw,22px) clamp(16px,3.2vw,42px);border-bottom:1px solid var(--line);background:rgba(251,250,246,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.brand{display:flex;align-items:center;gap:9px}.brand svg{width:24px;height:24px}
+.brand span{font-family:'Sora',sans-serif;font-size:15.5px;font-weight:600;letter-spacing:-.035em}
+.brand em{font-style:normal;color:var(--accent);font-weight:400;font-size:.9em;margin-left:4px}
+.crumb{margin-left:14px;padding-left:14px;border-left:1px solid var(--line-2);font-size:13px;color:var(--muted)}
+.crumb b{color:var(--ink);font-weight:600}
+.hactions{margin-left:auto;display:flex;gap:9px;align-items:center}
+.rf-who{font-family:var(--mono);font-size:10.4px;color:var(--muted)}
+.hbtn{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:99px;border:1px solid var(--line-2);background:rgba(255,255,255,.66);font-size:13px;font-weight:600;white-space:nowrap;transition:all .32s var(--ease)}
+.hbtn svg{width:15px;height:15px;stroke:var(--accent);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.hbtn:hover{border-color:var(--accent);background:#fff}
+.hbtn.out:hover{border-color:var(--danger);background:rgba(196,87,59,.07);color:#9E4029}
+.hbtn.out:hover svg{stroke:var(--danger)}
+
+.wrap{position:relative;z-index:2;flex:1;width:100%;max-width:1180px;margin:0 auto;padding:clamp(20px,3vw,38px) clamp(16px,3.2vw,42px) clamp(40px,5vw,70px)}
+.ptop{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:clamp(18px,2.4vw,26px);opacity:0;transform:translateY(16px);animation:up .8s var(--ease) .08s forwards}
+@keyframes up{to{opacity:1;transform:none}}
+.ptop>div:first-child{flex:1;min-width:270px}
+.kick{display:inline-flex;align-items:center;gap:8px;padding:5px 13px;border-radius:99px;border:1px solid var(--line-2);background:rgba(255,255,255,.7);font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:13px}
+.kick i{width:5px;height:5px;border-radius:50%;background:var(--indigo);animation:blip 2.2s infinite}
+@keyframes blip{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.75)}}
+.ptop h1{font-family:'Sora',sans-serif;font-size:clamp(24px,3.2vw,36px);line-height:1.08;font-weight:600;letter-spacing:-.04em;margin-bottom:9px}
+.ptop h1 em{font-style:normal;color:var(--accent)}
+.ptop p{font-size:13.6px;line-height:1.62;color:var(--muted);max-width:58ch}
+.ptop .cta{margin-left:auto;flex:none;display:flex;gap:9px;flex-wrap:wrap;padding-top:4px}
+.btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:8px;padding:11px 19px;border-radius:12px;font-size:13.2px;font-weight:600;white-space:nowrap;transition:all .34s var(--ease)}
+.btn svg{width:15px;height:15px;fill:none;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.btn.pri{background:var(--accent-deep);color:#F2FBF7;box-shadow:0 12px 26px -14px rgba(11,61,49,.9)}
+.btn.pri svg{stroke:#F2FBF7}
+.btn.pri:hover{background:var(--accent);transform:translateY(-2px)}
+.btn.pri:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn.sec{border:1px solid var(--line-2);background:rgba(255,255,255,.7)}
+.btn.sec svg{stroke:var(--accent)}
+.btn.sec:hover{border-color:var(--accent);background:#fff;transform:translateY(-2px)}
+
+.tools{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:16px;opacity:0;transform:translateY(16px);animation:up .8s var(--ease) .14s forwards}
+.search{position:relative;flex:1;min-width:200px;max-width:320px;display:flex;align-items:center}
+.search input{width:100%;padding:10px 13px 10px 36px;border-radius:11px;border:1px solid var(--line-2);background:rgba(255,255,255,.8);font-size:13px}
+.search input:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(14,157,115,.13)}
+.search svg{position:absolute;left:12px;width:15px;height:15px;stroke:var(--muted);fill:none;stroke-width:2;pointer-events:none}
+.sel{padding:10px 32px 10px 13px;border-radius:11px;border:1px solid var(--line-2);background:rgba(255,255,255,.8);font-size:12.6px;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23606E6A' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 12px center}
+.sel:focus{outline:none;border-color:var(--accent)}
+.tools .sp{flex:1}
+.cnt{font-family:var(--mono);font-size:10.6px;color:var(--muted);padding:9px 13px;border-radius:99px;background:rgba(255,255,255,.72);border:1px solid var(--line-2)}
+
+/* ═══ batch cards ═══ */
+.batch{background:#fff;border:1px solid var(--line-2);border-radius:16px;margin-bottom:12px;overflow:hidden;
+  box-shadow:0 16px 40px -34px rgba(11,61,49,.4);opacity:0;transform:translateY(16px);
+  animation:up .7s var(--ease) forwards;transition:border-color .34s var(--ease),box-shadow .34s var(--ease)}
+.batch:hover{border-color:rgba(14,157,115,.35);box-shadow:0 22px 46px -30px rgba(11,61,49,.45)}
+.bhead{display:flex;align-items:center;gap:13px;padding:15px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.bico{width:36px;height:36px;flex:none;border-radius:11px;display:grid;place-items:center;background:var(--indigo-soft)}
+.bico svg{width:17px;height:17px;stroke:var(--indigo);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.batch.done .bico{background:var(--accent-soft)}.batch.done .bico svg{stroke:var(--accent-deep)}
+.batch.failed .bico{background:var(--danger-soft)}.batch.failed .bico svg{stroke:var(--danger)}
+.bid{min-width:0;flex:1}
+.bid b{display:block;font-family:'Sora',sans-serif;font-size:14.4px;font-weight:600;letter-spacing:-.028em;line-height:1.3}
+.bid small{display:block;font-family:var(--mono);font-size:9.8px;color:var(--dim);margin-top:3px}
+.bstat{padding:5px 12px;border-radius:8px;font-size:10.6px;font-weight:700;white-space:nowrap}
+.bstat.done{background:var(--accent-soft);color:var(--accent-deep)}
+.bstat.run{background:var(--indigo-soft);color:var(--indigo)}
+.bstat.failed{background:var(--danger-soft);color:var(--danger)}
+
+.bgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--line)}
+.bgrid>div{background:#fff;padding:13px 16px;min-width:0}
+.bgrid dt{font-size:9.4px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:5px;white-space:nowrap}
+.bgrid dd{font-family:'Sora',sans-serif;font-size:16px;font-weight:600;letter-spacing:-.03em;line-height:1.15}
+.bgrid dd.sm{font-family:'Manrope',sans-serif;font-size:12.6px;font-weight:500;letter-spacing:0}
+.bgrid dd.mono{font-family:var(--mono);font-size:11.6px;font-weight:500}
+.bgrid dd.ok{color:var(--accent-deep)}
+.bgrid dd.warn{color:var(--amber)}
+.bgrid dd.bad{color:var(--danger)}
+
+.bsum{padding:14px 18px;border-top:1px solid var(--line);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.bar{flex:1;min-width:180px;height:9px;border-radius:99px;background:#EDF1EF;overflow:hidden;display:flex}
+.bar i{height:100%;transition:width .9s var(--ease)}
+.bar i.a{background:linear-gradient(90deg,var(--accent),#2FBF93)}
+.bar i.n{background:#C3CBC8}
+.bar i.e{background:var(--danger)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:9.8px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:8px;height:8px;border-radius:3px}
+
+.bfiles{display:flex;gap:8px;flex-wrap:wrap;padding:13px 18px;border-top:1px solid var(--line);background:var(--paper-2)}
+.fchip{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:9px;border:1px solid var(--line-2);
+  background:#fff;font-family:var(--mono);font-size:10.2px;font-weight:600;transition:all .3s var(--ease)}
+.fchip svg{width:13px;height:13px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fchip:hover{transform:translateY(-2px);box-shadow:0 10px 20px -12px rgba(11,61,49,.6)}
+.fchip.in{color:var(--muted)}.fchip.in svg{stroke:var(--muted)}
+.fchip.out{color:var(--accent-deep);border-color:rgba(14,157,115,.34)}
+.fchip.out svg{stroke:var(--accent-deep)}
+.fchip.out:hover{background:var(--accent-soft)}
+.fchip.del{margin-left:auto;color:var(--danger);border-color:rgba(196,87,59,.3)}
+.fchip.del svg{stroke:var(--danger)}
+.fchip.del:hover{background:var(--danger-soft)}
+
+.empty{padding:60px 20px;text-align:center;color:var(--dim);font-size:13px;line-height:1.7}
+.empty svg{width:32px;height:32px;stroke:var(--dim);fill:none;stroke-width:1.7;margin-bottom:12px}
+.empty b{font-family:'Sora',sans-serif;font-size:16px;color:var(--ink)}
+
+/* ═══ modal ═══ */
+.scrim{position:fixed;inset:0;z-index:90;background:rgba(14,26,23,.34);backdrop-filter:blur(7px);opacity:0;visibility:hidden;transition:all .34s var(--ease)}
+.scrim.on{opacity:1;visibility:visible}
+.modal{position:fixed;z-index:91;left:50%;top:50%;width:min(620px,calc(100vw - 24px));max-height:calc(100vh - 48px);overflow:auto;
+  transform:translate(-50%,-46%) scale(.96);opacity:0;visibility:hidden;
+  background:rgba(255,255,255,.6);backdrop-filter:blur(26px) saturate(180%);
+  border:1px solid rgba(255,255,255,.66);border-radius:20px;
+  box-shadow:0 40px 90px -30px rgba(14,26,23,.55);transition:all .4s var(--ease)}
+.modal.on{opacity:1;visibility:visible;transform:translate(-50%,-50%) scale(1)}
+.mhead{display:flex;align-items:center;gap:12px;padding:17px 20px;border-bottom:1px solid rgba(14,26,23,.1)}
+.mhead .mi{width:34px;height:34px;flex:none;border-radius:11px;background:var(--accent-soft);display:grid;place-items:center}
+.mhead .mi svg{width:17px;height:17px;stroke:var(--accent-deep);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mhead h3{font-family:'Sora',sans-serif;font-size:15.6px;font-weight:600;letter-spacing:-.032em}
+.mhead p{font-size:11.6px;color:var(--muted);margin-top:2px}
+.mclose{margin-left:auto;width:31px;height:31px;border-radius:9px;display:grid;place-items:center;color:var(--muted);transition:all .3s var(--ease)}
+.mclose svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.3;stroke-linecap:round}
+.mclose:hover{background:rgba(255,255,255,.8);transform:rotate(90deg)}
+.mbody{padding:19px 20px}
+.fg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.f{display:block}
+.f>span{display:flex;align-items:center;gap:6px;font-size:11.2px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.f select{width:100%;padding:10px 30px 10px 12px;border-radius:10px;border:1px solid rgba(14,26,23,.16);background:rgba(255,255,255,.76);font-size:12.8px;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23606E6A' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 11px center}
+.f select:focus{outline:none;border-color:var(--accent);background-color:#fff}
+.drop{padding:28px 18px;border-radius:14px;border:2px dashed rgba(14,26,23,.18);background:rgba(255,255,255,.55);text-align:center;cursor:pointer;transition:all .34s var(--ease)}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop.has{border-style:solid;border-color:var(--accent);background:var(--accent-soft)}
+.drop .di{width:42px;height:42px;margin:0 auto 12px;border-radius:13px;background:var(--accent-soft);display:grid;place-items:center;transition:transform .4s var(--ease)}
+.drop:hover .di{transform:translateY(-3px) scale(1.06)}
+.drop .di svg{width:21px;height:21px;stroke:var(--accent-deep);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.drop b{display:block;font-size:13.4px;font-weight:600;margin-bottom:4px;word-break:break-all}
+.drop small{font-size:11.2px;color:var(--muted)}
+.subhead{display:flex;align-items:center;gap:9px;margin:18px 0 11px;font-size:10.2px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.subhead::after{content:'';flex:1;height:1px;background:rgba(14,26,23,.12)}
+.prevwrap{overflow-x:auto;border:1px solid var(--line-2);border-radius:11px}
+.prev{width:100%;border-collapse:collapse;font-size:11.4px}
+.prev th{text-align:left;padding:9px 11px;font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);background:var(--paper-2);border-bottom:1px solid var(--line-2);white-space:nowrap}
+.prev td{padding:9px 11px;border-bottom:1px solid var(--line);white-space:nowrap}
+.prev tr:last-child td{border-bottom:none}
+.prevnote{font-family:var(--mono);font-size:9.8px;color:var(--dim);margin-top:8px}
+.hint{margin-top:14px;padding:12px 14px;border-radius:11px;background:var(--indigo-soft);border:1px solid rgba(90,108,255,.22);font-size:11.6px;line-height:1.6;color:#3A45B8;display:flex;gap:10px}
+.hint svg{width:15px;height:15px;stroke:var(--indigo);fill:none;stroke-width:2;flex:none;margin-top:1px}
+.hint.warn{background:var(--danger-soft);border-color:rgba(196,87,59,.24);color:#9E4029}
+.hint.warn svg{stroke:var(--danger)}
+.mfoot{display:flex;gap:9px;padding:15px 20px;border-top:1px solid rgba(14,26,23,.1);background:rgba(255,255,255,.36)}
+.mfoot .sp{flex:1}
+
+.prog{height:10px;border-radius:99px;background:#EDF1EF;overflow:hidden;margin-bottom:12px}
+.prog i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--accent-deep),#2FBF93);transition:width .35s var(--ease)}
+.progtxt{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px}
+.livegrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.livegrid>div{background:rgba(255,255,255,.8);padding:12px 13px}
+.livegrid dt{font-size:9.2px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+.livegrid dd{font-family:'Sora',sans-serif;font-size:19px;font-weight:600;letter-spacing:-.03em}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:95;display:flex;align-items:center;gap:12px;padding:14px 19px;border-radius:13px;background:var(--accent-deep);color:#F2FBF7;box-shadow:0 22px 44px -20px rgba(11,61,49,.9);opacity:0;pointer-events:none;transition:all .45s var(--ease);max-width:calc(100vw - 30px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast svg{width:17px;height:17px;stroke:#7BE8C0;fill:none;stroke-width:2.4;flex:none}
+.toast b{display:block;font-size:13px;font-weight:600}
+.toast small{display:block;font-size:11px;color:rgba(242,251,247,.74);margin-top:2px}
+
+@media (max-width:1000px){.bgrid{grid-template-columns:repeat(3,minmax(0,1fr))}.crumb{display:none}}
+@media (max-width:640px){
+  .bgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fg{grid-template-columns:minmax(0,1fr)}
+  .livegrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ptop .cta{width:100%;margin-left:0}.ptop .cta .btn{flex:1;justify-content:center}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}.batch,.ptop,.tools{opacity:1;transform:none}}
+
+
+/* --rf-logo-styled */
+img.mk{width:30px;height:30px;flex:none;border-radius:9px;object-fit:contain;
+  background:transparent;box-shadow:none;padding:0;display:block}
+img.brandmark{width:26px;height:26px;flex:none;object-fit:contain;display:block}
+.crest img{width:100%;height:100%;object-fit:contain;display:block}
+.crest{background:none!important;box-shadow:none!important;padding:4px}
+.inv-h .lg img,.lg img{width:100%;height:100%;object-fit:contain;display:block}
+.inv-h .lg,.lg{background:transparent!important;padding:2px}
+
+/* rf-logomark-styled */
+img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
+  background:transparent!important;border:none!important;box-shadow:none!important}
+
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(10px,1.2vw,15px);margin-bottom:16px}
+.kpi{padding:15px 17px;background:#fff;border:1px solid var(--line-2);border-radius:16px;
+  box-shadow:0 16px 40px -34px rgba(11,61,49,.4);opacity:0;transform:translateY(16px);
+  animation:up .7s var(--ease) forwards;transition:transform .35s var(--ease),border-color .35s var(--ease)}
+.kpi:hover{transform:translateY(-4px);border-color:rgba(14,157,115,.35)}
+.kpi .top{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.kpi .ic{width:27px;height:27px;border-radius:8px;display:grid;place-items:center}
+.kpi .ic svg{width:14px;height:14px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.kpi h3{font-size:10.2px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.kpi b{font-family:'Sora',sans-serif;font-size:26px;font-weight:600;letter-spacing:-.04em;line-height:1}
+.kpi small{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:7px}
+.card{background:#fff;border:1px solid var(--line-2);border-radius:16px;overflow:hidden;
+  box-shadow:0 16px 40px -34px rgba(11,61,49,.4);opacity:0;transform:translateY(16px);
+  animation:up .7s var(--ease) .16s forwards}
+.tblwrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:12.6px}
+.tbl th{text-align:left;padding:11px 17px;font-size:9.4px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--dim);font-weight:700;border-bottom:1px solid var(--line-2);white-space:nowrap;background:var(--paper-2)}
+.tbl th.r,.tbl td.r{text-align:right}
+.tbl td{padding:13px 17px;border-bottom:1px solid var(--line);vertical-align:top;cursor:pointer}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tbody tr{opacity:0;transform:translateX(-8px);animation:sl .5s var(--ease) forwards}
+@keyframes sl{to{opacity:1;transform:none}}
+.tbl tbody tr:hover td{background:var(--paper)}
+.ib{width:29px;height:29px;border-radius:8px;border:1px solid var(--line-2);background:#fff;
+  display:grid;place-items:center;cursor:pointer}
+.ib svg{width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:2;stroke-linecap:round}
+.claimed{display:inline-block;padding:4px 10px;border-radius:7px;font-size:10.2px;font-weight:700}
+.claimed.submitted{background:var(--indigo-soft);color:var(--indigo)}
+.claimed.pending{background:var(--amber-soft);color:var(--amber)}
+.claimed.paid{background:var(--accent-soft);color:var(--accent-deep)}
+.claimed.denied{background:var(--danger-soft);color:var(--danger)}
+.dv{background:#fff}
+.paper{background:#fff;color:#111;padding:24px 26px;font-family:'Manrope',sans-serif}
+.paper.form{font-family:var(--mono);font-size:10.4px;line-height:1.5}
+.frm-h{text-align:center;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:10px}
+.frm-h b{display:block;font-family:'Sora',sans-serif;font-size:14px;letter-spacing:.04em}
+.frm-h small{font-size:9px;color:#555;letter-spacing:.08em}
+.fbox{border:1px solid #111;margin-bottom:-1px}
+.fr{display:flex;border-bottom:1px solid #111}.fr:last-child{border-bottom:none}
+.fc{flex:1;padding:5px 7px;border-right:1px solid #111;min-width:0}.fc:last-child{border-right:none}
+.fc u{display:block;font-size:7.4px;color:#666;text-decoration:none;letter-spacing:.05em;margin-bottom:2px}
+.fc span{display:block;font-size:10.4px;font-weight:600;word-break:break-word;min-height:13px}
+.fc.w2{flex:2}.fc.w3{flex:3}
+.svct{width:100%;border-collapse:collapse;font-size:9.6px;margin-top:-1px}
+.svct th{border:1px solid #111;padding:4px 5px;font-size:7.2px;color:#555;text-align:left;background:#F4F4F2}
+.svct td{border:1px solid #111;padding:6px 5px;font-weight:600}
+.stamp{position:absolute;top:44px;right:30px;transform:rotate(-11deg);border:2.5px solid #0A5C46;
+  border-radius:7px;padding:6px 14px;font-family:'Sora',sans-serif;font-size:13px;font-weight:700;
+  letter-spacing:.06em;color:#0A5C46;opacity:.82}
+.modal.wide{width:min(880px,calc(100vw - 24px))}
+@media print{.hdr,.ptop,.kpis,.tools,.card,.mhead,.mfoot,.scrim{display:none!important}
+  .modal{position:static;transform:none;opacity:1;visibility:visible;box-shadow:none;border:none;width:100%;max-height:none}}
+@media (max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.tbl{min-width:760px}}
+
+.foot-note{margin-top:14px;font-family:'Manrope',sans-serif;font-size:10px;color:#666;line-height:1.6}
+.svct tbody tr:last-child td{background:#F4F4F2}
+</style>
+<link rel="stylesheet" href="../_session.css">
+</head>
+<body>
+
+<div class="bg" aria-hidden="true"><div class="dots"></div><div class="bloom"></div><div class="bloom2"></div></div>
+
+<header class="hdr">
+  <div class="brand">
+    <img class="brandmark" src="../assets/logo-64.png" alt="ReviFlow RCM">
+    <span>R&nbsp;e&nbsp;v&nbsp;i&nbsp;F&nbsp;l&nbsp;o&nbsp;w</span>
+  </div>
+  <span class="crumb">Provider workspace / <b>Claims</b></span>
+  <div class="hactions">
+    <span class="rf-who" id="rfWho"></span>
+    <a href="provider-dashboard.html" class="hbtn"><svg viewBox="0 0 24 24"><path d="M19 12H6M11 6l-6 6 6 6"/></svg>Back</a>
+    <a href="provider-login.html" class="hbtn out" id="logout">Log out
+      <svg viewBox="0 0 24 24"><path d="M15 12H4M11 6l6 6-6 6"/><path d="M14 4h5a1 1 0 011 1v14a1 1 0 01-1 1h-5"/></svg></a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="ptop">
+    <div>
+      <span class="kick"><i></i>837 professional and institutional</span>
+      <h1>Claims</h1>
+      <p>Every claim built from a patient record. Claims are created from the billing tab of a patient's chart.</p>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="tools">
+    <label class="search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input type="search" id="q" placeholder="Search claim number, patient or payer…">
+    </label>
+    <select class="sel" id="fStatus">
+      <option value="all">All statuses</option><option value="submitted">Submitted</option>
+      <option value="pending">Pending</option><option value="paid">Paid</option>
+      <option value="denied">Denied</option>
+    </select>
+    <select class="sel" id="fForm"><option value="all">All forms</option><option value="CMS-1500">CMS-1500</option><option value="UB-04">UB-04</option></select>
+    <span class="sp"></span>
+    <span class="cnt" id="cnt">—</span>
+  </div>
+
+  <div class="card">
+    <div class="tblwrap">
+      <table class="tbl">
+        <thead><tr>
+          <th style="width:22%">Claim</th><th>Patient</th><th>Payer</th>
+          <th>Provider</th><th class="r">Charge</th><th>Status</th><th class="r" style="width:60px"></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty" hidden>
+      <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M9 13l2 2 4-5"/></svg><br>
+      <b>No claims yet</b><br>
+      <span>Open a patient's chart, go to Billing, and select Create claim against a date of service.</span>
+    </div>
+  </div>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<div class="modal wide" id="mView" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M9 12h6M9 16h6"/></svg></span>
+    <div><h3 id="vTitle">Claim</h3><p id="vSub">—</p></div>
+    <button class="mclose" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="dv" id="vBody"></div>
+  <div class="mfoot">
+    <button class="btn sec" data-close>Close</button>
+    <button class="btn sec" id="vStedi"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg>Submit to payer</button>
+    <select class="sel" id="vStatus" style="max-width:170px">
+      <option value="submitted">Submitted</option><option value="pending">Pending</option>
+      <option value="paid">Paid</option><option value="denied">Denied</option>
+    </select>
+    <span class="sp"></span>
+    <button class="btn sec" id="vPrint"><svg viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 19H5a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2h-2"/><path d="M7 15h10v6H7z"/></svg>Print</button>
+    <button class="btn pri" id="vSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Update status</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg><span><b id="tT">—</b><small id="tS"></small></span></div>
+
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var CLAIMS=[],VIEW=null,filt={q:'',status:'all',form:'all'};
+
+  function esc(v){return String(v==null?'':v).replace(/[&<>]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+  function money(n){return '$'+(+n||0).toFixed(2);}
+  function fmtS(d){return d?new Date(d+'T12:00:00').toLocaleDateString(undefined,
+    {month:'2-digit',day:'2-digit',year:'numeric'}):'—';}
+  function fmtD(d){return d?new Date(d).toLocaleDateString(undefined,
+    {month:'short',day:'numeric',year:'numeric'}):'—';}
+  function toast(t,s){$('tT').textContent=t;$('tS').textContent=s||'';
+    $('toast').classList.add('on');clearTimeout(toast._t);
+    toast._t=setTimeout(function(){$('toast').classList.remove('on');},3400);}
+
+  (async function(){
+    await RFStore.ready();
+    var sess=RFSession.require();
+    if(!sess)return;
+    $('rfWho').textContent=(sess.name||sess.username||'').toUpperCase();
+    $('logout').addEventListener('click',function(e){e.preventDefault();
+      RFSession.signOut('manual');});
+    await refresh();
+  })();
+
+  async function refresh(){CLAIMS=await RFStore.claims({});render();}
+
+  function render(){
+    var list=CLAIMS.filter(function(c){
+      if(filt.status!=='all'&&c.status!==filt.status)return false;
+      if(filt.form!=='all'&&c.form!==filt.form)return false;
+      if(filt.q){
+        var h=(c.claim_no+' '+c.patient_last+' '+c.patient_first+' '+c.payer).toLowerCase();
+        if(h.indexOf(filt.q)<0)return false;
+      }
+      return true;
+    });
+
+    var by=function(s){return CLAIMS.filter(function(c){return c.status===s;});};
+    var sum=function(a){return a.reduce(function(x,c){return x+(+c.total||0);},0);};
+    var d=[['Submitted',by('submitted').length,money(sum(by('submitted'))),'var(--indigo-soft)','var(--indigo)'],
+           ['Pending',by('pending').length,money(sum(by('pending'))),'var(--amber-soft)','var(--amber)'],
+           ['Paid',by('paid').length,money(sum(by('paid'))),'var(--accent-soft)','var(--accent-deep)'],
+           ['Denied',by('denied').length,money(sum(by('denied'))),'var(--danger-soft)','var(--danger)']];
+    $('kpis').innerHTML=d.map(function(x,i){
+      return '<div class="kpi" style="animation-delay:'+(0.06+i*0.05)+'s">'+
+        '<div class="top"><span class="ic" style="background:'+x[3]+'">'+
+        '<svg viewBox="0 0 24 24" style="stroke:'+x[4]+'"><path d="M7 4h8l4 4v12a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg>'+
+        '</span><h3>'+x[0]+'</h3></div><b>'+x[1]+'</b><small>'+x[2]+'</small></div>';
+    }).join('');
+
+    $('cnt').textContent=list.length+' of '+CLAIMS.length;
+    $('empty').hidden=list.length>0;
+    $('rows').innerHTML=list.map(function(c,i){
+      return '<tr style="animation-delay:'+Math.min(.4,i*.03)+'s" data-v="'+c.id+'">'+
+        '<td><b style="display:block;font-family:var(--mono);font-size:12px">'+esc(c.claim_no)+'</b>'+
+          '<small style="display:block;font-size:10.4px;color:var(--dim);margin-top:3px">'+
+          esc(c.form)+' · DOS '+fmtS(c.dos)+'</small></td>'+
+        '<td>'+esc(c.patient_last)+', '+esc(c.patient_first)+
+          '<div style="font-family:var(--mono);font-size:9.8px;color:var(--dim);margin-top:3px">'+esc(c.patient_mid||'')+'</div></td>'+
+        '<td>'+esc(c.payer||'—')+'</td>'+
+        '<td>'+esc(c.provider_name||'—')+'</td>'+
+        '<td class="r" style="font-family:var(--mono);font-weight:600">'+money(c.total)+'</td>'+
+        '<td><span class="claimed '+(c.status||'submitted')+'">'+(c.status||'submitted').toUpperCase()+'</span></td>'+
+        '<td class="r"><button class="ib"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></td></tr>';
+    }).join('');
+  }
+
+  $('q').addEventListener('input',function(){filt.q=this.value.toLowerCase().trim();render();});
+  $('fStatus').addEventListener('change',function(){filt.status=this.value;render();});
+  $('fForm').addEventListener('change',function(){filt.form=this.value;render();});
+
+  var scrim=$('scrim');
+  function closeM(){scrim.classList.remove('on');$('mView').classList.remove('on');document.body.style.overflow='';}
+  scrim.addEventListener('click',closeM);
+  document.querySelectorAll('[data-close]').forEach(function(b){b.addEventListener('click',closeM);});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeM();});
+
+  function box(n,label,val,cls){
+    return '<div class="fc'+(cls?' '+cls:'')+'"><u>'+n+'. '+label+'</u><span>'+esc(val||'')+'</span></div>';
+  }
+
+  function cms1500(c){
+    var m=c.cms||{},L=c.lines||[];
+    var dx=(c.dx||[]);
+    return '<div class="paper form" style="position:relative">'+
+      '<span class="stamp">'+(c.status||'submitted').toUpperCase()+'</span>'+
+      '<div class="frm-h"><b>HEALTH INSURANCE CLAIM FORM</b>'+
+        '<small>APPROVED BY NUCC 02/12 · '+esc(c.claim_no)+' · '+fmtD(c.created_at)+'</small></div>'+
+      '<div class="fbox">'+
+        '<div class="fr">'+box('1','INSURANCE TYPE',m.type,'w2')+box('1a',"INSURED'S I.D. NUMBER",c.member_id,'w2')+'</div>'+
+        '<div class="fr">'+box('2','PATIENT NAME',c.patient_last+', '+c.patient_first,'w2')+
+          box('3','BIRTH DATE',fmtS(c.patient_dob))+box('4',"INSURED'S NAME",m.iname,'w2')+'</div>'+
+        '<div class="fr">'+box('5','PATIENT ADDRESS',m.paddr,'w3')+
+          box('6','RELATIONSHIP',m.rel)+box('7',"INSURED'S ADDRESS",m.iaddr,'w2')+'</div>'+
+        '<div class="fr">'+box('10a','EMPLOYMENT',m.emp?'YES':'NO')+box('10b','AUTO ACCIDENT',(m.auto?'YES':'NO')+(m.accst?' · '+m.accst:''))+
+          box('10c','OTHER ACCIDENT',m.other?'YES':'NO')+box('11','POLICY GROUP / FECA',c.group_id,'w2')+'</div>'+
+        '<div class="fr">'+box('12','PATIENT SIGNATURE','SIGNATURE ON FILE','w2')+
+          box('13',"INSURED'S SIGNATURE",'SIGNATURE ON FILE','w2')+'</div>'+
+        '<div class="fr">'+box('14','DATE OF CURRENT ILLNESS',fmtS(m.d14)+(m.q14?' · '+m.q14:''),'w2')+
+          box('17','REFERRING PROVIDER',m.ref,'w2')+box('17b','NPI',m.refnpi)+'</div>'+
+        '<div class="fr">'+box('18','HOSPITALISATION',(m.h18a?fmtS(m.h18a):'—')+' – '+(m.h18b?fmtS(m.h18b):'—'),'w2')+
+          box('19','ADDITIONAL CLAIM INFO',m.d19,'w3')+'</div>'+
+        '<div class="fr">'+
+          '<div class="fc w3"><u>21. DIAGNOSIS OR NATURE OF ILLNESS (ICD IND. '+(m.icd||'0')+')</u><span>'+
+            (dx.length?dx.map(function(d,i){return String.fromCharCode(65+i)+'. '+esc(d);}).join('   '):'—')+'</span></div>'+
+          box('22','RESUBMISSION',(m.resub||'—')+(m.origref?' · '+m.origref:''))+
+          box('23','PRIOR AUTHORISATION',c.prior_auth)+'</div>'+
+      '</div>'+
+      '<table class="svct"><thead><tr>'+
+        '<th style="width:16%">24A. DATE(S) OF SERVICE</th><th style="width:6%">24B. POS</th>'+
+        '<th style="width:20%">24D. PROCEDURES / MODIFIER</th><th style="width:8%">24E. DX PTR</th>'+
+        '<th style="width:13%">24F. $ CHARGES</th><th style="width:7%">24G. UNITS</th>'+
+        '<th style="width:20%">24J. RENDERING PROVIDER NPI</th></tr></thead><tbody>'+
+      L.map(function(l){
+        return '<tr><td>'+fmtS(l.from)+(l.to&&l.to!==l.from?' – '+fmtS(l.to):'')+'</td>'+
+          '<td>'+esc(l.pos||'11')+'</td>'+
+          '<td>'+esc(l.cpt)+(l.mod?' · '+esc(l.mod):'')+'</td>'+
+          '<td>'+esc(l.dx||'A')+'</td><td>'+money((+l.charge||0)*(+l.units||1))+'</td>'+
+          '<td>'+(l.units||1)+'</td><td>'+esc(m.rnpi||c.provider_npi||'—')+'</td></tr>';
+      }).join('')+'</tbody></table>'+
+      '<div class="fbox" style="margin-top:-1px">'+
+        '<div class="fr">'+box('25','FEDERAL TAX I.D.',c.tax_id)+box('26','PATIENT ACCOUNT NO.',m.acct||c.patient_mid)+
+          box('27','ACCEPT ASSIGNMENT',m.assign==='N'?'NO':'YES')+
+          box('28','TOTAL CHARGE',money(c.total))+box('29','AMOUNT PAID',money(m.paid||0))+'</div>'+
+        '<div class="fr">'+
+          '<div class="fc w2"><u>31. SIGNATURE OF PHYSICIAN OR SUPPLIER</u><span>'+
+            esc(c.provider_name)+' · '+fmtS(c.dos)+'</span></div>'+
+          '<div class="fc w2"><u>32. SERVICE FACILITY LOCATION</u><span>'+esc(m.fac||c.org_name)+'</span></div>'+
+          '<div class="fc w2"><u>33. BILLING PROVIDER INFO &amp; PH #</u><span>'+esc(c.org_name)+
+            (m.bphone?'<br>'+esc(m.bphone):'')+'<br>NPI '+esc(m.bnpi||c.org_npi||'—')+'</span></div>'+
+        '</div>'+
+      '</div>'+
+      '<p class="foot-note">Created by '+esc(c.created_name||c.created_by)+' on '+fmtD(c.created_at)+
+        ' · NUCC Instruction Manual available at www.nucc.org</p>'+
+    '</div>';
+  }
+
+  function ub04(c){
+    var u=c.ub||{},L=c.lines||[],dx=(c.dx||[]);
+    return '<div class="paper form" style="position:relative">'+
+      '<span class="stamp">'+(c.status||'submitted').toUpperCase()+'</span>'+
+      '<div class="frm-h"><b>UB-04 · CMS-1450</b>'+
+        '<small>'+esc(c.claim_no)+' · TYPE OF BILL '+esc(u.tob||'—')+' · '+fmtD(c.created_at)+'</small></div>'+
+      '<div class="fbox">'+
+        '<div class="fr">'+box('1','BILLING PROVIDER',u.prov||c.org_name,'w3')+
+          box('3a','PATIENT CONTROL NO.',u.ctrl||c.patient_mid)+box('3b','MEDICAL RECORD NO.',u.mrn)+'</div>'+
+        '<div class="fr">'+box('4','TYPE OF BILL',u.tob)+box('5','FEDERAL TAX NO.',c.tax_id)+
+          box('6','STATEMENT COVERS',(u.from?fmtS(u.from):'—')+' – '+(u.through?fmtS(u.through):'—'),'w2')+'</div>'+
+        '<div class="fr">'+box('8','PATIENT NAME',c.patient_last+', '+c.patient_first,'w2')+
+          box('9','PATIENT ADDRESS',u.paddr,'w2')+box('10','BIRTH DATE',fmtS(c.patient_dob))+
+          box('11','SEX',u.sex)+'</div>'+
+        '<div class="fr">'+box('12','ADMISSION DATE',fmtS(u.adm))+box('13','HR',u.admhr)+
+          box('14','TYPE',u.admtype)+box('15','SRC',u.admsrc)+box('17','DISCHARGE STATUS',u.disch)+'</div>'+
+        '<div class="fr">'+box('18–28','CONDITION CODES',u.cond,'w2')+
+          box('31','OCCURRENCE',(u.occ||'—')+(u.occdt?' · '+fmtS(u.occdt):''))+
+          box('39','VALUE CODE',(u.val||'—')+(u.valamt?' · '+money(u.valamt):''),'w2')+'</div>'+
+      '</div>'+
+      '<table class="svct"><thead><tr>'+
+        '<th style="width:9%">42. REV. CD.</th><th style="width:31%">43. DESCRIPTION</th>'+
+        '<th style="width:14%">44. HCPCS / RATE</th><th style="width:14%">45. SERV. DATE</th>'+
+        '<th style="width:9%">46. UNITS</th><th style="width:15%">47. TOTAL CHARGES</th></tr></thead><tbody>'+
+      L.map(function(l){
+        return '<tr><td>'+esc(l.rev||'')+'</td><td>'+esc(l.desc||'')+'</td>'+
+          '<td>'+esc(l.cpt||'')+'</td><td>'+fmtS(l.date)+'</td>'+
+          '<td>'+(l.units||1)+'</td><td>'+money((+l.charge||0)*(+l.units||1))+'</td></tr>';
+      }).join('')+
+      '<tr><td colspan="4" style="text-align:right"><b>TOTALS</b></td>'+
+        '<td>'+L.reduce(function(x,l){return x+(+l.units||1);},0)+'</td>'+
+        '<td><b>'+money(c.total)+'</b></td></tr></tbody></table>'+
+      '<div class="fbox" style="margin-top:-1px">'+
+        '<div class="fr">'+box('50','PAYER NAME',c.payer,'w2')+box('51','HEALTH PLAN ID',u.planid)+
+          box('54','PRIOR PAYMENTS',u.prior?money(u.prior):'—')+
+          box('55','EST. AMOUNT DUE',u.due?money(u.due):money(c.total))+
+          box('56','NPI',u.npi||c.org_npi)+'</div>'+
+        '<div class="fr">'+box('58',"INSURED'S NAME",u.iname,'w2')+box('59','P. REL',u.rel)+
+          box('60',"INSURED'S UNIQUE ID",c.member_id,'w2')+box('62','INS. GROUP NO.',c.group_id)+'</div>'+
+        '<div class="fr">'+box('63','TREATMENT AUTHORISATION',c.prior_auth,'w2')+
+          box('66','DX VER.',u.dxq||'0')+
+          '<div class="fc w3"><u>67. PRINCIPAL DIAGNOSIS &amp; OTHER</u><span>'+
+            (dx.length?esc(dx[0])+(dx.length>1?'   '+dx.slice(1).map(function(d,i){
+              return String.fromCharCode(65+i)+'. '+esc(d);}).join('  '):''):'—')+'</span></div>'+
+          box('69','ADMITTING DX',u.adx)+'</div>'+
+        '<div class="fr">'+box('74','PRINCIPAL PROCEDURE',(u.proc||'—')+(u.procdt?' · '+fmtS(u.procdt):''),'w2')+
+          box('76','ATTENDING',c.provider_name+(u.attnpi?' · NPI '+u.attnpi:''),'w2')+
+          box('77','OPERATING',u.oper)+'</div>'+
+        (u.rem?'<div class="fr">'+box('80','REMARKS',u.rem,'w3')+'</div>':'')+
+      '</div>'+
+      '<p class="foot-note">Created by '+esc(c.created_name||c.created_by)+' on '+fmtD(c.created_at)+'</p>'+
+    '</div>';
+  }
+
+  function claimHTML(c){ return c.form==='UB-04' ? ub04(c) : cms1500(c); }
+
+  $('rows').addEventListener('click',async function(e){
+    var row=e.target.closest('[data-v]');if(!row)return;
+    var c=await RFStore.claim(+row.dataset.v);if(!c)return;
+    VIEW=c;
+    $('vTitle').textContent=c.claim_no;
+    $('vSub').textContent=c.form+' · '+c.patient_last+', '+c.patient_first+' · DOS '+fmtS(c.dos);
+    $('vStatus').value=c.status||'submitted';
+    $('vBody').innerHTML=claimHTML(c);
+    scrim.classList.add('on');$('mView').classList.add('on');document.body.style.overflow='hidden';
+  });
+
+  $('vSave').addEventListener('click',async function(){
+    if(!VIEW)return;
+    var r=await RFStore.setClaimStatus(VIEW.id,$('vStatus').value);
+    if(r.ok){closeM();await refresh();toast('Claim updated',VIEW.claim_no+' · '+$('vStatus').value);}
+  });
+  $('vPrint').addEventListener('click',function(){window.print();});
+
+  /* hand the claim to the clearinghouse — same proxy as eligibility */
+  $('vStedi').addEventListener('click',async function(){
+    if(!VIEW)return;
+    this.disabled=true;
+    try{
+      var res=await fetch('/api/claims',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({claim:VIEW})});
+      var j={};try{j=await res.json();}catch(e){}
+      if(res.ok){
+        await RFStore.setClaimStatus(VIEW.id,'pending','Sent to clearinghouse');
+        closeM();await refresh();
+        toast('Sent to payer',VIEW.claim_no+' · awaiting 277 acknowledgement');
+      }else{
+        toast('Could not submit',(j.error||j.message||'The claims endpoint is not deployed yet'));
+      }
+    }catch(err){
+      toast('Claims endpoint unavailable','Deploy /api/claims to submit through Stedi');
+    }
+    this.disabled=false;
+  });
+})();
+</script>
+
+</body>
+</html>
