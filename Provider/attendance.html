@@ -283,8 +283,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 <script src="_prefs.js"></script>
 <script src="../_notify.js"></script>
 <link rel="stylesheet" href="../_session.css">
+<script src="../_guard.js"></script>
 <script src="../_store.js"></script>
+<script src="../_datepicker.js"></script>
 <script src="../_session.js"></script>
+<link rel="stylesheet" href="../_datepicker.css">
 </head>
 <body>
 
@@ -449,7 +452,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 <script>
 (function(){
   var $=function(i){return document.getElementById(i);};
-  var iso=function(d){return d.toISOString().slice(0,10);};
+  var iso=function(d){
+    /* local date parts — toISOString is UTC and can shift the day */
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+
+           '-'+String(d.getDate()).padStart(2,'0');
+  };
   var today=new Date(),view=new Date(today.getFullYear(),today.getMonth(),1);
 
   /* ── seeded events ── */

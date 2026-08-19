@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="../_guard.js"></script>
 <script src="../_store.js"></script>
 <script src="../_session.js"></script>
 <style>
@@ -139,6 +140,22 @@ img.brandmark{width:26px;height:26px;flex:none;object-fit:contain;display:block}
 /* rf-logomark-styled */
 img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   background:transparent!important;border:none!important;box-shadow:none!important}
+.rf-already{margin-bottom:18px;padding:15px;border-radius:14px;background:var(--amber-s,#FBF2DC);
+  border:1px solid rgba(192,134,22,.28);animation:raIn .4s cubic-bezier(.22,1,.36,1)}
+@keyframes raIn{from{opacity:0;transform:translateY(-6px)}}
+.ra-in{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+.ra-av{width:34px;height:34px;flex:none;border-radius:11px;display:grid;place-items:center;
+  background:#7A5507;color:#FBF2DC;font-family:var(--mono);font-size:11.4px;font-weight:700}
+.ra-b b{display:block;font-size:13px;font-weight:700;color:#7A5507}
+.ra-b small{display:block;font-size:11px;color:#7A5507;opacity:.82;margin-top:2px}
+.ra-acts{display:flex;gap:8px;flex-wrap:wrap}
+.ra-btn{flex:1;min-width:140px;display:inline-flex;align-items:center;justify-content:center;
+  padding:10px 14px;border-radius:10px;border:1px solid rgba(122,85,7,.3);background:#fff;
+  font-size:12.4px;font-weight:600;color:#7A5507;cursor:pointer;text-decoration:none;
+  transition:all .28s cubic-bezier(.22,1,.36,1)}
+.ra-btn:hover{transform:translateY(-2px)}
+.ra-btn.pri{background:#7A5507;border-color:#7A5507;color:#FBF2DC}
+.ra-note{margin-top:10px;font-size:10.8px;line-height:1.5;color:#7A5507;opacity:.85}
 </style>
 <link rel="stylesheet" href="../_session.css">
 </head>
@@ -435,6 +452,39 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   });
 
   /* pick up a hand-off from the provider sign-in page */
+
+  /* Someone is already signed in. Offer to continue, or to sign in as someone
+     else — rather than silently redirecting, which looks like the wrong
+     credentials were accepted. */
+  function showSignedIn(sess){
+    var host=document.querySelector('.card')||document.body;
+    var who=sess.name||sess.username;
+    var role=({admin:'Administrator',supervisor:'Practice manager',provider:'Provider',
+               scheduler:'Scheduler',employee:'Employee'})[sess.role]||sess.role;
+    var home=sess.role==='admin'?'admin-dashboard.html':'../Provider/provider-dashboard.html';
+
+    var box=document.createElement('div');
+    box.className='rf-already';
+    box.innerHTML=
+      '<div class="ra-in">'+
+        '<span class="ra-av">'+String(who||'?').slice(0,2).toUpperCase()+'</span>'+
+        '<div class="ra-b"><b>'+who+' is already signed in</b>'+
+          '<small>'+role+' · this browser allows one account at a time</small></div>'+
+      '</div>'+
+      '<div class="ra-acts">'+
+        '<a class="ra-btn pri" href="'+home+'">Continue as '+who+'</a>'+
+        '<button type="button" class="ra-btn" id="raSwitch">Sign in as someone else</button>'+
+      '</div>'+
+      '<p class="ra-note">Signing in as someone else ends this session in every open tab. '+
+        'To use two accounts at once, open the second one in a private window.</p>';
+    host.insertBefore(box,host.firstChild);
+
+    document.getElementById('raSwitch').addEventListener('click',function(){
+      RFStore.clearSession();
+      box.remove();
+    });
+  }
+
   (async function(){
     await RFStore.ready();
     var raw=sessionStorage.getItem('rf_pending');
@@ -453,9 +503,18 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         return;
       }
     }
+    /* Only offer the shortcut when nobody is part-way through signing in.
+       Otherwise a live session would hijack a different account's attempt. */
+    var handoff=null;
+    try{ handoff=sessionStorage.getItem('rf_pending'); }catch(e){}
+    var switching=/[?&]switch=1/.test(location.search);
     var sess=RFStore.getSession();
-    if(sess)window.location.href = sess.role==='admin'
-      ? 'admin-dashboard.html' : '../Provider/provider-dashboard.html';
+
+    /* `pending` above holds the account part-way through signing in — do not
+       shadow it, or the password change is sent the wrong id. */
+    if(sess && !handoff && !pending && !switching){
+      showSignedIn(sess);
+    }
   })();
 })();
 </script>

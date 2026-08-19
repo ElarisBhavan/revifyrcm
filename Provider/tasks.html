@@ -45,7 +45,7 @@ input,select,textarea{font:inherit}
 .hdr{position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line);background:rgba(250,248,243,.8);backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%)}
 .hin{max-width:1360px;margin:0 auto;padding:11px clamp(14px,2.6vw,32px);display:flex;align-items:center;gap:11px}
 .brand{display:flex;align-items:center;gap:10px}
-.brand .mk{width:29px;height:29px;display:grid;place-items:center}
+.brand .mk{width:29px;height:29px;border-radius:9px;background:linear-gradient(140deg,var(--green),var(--blue));display:grid;place-items:center;box-shadow:0 6px 16px -8px rgba(14,157,115,.8)}
 .brand .mk svg{width:16px;height:16px}
 .brand span{font-family:'Sora',sans-serif;font-size:15px;font-weight:600;letter-spacing:-.036em}
 .brand em{font-style:normal;color:var(--green);font-weight:400;font-size:.9em;margin-left:3px}
@@ -55,7 +55,7 @@ input,select,textarea{font:inherit}
 .who .av{width:28px;height:28px;border-radius:9px;background:linear-gradient(140deg,var(--green),var(--blue));display:grid;place-items:center;font-family:'Sora',sans-serif;font-size:11px;font-weight:700;color:#fff}
 .who b{display:block;font-size:12.2px;font-weight:600;line-height:1.2}
 .who small{display:block;font-family:var(--mono);font-size:9.2px;color:var(--dim)}
-.hact{margin-left:auto;display:flex;gap:9px}
+.hact{margin-left:auto;display:flex;gap:8px}
 .hbtn{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:99px;border:1px solid var(--line-2);background:rgba(255,255,255,.7);font-size:12.4px;font-weight:600;transition:all .3s var(--e)}
 .hbtn svg{width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s var(--e)}
 .hbtn:hover{border-color:var(--green);background:#fff}
@@ -317,6 +317,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 <script src="_prefs.js"></script>
 <script src="../_notify.js"></script>
 <link rel="stylesheet" href="../_session.css">
+<script src="../_guard.js"></script>
 <script src="../_store.js"></script>
 <script src="../_session.js"></script>
 </head>
@@ -328,7 +329,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   <div class="hin">
     <div class="brand">
       <img class="mk" src="../assets/logo-64.png" alt="ReviFlow RCM">
-      <span>R&nbsp;e&nbsp;v&nbsp;i&nbsp;F&nbsp;l&nbsp;o&nbsp;w</span>
+      <span>ReviFlow<em>RCM</em></span>
     </div>
     <span class="crumb">Provider workspace / <b>Tasks</b></span>
     <div class="hact">
@@ -477,27 +478,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       <div class="dtl" id="dTl"></div>
     </div>
 
-    <div class="dedit">
-      <h4>Update this task</h4>
-      <div class="fgrid">
-        <label class="f"><span>Status</span>
-          <select id="dStatus"><option>Open</option><option>In progress</option><option>Blocked</option><option>Resolved</option></select></label>
-        <label class="f"><span>Priority</span>
-          <select id="dPri"><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select></label>
-        <label class="f"><span>Extend TAT</span>
-          <select id="dTat"><option value="0">Keep current</option><option value="4">+4 hours</option><option value="24">+24 hours</option><option value="48">+48 hours</option></select></label>
-        <label class="f"><span>Reassign to</span>
-          <select id="dReassign">
-            <option value="">Keep with me</option>
-            <option data-sup="Rebecca Vaughn · Front Office Supervisor">Priya Raman</option>
-            <option data-sup="Marcus Bello · Coding Supervisor">Aisha Haddad</option>
-            <option data-sup="Lena Okoro · Revenue Cycle Manager">Caleb Nakamura</option>
-            <option data-sup="Dr. Alan Reyes · Medical Director">Rosa Ferreira</option>
-          </select></label>
-        <label class="f full"><span>Add a note</span>
-          <textarea id="dNote" placeholder="What changed, or what the assignee needs to know"></textarea></label>
-      </div>
-    </div>
+    <div class="dedit" id="dEdit"></div>
   </div>
 
   <div class="mfoot">
@@ -886,5 +867,42 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 })();
 </script>
 
+
+<script>
+/* Section access: a grant, not just a role. Shows a notice rather than
+   signing anyone out. */
+(function(){
+  var SECTION='tasks';
+  document.addEventListener('DOMContentLoaded',async function(){
+    try{
+      if(typeof RFStore==='undefined'||!RFStore.can)return;
+      await RFStore.ready();
+      var lvl=await RFStore.can(SECTION);
+      if(lvl==='none'){
+        if(window.RFSession&&RFSession.denied)
+          RFSession.denied({section:'tasks'});
+        return;
+      }
+      if(lvl==='view'){
+        /* read only: the page still loads, but nothing that writes is usable */
+        document.body.classList.add('rf-viewonly');
+        var css=document.createElement('style');
+        css.textContent=
+          '.rf-viewonly [data-write],.rf-viewonly .ib.del{opacity:.4;pointer-events:none}'+
+          '.rf-viewonly .rf-ro{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);'+
+            'z-index:900;display:flex;align-items:center;gap:9px;padding:10px 16px;border-radius:11px;'+
+            'background:#0D1A16;color:#F2FBF7;font:600 12px Manrope,system-ui,sans-serif;'+
+            'box-shadow:0 18px 40px -18px rgba(13,26,22,.8)}';
+        document.head.appendChild(css);
+        var note=document.createElement('div');
+        note.className='rf-ro';
+        note.textContent='View only — contact your practice manager to make changes';
+        document.body.appendChild(note);
+        setTimeout(function(){ note.style.display='none'; },6000);
+      }
+    }catch(e){}
+  });
+})();
+</script>
 </body>
 </html>

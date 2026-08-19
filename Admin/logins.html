@@ -58,7 +58,9 @@ img.brandmark{width:26px;height:26px;flex:none;object-fit:contain;display:block}
 img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   background:transparent!important;border:none!important;box-shadow:none!important}
 </style>
+<script src="../_guard.js"></script>
 <script src="../_store.js"></script>
+<script src="../_notify.js"></script>
 <script src="../_session.js"></script>
 <link rel="stylesheet" href="../_session.css">
 </head>
@@ -279,10 +281,12 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
   $('logout').addEventListener('click',function(){RFSession.signOut('manual');});
 
+  var REQS=[];
   async function refresh(){
     ACCOUNTS=await RFStore.list();
     ORGS=await RFStore.orgs();
     PROVS=await RFStore.providers();
+    try{ REQS=await RFStore.teamRequests(); }catch(e){ REQS=[]; }
     var opts='<option value="">Select organization</option>'+
       ORGS.map(function(o){return '<option value="'+o.id+'">'+o.name+'</option>';}).join('');
     $('fOrg').innerHTML=opts;
@@ -318,6 +322,34 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     open('mEdit');
   }
 
+  /* someone a practice manager added who has no provider record */
+  function fillFromRequest(r){
+    blank();
+    linkedProvider=null;
+    $('fFor').value='staff';$('fFor').dispatchEvent(new Event('change'));
+    $('fRoleSel').value=r.role||'employee';
+    $('fRoleSel').dispatchEvent(new Event('change'));
+    $('fOrg').value=r.org_id||'';
+    $('fOrg').dispatchEvent(new Event('change'));
+    $('fName').value=r.full_name||'';
+    $('fTitle').value=r.title||r.team||'';
+    $('fEmail').value=r.email||'';$('fPhone').value=r.phone||'';
+    if(r.suggested_username){
+      $('fUser').value=r.suggested_username;
+      $('fUser').dataset.touched='1';
+    }else{
+      $('fName').dispatchEvent(new Event('input'));
+    }
+    pendingReq=r.id;
+    $('mTitle').textContent='Create login for '+r.full_name;
+    $('mSub').textContent=(r.team||r.role)+' · requested by '+(r.requested_name||'a practice manager')+
+      ' · '+orgName(r.org_id);
+    $('saveBtn').innerHTML='<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Create login';
+    $('fUser').disabled=false;$('fFor').disabled=false;
+    open('mEdit');
+  }
+  var pendingReq=null;
+
   var ROLEC={admin:'vio',supervisor:'info',provider:'ok',scheduler:'warn',employee:'off'};
   var SCOPEL={all:'Everything',facility:'Facility',self:'Own data'};
   function fmt(d){return d?new Date(d).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'Never';}
@@ -325,17 +357,42 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   /* provider records that have no account yet, shown inline as pending rows */
   function pendingRows(){
     var linked=new Set(ACCOUNTS.map(function(a){return a.provider_ref;}).filter(Boolean));
-    return PROVS.filter(function(p){return !linked.has(p.id);}).map(function(p){
+    var takenNames=new Set(ACCOUNTS.map(function(a){
+      return String(a.full_name||'').toLowerCase(); }));
+    var takenUsers=new Set(ACCOUNTS.map(function(a){return a.username;}));
+
+    /* providers without a login */
+    var out=PROVS.filter(function(p){return !linked.has(p.id);}).map(function(p){
+      var req=REQS.filter(function(r){return String(r.provider_ref)===String(p.id);})[0];
       return {
         _pending:true, id:'p'+p.id, provider_id_ref:p.id,
         full_name:p.full_name+(p.title?', '+p.title:''),
-        username:'—', email:p.email||'', role:'provider',
+        username:(req&&req.suggested_username)||'—', email:p.email||'', role:'provider',
         org_id:p.org_id, scope:'self', status:'no login',
         mfa_enabled:false, last_login:null,
         initials:p.initials||RFStore.initialsOf(p.full_name),
-        specialty:p.specialty
+        specialty:p.specialty,
+        _req:req||null, _fromTeam:!!(p.added_by_team||req)
       };
     });
+
+    /* front office and billing exist only as a team request, so add them here */
+    REQS.forEach(function(r){
+      if(r.provider_ref)return;                       /* already covered above */
+      if(takenUsers.has(r.issued_username))return;
+      if(takenNames.has(String(r.full_name||'').toLowerCase()))return;
+      out.push({
+        _pending:true, id:r.id, provider_id_ref:null,
+        full_name:r.full_name+(r.title?', '+r.title:''),
+        username:r.suggested_username||'—', email:r.email||'',
+        role:r.role||'employee', org_id:r.org_id, scope:'self', status:'no login',
+        mfa_enabled:false, last_login:null,
+        initials:RFStore.initialsOf(r.full_name),
+        specialty:r.team||'',
+        _req:r, _fromTeam:true
+      });
+    });
+    return out;
   }
 
   function render(){
@@ -354,15 +411,19 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       if(a._pending){
         return '<tr class="pending" style="animation-delay:'+Math.min(.4,i*.03)+'s">'+
           '<td><div class="nm"><span class="av2" style="background:linear-gradient(140deg,#C98A18,#E5B658)">'+a.initials+'</span>'+
-            '<span><b>'+a.full_name+'</b><small>'+(a.specialty||'Provider')+(a.email?' · '+a.email:'')+'</small></span></div></td>'+
+            '<span><b>'+a.full_name+'</b><small>'+(a.specialty||a.role||'')+
+              (a.email?' · '+a.email:'')+
+              (a._req&&a._req.requested_name
+                ? ' · added by '+a._req.requested_name : '')+'</small></span></div></td>'+
           '<td>'+(a.org_id?orgName(a.org_id):'—')+'</td>'+
-          '<td><span class="pill ok">provider</span></td>'+
+          '<td><span class="pill '+(a.role==='provider'?'ok':'info')+'">'+a.role+'</span></td>'+
           '<td class="mono">Own data</td>'+
           '<td><span class="pill off">—</span></td>'+
           '<td class="mono" style="color:var(--dim)">Never</td>'+
           '<td><span class="nologin"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>NO LOGIN</span></td>'+
           '<td class="r"><div class="acts">'+
-            '<button class="ib alert" data-make="'+a.provider_id_ref+'" title="Create a login for this provider">'+
+            '<button class="ib alert" data-make="'+(a.provider_id_ref||'')+'" '+
+              'data-req="'+(a._req?a._req.id:'')+'" title="Create a login for this person">'+
               '<svg viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg></button>'+
           '</div></td></tr>';
       }
@@ -474,7 +535,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   $('fUser').addEventListener('input',function(){this.dataset.touched='1';});
   $('fName').addEventListener('input',function(){
     var n=RFStore.splitName(this.value);
-    $('splitHint').innerHTML=(n.first||n.last)
+    var sh=$('splitHint');
+    if(sh)sh.innerHTML=(n.first||n.last)
       ? 'First name <b>'+(n.first||'—')+'</b> · Last name <b>'+(n.last||'—')+'</b>'+
         (n.middle?' · Middle <b>'+n.middle+'</b>':'')
       : 'First word becomes the first name, last word the surname.';
@@ -496,8 +558,24 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
     var mk=e.target.closest('[data-make]'),rk=e.target.closest('[data-rmk]');
     if(mk){
-      var pv=PROVS.filter(function(x){return String(x.id)===mk.dataset.make;})[0];
-      if(pv){editing=null;fillFromProvider(pv);}
+      editing=null;pendingReq=null;
+      var pv=mk.dataset.make?PROVS.filter(function(x){
+        return String(x.id)===mk.dataset.make;})[0]:null;
+      if(pv){
+        var rq0=REQS.filter(function(r){return String(r.provider_ref)===String(pv.id);})[0];
+        fillFromProvider(pv);
+        if(rq0){
+          pendingReq=rq0.id;
+          if(rq0.suggested_username){
+            $('fUser').value=rq0.suggested_username;$('fUser').dataset.touched='1';
+          }
+          $('mSub').textContent=($('mSub').textContent||'')+
+            ' · requested by '+(rq0.requested_name||'a practice manager');
+        }
+        return;
+      }
+      var rq=REQS.filter(function(r){return r.id===mk.dataset.req;})[0];
+      if(rq){fillFromRequest(rq);}
       return;
     }
     if(rk){
@@ -612,9 +690,32 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     if(!patch.username){this.disabled=false;toast('Missing username','Give the account a username');$('fUser').focus();return;}
     if($('fPw').value.trim())patch.password=$('fPw').value.trim();
 
+    if(pendingReq){
+      var rq2=REQS.filter(function(r){return r.id===pendingReq;})[0];
+      if(rq2&&rq2.access)patch.access=rq2.access;
+    }
     var res=await RFStore.create(patch);
     this.disabled=false;
     if(res.ok){
+      /* close the practice manager's request and tell them */
+      if(pendingReq){
+        try{
+          await RFStore.markTeamRequest(pendingReq,{
+            status:'active', issued_username:patch.username,
+            issued_at:new Date().toISOString()
+          });
+          var rq3=REQS.filter(function(r){return r.id===pendingReq;})[0];
+          if(rq3&&rq3.requested_by&&window.RFNotify){
+            RFNotify.send([rq3.requested_by],{
+              title:'Login created: '+rq3.full_name,
+              body:'An administrator issued a temporary password. Username '+patch.username+
+                '. They will be asked to change it on first sign-in.',
+              meta:'TEAM REQUEST', ttl:9000
+            });
+          }
+        }catch(e){}
+        pendingReq=null;
+      }
       showCreds(patch.username,res.tempPassword||patch.password,res.mfa);
       refresh();
     }else{

@@ -48,6 +48,50 @@
   force = true
 
 [[redirects]]
+  from = "/api/claim-status"
+  to   = "/.netlify/functions/claim-status"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/claims-queue"
+  to   = "/.netlify/functions/claims-queue"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/claims-cron"
+  to   = "/.netlify/functions/claims-cron"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/era"
+  to   = "/.netlify/functions/era"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/data"
+  to   = "/.netlify/functions/data"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/claims"
+  to   = "/.netlify/functions/claims"
+  status = 200
+  force = true
+
+# Fallback: if the file was copied in under its delivered name rather than
+# renamed to claims.js, this keeps /api/claims working.
+[[redirects]]
+  from = "/api/claims-alt"
+  to   = "/.netlify/functions/functions-claims"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/eligibility"
   to   = "/.netlify/functions/eligibility"
   status = 200
@@ -58,3 +102,10 @@
   to   = "/.netlify/functions/bootstrap"
   status = 200
   force = true
+
+
+# Wakes every hour and submits only when the practice's local hour matches
+# CLAIMS_CRON_HOUR. Hourly rather than once a day so daylight saving never
+# shifts the run time.
+[functions."claims-cron"]
+  schedule = "0 * * * *"

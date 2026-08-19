@@ -362,8 +362,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 <script src="_prefs.js"></script>
 <script src="../_notify.js"></script>
 <link rel="stylesheet" href="../_session.css">
+<script src="../_guard.js"></script>
 <script src="../_store.js"></script>
+<script src="../_datepicker.js"></script>
 <script src="../_session.js"></script>
+<link rel="stylesheet" href="../_datepicker.css">
 </head>
 <body>
 
@@ -631,105 +634,162 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   })();
 
   /* data engine */
-  function seed(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
-  function rng(s){return function(){s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
-  var iso=function(d){return d.toISOString().slice(0,10);};
+  var iso=function(d){
+    /* local calendar parts — toISOString is UTC and shifts the day */
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+
+           '-'+String(d.getDate()).padStart(2,'0');
+  };
+  var esc=function(v){return String(v==null?'':v).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
   var money=function(n){return '$'+Math.round(n).toLocaleString();};
   var money2=function(n){return '$'+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});};
 
-  var PAYERS=[['Blue Cross Blue Shield of Texas','BCBSTX',1],['UnitedHealthcare','87726',.82],
-    ['Medicare — CMS','CMS',.74],['Aetna','60054',.61],['Cigna Healthcare','62308',.52],
-    ['Texas Medicaid','MCDTX',.44],['Humana','SX155',.36],['Tricare East','TREST',.25],
-    ['Ambetter','68069',.19],['Oscar Health','OSCAR',.13]];
+  /* Everything below is read from the records. Nothing is generated. */
+  var PAYERS=[];          /* built from real claims */
+  var DAYS={};            /* date → the figures for that day */
 
-  function day(ds){
-    var r=rng(seed(ds)),wd=new Date(ds+'T12:00:00').getDay(),
-        wk=(wd===0)?.06:(wd===6)?.22:1;
-    var appt=Math.round((26+r()*20)*wk),
-        arrived=Math.round(appt*(.80+r()*.11)),
-        completed=Math.round(arrived*(.92+r()*.07)),
-        noshow=Math.max(0,Math.round(appt*(.04+r()*.05))),
-        cancelled=Math.max(0,appt-arrived-noshow),
-        elig=Math.round(appt*(1.6+r()*.7)),
-        inactive=Math.round(elig*(.02+r()*.03)),
-        copay=completed*(18+r()*26),
-        copayDue=copay*(1+(.06+r()*.1)),
-        filed=Math.round(completed*(.94+r()*.08)),
-        rejected=Math.round(filed*(.012+r()*.022)),
-        denied=Math.round(filed*(.016+r()*.03)),
-        billed=filed*(196+r()*168),
-        allowed=billed*(.62+r()*.09),
-        paid=allowed*(.86+r()*.11),
-        deniedAmt=denied*(210+r()*420),
-        arDays=9.4+r()*4.6;
-    return {date:ds,appt:appt,arrived:arrived,completed:completed,noshow:noshow,cancelled:cancelled,
-      elig:elig,inactive:inactive,copay:copay,copayDue:copayDue,filed:filed,rejected:rejected,
-      denied:denied,billed:billed,allowed:allowed,paid:paid,deniedAmt:deniedAmt,arDays:arDays};
+  function blankDay(ds){
+    return { date:ds, appt:0, arrived:0, completed:0, noshow:0, cancelled:0,
+             elig:0, inactive:0, copay:0, copayDue:0,
+             filed:0, rejected:0, denied:0, paid_ct:0,
+             billed:0, allowed:0, paid:0, deniedAmt:0, outstanding:0, arDays:0 };
   }
-  function series(f,t){var o=[],c=parseDay(f),e=parseDay(t),g=0;
-    while(c<=e&&g++<800){o.push(day(iso(c)));c.setDate(c.getDate()+1);}return o;}
+
+  /* An older claim may predate provider_id being stored on it; fall back to
+     the encounter it came from so those still attribute correctly. */
+  var ENC_PROV={};
+  function providerFromEncounter(c){
+    if(c.enc_id!=null&&ENC_PROV[String(c.enc_id)]!=null)return ENC_PROV[String(c.enc_id)];
+    return null;
+  }
+
+  /* Pull every record once, then bucket by day and provider. */
+  async function loadReal(from,to){
+    DAYS={}; ENC_PROV={};
+    var ids=ROSTER.map(function(r){return String(r.id);});
+    var mine=function(pid){
+      if(scope==='FACILITY')return ids.indexOf(String(pid))>-1;
+      return String(pid)===String(scope);
+    };
+
+    /* appointments */
+    var appts=[];
+    try{ appts=await RFStore.appts(); }catch(e){}
+    appts.forEach(function(a){
+      if((a.block_type||'patient')!=='patient')return;
+      if(a.date<from||a.date>to)return;
+      if(!mine(a.provider_id))return;
+      var d=DAYS[a.date]=DAYS[a.date]||blankDay(a.date);
+      d.appt++;
+      var st=String(a.status||'Scheduled');
+      if(st==='Checked in'){ d.arrived++; d.completed++; }
+      else if(st==='No show') d.noshow++;
+      else if(st==='Cancelled') d.cancelled++;
+      if(a.collected) d.copay+=(+a.copay||0);
+      d.copayDue+=(+a.copay||0);
+    });
+
+    /* encounters give the completed work even when the status was never set */
+    var patients=[];
+    try{ patients=await RFStore.patients(); }catch(e){}
+    for(var i=0;i<patients.length;i++){
+      var encs=[];
+      try{ encs=await RFStore.encounters(patients[i].id); }catch(e){}
+      encs.forEach(function(e){
+        if(e.clinician_id!=null)ENC_PROV[String(e.id)]=e.clinician_id;
+        if(!e.dos||e.dos<from||e.dos>to)return;
+        if(!mine(e.clinician_id))return;
+        var d=DAYS[e.dos]=DAYS[e.dos]||blankDay(e.dos);
+        if(e.status==='locked')d.completed=Math.max(d.completed,1);
+      });
+    }
+
+    /* eligibility checks */
+    var elig=[];
+    try{ elig=await RFStore.eligHistory(); }catch(e){}
+    elig.forEach(function(x){
+      var ds=String(x.t?new Date(x.t).toISOString().slice(0,10):'');
+      if(x.t){ var dd=new Date(x.t);
+        ds=dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+
+           String(dd.getDate()).padStart(2,'0'); }
+      if(!ds||ds<from||ds>to)return;
+      var d=DAYS[ds]=DAYS[ds]||blankDay(ds);
+      d.elig++;
+      if(x.meta&&/inactive/i.test(x.meta.status||''))d.inactive++;
+    });
+
+    /* claims */
+    var claims=[];
+    try{ claims=await RFStore.claims({}); }catch(e){}
+    var payerTotals={};
+    claims.forEach(function(c){
+      var ds=c.dos||String(c.created_at||'').slice(0,10);
+      if(!ds||ds<from||ds>to)return;
+      /* A claim with no rendering provider cannot belong to one, so it counts
+         for the whole facility but never against an individual — otherwise the
+         same claim appears on every provider's figures. */
+      var cpid=c.provider_id!=null?c.provider_id:providerFromEncounter(c);
+      if(cpid==null){ if(scope!=='FACILITY')return; }
+      else if(!mine(cpid))return;
+      var d=DAYS[ds]=DAYS[ds]||blankDay(ds);
+      var total=+c.total||0;
+      d.filed++;
+      d.billed+=total;
+      var st=String(c.status||'submitted').toLowerCase();
+      if(st==='rejected')d.rejected++;
+      else if(st==='denied'){ d.denied++; d.deniedAmt+=total; }
+      else if(st==='paid'){ d.paid_ct++; d.paid+=total; d.allowed+=total; }
+      else d.outstanding+=total;
+
+      var key=c.payer||'Not recorded';
+      var pt=payerTotals[key]=payerTotals[key]||
+        {name:key,id:c.payer_id||'',claims:0,billed:0,paid:0,denied:0,outstanding:0};
+      pt.claims++; pt.billed+=total;
+      if(st==='paid')pt.paid+=total;
+      else if(st==='denied')pt.denied+=total;
+      else pt.outstanding+=total;
+    });
+
+    PAYERS=Object.keys(payerTotals).map(function(k){return payerTotals[k];})
+      .sort(function(a,b){return b.billed-a.billed;}).slice(0,10);
+
+    /* patient and insurance balances, for the outstanding figure */
+    var patBal=0, insBal=0;
+    for(var j=0;j<patients.length;j++){
+      var pe=[];
+      try{ pe=await RFStore.encounters(patients[j].id); }catch(e){}
+      pe.forEach(function(e){
+        if(e.status!=='locked')return;
+        if(!e.dos||e.dos<from||e.dos>to)return;
+        if(!mine(e.clinician_id))return;
+        var fee=(e.lines||[]).reduce(function(x,l){return x+(+l.fee||0)*(+l.units||1);},0);
+        var b=e.billing||{};
+        var pat=b.pat_resp!=null?+b.pat_resp:0;
+        patBal+=Math.max(0,pat-(+b.pat_paid||0));
+        insBal+=Math.max(0,fee-pat-(+b.writeoff||0)-(+b.ins_paid||0));
+      });
+    }
+    window.__RF_BAL={pat:patBal,ins:insBal};
+  }
+
+  function parseDay(str){
+    var p=String(str||'').split('-');
+    return new Date(+p[0],(+p[1]||1)-1,+p[2]||1,12,0,0);
+  }
+
+  function series(f,t){
+    var o=[],c=parseDay(f),e=parseDay(t),g=0;
+    while(c<=e&&g++<800){ var ds=iso(c); o.push(DAYS[ds]||blankDay(ds)); c.setDate(c.getDate()+1); }
+    return o;
+  }
   function sum(r,k){return r.reduce(function(a,b){return a+b[k];},0);}
   var COUNTS=['appt','arrived','completed','noshow','cancelled','elig','inactive','filed','rejected','denied'];
   /* pull the real booked appointments for the range, per provider */
-  async function loadReal(f,t){
-    REAL={};
-    try{
-      var ids=ROSTER.map(function(r){return r.id;});
-      var c=parseDay(f), e=parseDay(t), guard=0;
-      while(c<=e&&guard++<400){
-        var ds=iso(c);
-        var day=await RFStore.appts(ds, ids);
-        var keep=day.filter(function(a){
-          if((a.block_type||'patient')!=='patient')return false;
-          if(scope==='FACILITY')return true;
-          return String(a.provider_id)===String(scope);
-        });
-        REAL[ds]={
-          appt:keep.length,
-          completed:keep.filter(function(a){return a.status==='Checked in';}).length,
-          noshow:keep.filter(function(a){return a.status==='No show';}).length,
-          cancelled:keep.filter(function(a){return a.status==='Cancelled';}).length,
-          copay:keep.reduce(function(x,a){return x+(+a.copay||0);},0),
-          collected:keep.filter(function(a){return a.collected;})
-                        .reduce(function(x,a){return x+(+a.copay||0);},0),
-          isNew:keep.filter(function(a){return a.is_new;}).length
-        };
-        c.setDate(c.getDate()+1);
-      }
-    }catch(err){ console.warn('appointment load skipped',err); }
-  }
+  /* A second loadReal used to live here from the synthetic-data build. It
+     only read appointments and, being declared later, replaced the real one —
+     so claims, eligibility and balances never reached the tiles. Removed. */
 
-  /* where a day has real bookings, they win over the model */
-  function mergeReal(r){
-    var real=REAL[r.date];
-    if(!real||!real.appt)return r;
-    var o={};for(var k in r)o[k]=r[k];
-    o.appt=real.appt;
-    o.arrived=Math.max(real.completed, Math.round(real.appt*0.86));
-    o.completed=real.completed||Math.round(o.arrived*0.94);
-    o.noshow=real.noshow;
-    o.cancelled=real.cancelled;
-    o.copay=real.collected;
-    o.copayDue=real.copay;
-    /* claim volume follows the visits actually completed */
-    var ratio=o.completed/Math.max(1,r.completed);
-    ['filed','rejected','denied'].forEach(function(k){o[k]=Math.round(r[k]*ratio);});
-    ['billed','allowed','paid','deniedAmt'].forEach(function(k){o[k]=r[k]*ratio;});
-    o._real=true;
-    return o;
-  }
 
-  function scaleRow(r){
-    var k=scopeFactor();
-    if(k===1)return r;
-    var o={};
-    for(var key in r){
-      if(key==='date'||key==='arDays'){o[key]=r[key];}
-      else if(COUNTS.indexOf(key)>-1){o[key]=Math.round(r[key]*k);}
-      else{o[key]=r[key]*k;}
-    }
-    return o;
-  }
 
   /* animated counter */
   function count(el,to,fmt){
@@ -751,7 +811,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
 
   /* ══ provider roster + login scope ══ */
-  var ROSTER=[], SESSION=null, MINE=null, MY_ORG=null, ORG=null, REAL={};
+  var ROSTER=[], SESSION=null, MINE=null, MY_ORG=null, ORG=null;
   var scopeSel=$('scopeSel'),scopeTag=$('scopeTag'),scopeBox=$('scope'),
       isSupervisor=false, scope='FACILITY';
 
@@ -828,6 +888,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       scopeTag.textContent=(p&&p.sp?p.sp.toUpperCase():'INDIVIDUAL')+' · SINGLE PROVIDER';
     }
   }
+  /* kept for compatibility; the data is already filtered by provider */
   function scopeFactor(){
     if(scope==='FACILITY')return 1;
     var p=ROSTER.filter(function(x){return x.id===scope;})[0];
@@ -870,13 +931,14 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     if(!ROSTER.length)return;
     if(f>t){var x=f;f=t;t=x;fromEl.value=f;toEl.value=t;}
     await loadReal(f,t);
-    var rows=series(f,t).map(scaleRow).map(mergeReal);current=rows;var n=rows.length;
+    var rows=series(f,t);current=rows;var n=rows.length;
     var pf=parseDay(f);pf.setDate(pf.getDate()-n);
     var pt=parseDay(f);pt.setDate(pt.getDate()-1);
-    var prev=series(iso(pf),iso(pt)).map(scaleRow);
-    var realDays=rows.filter(function(r){return r._real;}).length;
+    var prev=series(iso(pf),iso(pt));
+    var withData=rows.filter(function(r){
+      return r.appt||r.filed||r.elig||r.billed; }).length;
     $('rangeChip').textContent=label+' · '+n+' day'+(n===1?'':'s')+
-      (realDays?' · '+realDays+' with bookings':'');
+      (withData?' · '+withData+' with activity':' · no activity');
 
     function delta(id,c,p,inv){
       var el=$(id);if(!el)return;
@@ -1041,22 +1103,29 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     }).join('');
     $('chart-sub').textContent=filed.toLocaleString()+' CLAIMS · '+(clean/(filed||1)*100).toFixed(1)+'% CLEAN';
 
-    /* payers */
-    var ws=PAYERS.reduce(function(a,b){return a+b[2];},0),pr=rng(seed(f+t));
-    var pl=PAYERS.map(function(p){
-      var sh=p[2]/ws,cn=Math.round(filed*sh),bl=billed*sh*(.92+pr()*.16);
-      return {n:p[0],id:p[1],cl:cn,bl:bl,pd:bl*(.55+pr()*.2),dn:1.1+pr()*4.6};
-    }).sort(function(a,b){return b.bl-a.bl;});
-    var mxY=Math.max.apply(null,pl.map(function(x){return x.pd/x.bl;}));
-    $('payers').innerHTML=pl.map(function(x,i){
-      var cls=x.dn<2.5?'g':x.dn<4?'a':'r';
-      return '<tr style="animation-delay:'+(i*0.045)+'s"><td><div class="nm"><span class="rank">'+(i+1)+'</span>'+
-        '<span>'+x.n+' <span class="pid">· '+x.id+'</span></span></div></td>'+
-        '<td class="r mono">'+x.cl.toLocaleString()+'</td><td class="r mono">'+money(x.bl)+'</td>'+
-        '<td class="r mono">'+money(x.pd)+'</td>'+
-        '<td><div class="mbar"><i data-w="'+((x.pd/x.bl)/mxY*100).toFixed(0)+'"></i></div></td>'+
-        '<td class="r"><span class="pct '+cls+'">'+x.dn.toFixed(1)+'%</span></td></tr>';
-    }).join('');
+    /* payers — the ten we have billed most, from real claims */
+    if(!PAYERS.length){
+      $('payers').innerHTML='<tr><td colspan="6" style="padding:34px 18px;text-align:center;'+
+        'color:var(--dim);line-height:1.7"><b style="display:block;font-family:Sora,sans-serif;'+
+        'font-size:14px;color:var(--ink);margin-bottom:5px">No claims billed yet</b>'+
+        'Payers appear here once claims are submitted from a patient chart.</td></tr>';
+    }else{
+      var mxY=Math.max.apply(null,PAYERS.map(function(x){
+        return x.billed?x.paid/x.billed:0; }))||1;
+      $('payers').innerHTML=PAYERS.map(function(x,i){
+        var dn=x.billed?(x.denied/x.billed*100):0;
+        var cls=dn<2.5?'g':dn<4?'a':'r';
+        return '<tr style="animation-delay:'+(i*0.045)+'s"><td><div class="nm">'+
+          '<span class="rank">'+(i+1)+'</span>'+
+          '<span>'+esc(x.name)+(x.id?' <span class="pid">· '+esc(x.id)+'</span>':'')+'</span></div></td>'+
+          '<td class="r mono">'+x.claims.toLocaleString()+'</td>'+
+          '<td class="r mono">'+money(x.billed)+'</td>'+
+          '<td class="r mono">'+money(x.paid)+'</td>'+
+          '<td><div class="mbar"><i data-w="'+
+            (x.billed?((x.paid/x.billed)/mxY*100).toFixed(0):0)+'"></i></div></td>'+
+          '<td class="r"><span class="pct '+cls+'">'+dn.toFixed(1)+'%</span></td></tr>';
+      }).join('');
+    }
     $('pay-sub').textContent=money(billed)+' BILLED · '+(scope==='FACILITY'?'ALL PROVIDERS':((ROSTER.filter(function(x){return x.id===scope;})[0]||{}).name||'').toUpperCase());
     setTimeout(function(){document.querySelectorAll('#payers .mbar i').forEach(function(b){b.style.width=b.dataset.w+'%';});},120);
 
@@ -1098,12 +1167,19 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     dial('od-ins','od-ins-t',tt?oi/tt*100:0);
     dial('od-pat','od-pat-t',tt?op/tt*100:0);
 
-    var ar2=rng(seed(f)),
-        bkt=[['0–30',.46,'#0E9D73'],['31–60',.24,'#1F93AE'],['61–90',.14,'#5A6CFF'],
-             ['91–120',.09,'#C98A18'],['120+',.07,'#D0603F']],
-        vals=bkt.map(function(bb){return tt*bb[1]*(.9+ar2()*.2);}),
-        vt=vals.reduce(function(x,y){return x+y;},0)||1,
-        vmax=Math.max.apply(null,vals);
+    /* age each outstanding charge by its own date of service */
+    var bkt=[['0–30',0,'#0E9D73'],['31–60',0,'#1F93AE'],['61–90',0,'#5A6CFF'],
+             ['91–120',0,'#C98A18'],['120+',0,'#D0603F']],
+        vals=[0,0,0,0,0],
+        todayMs=Date.now();
+    rows.forEach(function(r){
+      if(!r.outstanding)return;
+      var age=Math.floor((todayMs-parseDay(r.date).getTime())/86400000);
+      var i=age<=30?0:age<=60?1:age<=90?2:age<=120?3:4;
+      vals[i]+=r.outstanding;
+    });
+    var vt=vals.reduce(function(x,y){return x+y;},0)||1,
+        vmax=Math.max.apply(null,vals)||1;
     $('ag-risk').textContent=money(vals[3]+vals[4]);
     $('cols').innerHTML=bkt.map(function(bb,i){
       return '<div class="col" data-h="'+(vals[i]/vmax*100).toFixed(1)+'">'+
@@ -1166,5 +1242,42 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 })();
 </script>
 
+
+<script>
+/* Section access: a grant, not just a role. Shows a notice rather than
+   signing anyone out. */
+(function(){
+  var SECTION='reports';
+  document.addEventListener('DOMContentLoaded',async function(){
+    try{
+      if(typeof RFStore==='undefined'||!RFStore.can)return;
+      await RFStore.ready();
+      var lvl=await RFStore.can(SECTION);
+      if(lvl==='none'){
+        if(window.RFSession&&RFSession.denied)
+          RFSession.denied({section:'reports'});
+        return;
+      }
+      if(lvl==='view'){
+        /* read only: the page still loads, but nothing that writes is usable */
+        document.body.classList.add('rf-viewonly');
+        var css=document.createElement('style');
+        css.textContent=
+          '.rf-viewonly [data-write],.rf-viewonly .ib.del{opacity:.4;pointer-events:none}'+
+          '.rf-viewonly .rf-ro{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);'+
+            'z-index:900;display:flex;align-items:center;gap:9px;padding:10px 16px;border-radius:11px;'+
+            'background:#0D1A16;color:#F2FBF7;font:600 12px Manrope,system-ui,sans-serif;'+
+            'box-shadow:0 18px 40px -18px rgba(13,26,22,.8)}';
+        document.head.appendChild(css);
+        var note=document.createElement('div');
+        note.className='rf-ro';
+        note.textContent='View only — contact your practice manager to make changes';
+        document.body.appendChild(note);
+        setTimeout(function(){ note.style.display='none'; },6000);
+      }
+    }catch(e){}
+  });
+})();
+</script>
 </body>
 </html>

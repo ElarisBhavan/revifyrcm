@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_admin.css">
+<script src="../_guard.js"></script>
 <script src="../_store.js"></script>
 <script src="../_session.js"></script>
 <link rel="stylesheet" href="../_session.css">
@@ -58,7 +59,7 @@
       <p>Add, update or remove rendering providers and credentials.</p>
       <span class="n" id="nProv">—<small>PROVIDERS</small></span>
     </a>
-    <a class="tile" href="employees.html">
+    <a class="tile" href="logins.html">
       <span class="ti" style="background:var(--teal-s)"><svg viewBox="0 0 24 24" style="stroke:var(--teal)"><circle cx="9" cy="9" r="3.4"/><path d="M2 20c0-3.4 3-5.6 7-5.6s7 2.2 7 5.6"/><circle cx="18" cy="8" r="2.6"/><path d="M17 20c0-2.6 1.2-4.4 3.6-4.4"/></svg></span>
       <h3>Employee</h3>
       <p>Coders, billers, schedulers and front office staff.</p>
@@ -75,6 +76,7 @@
       <h3>Logins</h3>
       <p>Create accounts, reset passwords, enforce two-step.</p>
       <span class="n" id="nLogin">—<small>ACCOUNTS</small></span>
+      <span class="tbadge" id="waitBadge" hidden></span>
     </a>
     <a class="tile" href="hours.html">
       <span class="ti" style="background:var(--coral-s)"><svg viewBox="0 0 24 24" style="stroke:var(--coral)"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
@@ -88,7 +90,7 @@
       <p>Work assigned across the practice, with turnaround.</p>
       <span class="n" id="nTask">—<small>OPEN</small></span>
     </a>
-    <a class="tile" href="messages.html">
+    <a class="tile" href="admin-tasks.html">
       <span class="ti" style="background:var(--blue-s)"><svg viewBox="0 0 24 24" style="stroke:var(--blue)"><path d="M21 15a2 2 0 01-2 2H8l-4 4V5a2 2 0 012-2h13a2 2 0 012 2z"/></svg></span>
       <h3>Message</h3>
       <p>Broadcasts and direct messages to any role.</p>
@@ -161,6 +163,30 @@
     var byRole=function(r){return acc.filter(function(a){return a.role===r;}).length;};
 
     var orgs=await RFStore.orgs(), provs=await RFStore.providers();
+    var pays=await RFStore.payers();
+    /* people a practice manager has added who still need a password */
+    var reqs=[];
+    try{ reqs=await RFStore.teamRequests(); }catch(e){}
+    var waiting=reqs.filter(function(r){return r.status!=='active';}).length;
+    var wEl=document.getElementById('nWaiting');
+    if(wEl)wEl.innerHTML=waiting+'<small>AWAITING A PASSWORD</small>';
+    if(waiting){
+      var lt=document.querySelector('a[href="logins.html"] p');
+      if(lt)lt.textContent=waiting+' person'+(waiting===1?'':'s')+
+        ' added by a practice manager '+(waiting===1?'is':'are')+' waiting on a password.';
+    }
+    var wBadge=document.getElementById('waitBadge');
+    if(wBadge){
+      wBadge.textContent=waiting||'';
+      wBadge.hidden=!waiting;
+    }
+    var sets=['cpt','hcpcs','icd10','pos','modifier','servicetype','fee'];
+    var mdTotal=0;
+    for(var i=0;i<sets.length;i++) mdTotal+=(await RFStore.master(sets[i])).length;
+    var nPay=document.getElementById('nPay');
+    if(nPay)nPay.innerHTML=pays.length+'<small>PAYERS</small>';
+    var nMD=document.getElementById('nMD');
+    if(nMD)nMD.innerHTML=mdTotal+'<small>CODES</small>';
     $('nOrg').innerHTML=orgs.length+'<small>ENTITIES</small>';
     $('nLogin').innerHTML=acc.length+'<small>ACCOUNTS</small>';
     $('nProv').innerHTML=provs.length+'<small>PROVIDERS</small>';

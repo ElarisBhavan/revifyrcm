@@ -10,6 +10,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="../_guard.js"></script>
+<script src="../_driver.js"></script>
 <script src="../_store.js"></script>
 <script src="../_session.js"></script>
 <style>
@@ -170,12 +172,42 @@ img.brandmark{width:26px;height:26px;flex:none;object-fit:contain;display:block}
 /* rf-logomark-styled */
 img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   background:transparent!important;border:none!important;box-shadow:none!important}
+/* analog clock */
+.clock{display:flex;align-items:center;gap:10px;margin-left:14px;padding-left:14px;
+  border-left:1px solid var(--line2);flex:none}
+.clock svg{width:38px;height:38px;flex:none;overflow:visible;
+  transition:transform .5s var(--ease)}
+.clock:hover svg{transform:scale(1.08)}
+.clock .face{fill:rgba(255,255,255,.72);stroke:var(--line2);stroke-width:2.5}
+.clock .ticks line{stroke:rgba(13,26,22,.28);stroke-width:2;stroke-linecap:round}
+.clock .ticks line.q{stroke:rgba(13,26,22,.5);stroke-width:3}
+.clock .hand{stroke-linecap:round}
+/* The hands are rotated with the SVG transform attribute, in viewBox units.
+   A CSS transform-origin would be read in rendered pixels instead — on a 38px
+   clock that puts the pivot outside the face and throws the hands off it. */
+.clock .hr{stroke:var(--ink);stroke-width:5}
+.clock .min{stroke:var(--ink);stroke-width:3.4}
+.clock .sec{stroke:var(--mint);stroke-width:1.8}
+.clock .pin{fill:var(--ink)}
+.clock .pin2{fill:var(--mint)}
+.clock .ctime{display:flex;flex-direction:column;line-height:1.15}
+.clock .ctime b{font-family:var(--mono,'JetBrains Mono',monospace);font-size:13px;
+  font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.clock .ctime small{font-family:var(--mono,'JetBrains Mono',monospace);font-size:8.6px;
+  letter-spacing:.09em;color:var(--dim,#8A9A97);text-transform:uppercase}
+@media (max-width:900px){.clock .ctime{display:none}}
+@media (max-width:640px){.clock{margin-left:8px;padding-left:8px}.clock svg{width:32px;height:32px}}
+@media (prefers-reduced-motion:reduce){.clock .sec{display:none}}
+.tile.locked{opacity:.5;filter:saturate(.4)}
+.tile.locked:hover{transform:none;box-shadow:none}
+.tile.locked::after{content:'';position:absolute;top:12px;right:12px;width:15px;height:15px;
+  background:no-repeat center/contain url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235C6A66' stroke-width='2'><rect x='4' y='10.5' width='16' height='10' rx='2.5'/><path d='M8 10.5V7.5a4 4 0 018 0v3'/></svg>")}
 </style>
 <link rel="stylesheet" href="_prefs.css">
 <script src="_prefs.js"></script>
 <script src="../_notify.js"></script>
 <link rel="stylesheet" href="../_session.css">
-<script src="../_store.js"></script>
+
 </head>
 <body>
 
@@ -186,7 +218,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 <header class="hdr">
   <div class="brand">
     <img class="brandmark" src="../assets/logo-64.png" alt="ReviFlow RCM">
-    <span>R&nbsp;e&nbsp;v&nbsp;i&nbsp;F&nbsp;l&nbsp;o&nbsp;w</span>
+    <span>ReviFlow<em>RCM</em></span>
   </div>
 
   <div class="who" id="who">
@@ -198,6 +230,19 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     Log out
     <svg viewBox="0 0 24 24"><path d="M15 12H4M11 6l6 6-6 6"/><path d="M14 4h5a1 1 0 011 1v14a1 1 0 01-1 1h-5"/></svg>
   </a>
+
+  <div class="clock" id="clock" title="Local time">
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <circle class="face" cx="50" cy="50" r="45"/>
+      <g class="ticks" id="ticks"></g>
+      <line class="hand hr"  id="hHr"  x1="50" y1="50" x2="50" y2="28"/>
+      <line class="hand min" id="hMin" x1="50" y1="50" x2="50" y2="18"/>
+      <line class="hand sec" id="hSec" x1="50" y1="56" x2="50" y2="14"/>
+      <circle class="pin" cx="50" cy="50" r="3.4"/>
+      <circle class="pin2" cx="50" cy="50" r="1.4"/>
+    </svg>
+    <span class="ctime"><b id="cDigits">--:--</b><small id="cDay">—</small></span>
+  </div>
 </header>
 
 <main class="stage">
@@ -220,7 +265,6 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         </svg>
       </div>
       <div class="body">
-        <h3 style="color: #947f57; font-size:x-large; font-weight: 900; font-style:italic; font-family:Cambria, Cochin, Georgia, Times, 'Times New Roman', serif">R&nbsp;e&nbsp;V&nbsp;e&nbsp;r&nbsp;i&nbsp;f&nbsp;y</h3><br>
         <h2>Check eligibility</h2>
         <p>Verify coverage, deductible and patient responsibility across every payer you bill.</p>
         <div class="stat"><b>68</b><small>VERIFIED FOR TOMORROW</small></div>
@@ -309,6 +353,37 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       </div>
     </a>
 
+    <a class="tile t-t" href="teams.html" id="teamsTile" hidden>
+      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+      <div class="ico">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <circle class="il" cx="12" cy="11" r="4.6"/>
+          <path class="ib line1" d="M4 26c0-4.8 3.8-7.8 8-7.8s8 3 8 7.8"/>
+          <circle class="il" cx="23" cy="10" r="3.4"/>
+          <path class="ib line2" d="M22 26c0-3.6 1.6-6.2 5-6.2"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h2>Teams</h2>
+        <p>Add providers and staff</p>
+      </div>
+    </a>
+
+    <a class="tile t-p" href="payments.html">
+      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+      <div class="ico">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <rect class="ib" x="3" y="8" width="26" height="18" rx="3"/>
+          <path class="ib line1" d="M3 14h26"/>
+          <path class="il line2" d="M8 20h6"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h2>Payments</h2>
+        <p>Remittances and collections</p>
+      </div>
+    </a>
+
     <a class="tile t-v" href="credentialing.html">
       <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
       <div class="ico">
@@ -382,6 +457,40 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 <script>
 (function(){
   var $=function(i){return document.getElementById(i);};
+
+  /* ── analog clock ── */
+  (function(){
+    var ticks=document.getElementById('ticks');
+    if(ticks && !ticks.children.length){
+      var out='';
+      for(var i=0;i<12;i++){
+        var a=i*30*Math.PI/180, q=(i%3===0);
+        var r1=q?34:37, r2=42;
+        out+='<line class="'+(q?'q':'')+'" '+
+          'x1="'+(50+r1*Math.sin(a)).toFixed(2)+'" y1="'+(50-r1*Math.cos(a)).toFixed(2)+'" '+
+          'x2="'+(50+r2*Math.sin(a)).toFixed(2)+'" y2="'+(50-r2*Math.cos(a)).toFixed(2)+'"/>';
+      }
+      ticks.innerHTML=out;
+    }
+    var hr=document.getElementById('hHr'), mn=document.getElementById('hMin'),
+        sc=document.getElementById('hSec'), dg=document.getElementById('cDigits'),
+        dy=document.getElementById('cDay');
+    if(!hr&&!dg)return;
+    function tick(){
+      var d=new Date();
+      var s2=d.getSeconds()+d.getMilliseconds()/1000,
+          m=d.getMinutes()+s2/60,
+          h=(d.getHours()%12)+m/60;
+      if(sc)sc.setAttribute('transform','rotate('+(s2*6)+' 50 50)');
+      if(mn)mn.setAttribute('transform','rotate('+(m*6)+' 50 50)');
+      if(hr)hr.setAttribute('transform','rotate('+(h*30)+' 50 50)');
+      if(dg)dg.textContent=d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+      if(dy)dy.textContent=d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  })();
+
   (async function(){
     await RFStore.ready();
     var s=RFStore.getSession();
@@ -397,9 +506,35 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
     var h=new Date().getHours();
     var part=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
-    $('greet').innerHTML=part+', <em>'+(s.first?((/^dr/i.test(full)?'Dr. ':'')+s.first):full)+'</em>';
+    $('greet').innerHTML=part+', <em>'+(s.last?((/^dr/i.test(full)?'Dr. ':'')+s.last):full)+'</em>';
     if(s.role==='supervisor')
       $('greetSub').textContent='Facility overview across every provider. Everything else is running on its own.';
+
+    /* rf-tilegate: dim what this account cannot open */
+    try{
+      var MAP={'schedule.html':'schedule','eligibility.html':'eligibility',
+               'payments.html':'claims',
+               'claims.html':'claims','credentialing.html':'credentialing',
+               'tasks.html':'tasks','teams.html':'teams','dashboard.html':'reports',
+               '../Patient/patient-dashboard.html':'patients'};
+      for(var href in MAP){
+        var lvl=await RFStore.can(MAP[href]);
+        if(lvl!=='none')continue;
+        document.querySelectorAll('a.tile[href="'+href+'"]').forEach(function(t){
+          t.classList.add('locked');
+          t.setAttribute('title','No access — contact your practice manager');
+          t.addEventListener('click',function(ev){
+            ev.preventDefault();
+            if(window.RFSession&&RFSession.denied)
+              RFSession.denied({section:t.querySelector('h2')
+                ? t.querySelector('h2').textContent.toLowerCase() : 'this section'});
+          });
+        });
+      }
+    }catch(e){}
+
+    var tt=document.getElementById('teamsTile');
+    if(tt&&(s.role==='supervisor'||s.role==='scheduler'||s.role==='admin'))tt.hidden=false;
 
     var out=document.querySelector('.logout');
     if(out)out.addEventListener('click',function(e){e.preventDefault();

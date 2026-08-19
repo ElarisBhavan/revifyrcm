@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_prefs.css">
 <script src="_prefs.js"></script>
+<script src="../_guard.js"></script>
 <script src="../_store.js"></script>
 <script src="../_session.js"></script>
 <script src="../_notify.js"></script>
@@ -439,6 +440,16 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   padding:1px 5px;border-radius:4px;background:var(--paper-2);color:var(--dim);margin-left:5px;text-transform:none}
 @media print{.scell dt em.planwide{font-size:5.6pt!important}
   .sumhead .stcchip{font-size:6.4pt!important;padding:1pt 4pt!important}}
+.lvlseg{display:inline-flex;gap:3px;padding:3px;border-radius:9px;background:#fff;
+  border:1px solid var(--line);margin-left:4px}
+.lvlseg button{padding:5px 11px;border-radius:6px;font-size:10.6px;font-weight:600;
+  color:var(--muted);transition:all .24s var(--ease)}
+.lvlseg button:hover{color:var(--ink)}
+.lvlseg button.on{background:var(--accent-deep);color:#F2FBF7}
+.scell dt em.famtag{font-style:normal;font-family:var(--mono);font-size:7.6px;letter-spacing:.06em;
+  padding:1px 5px;border-radius:4px;background:var(--amber-soft);color:var(--amber);
+  margin-left:5px;text-transform:none}
+@media print{.lvlseg{display:none}}
 </style>
 <link rel="stylesheet" href="../_session.css">
 </head>
@@ -461,7 +472,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   <div class="hin">
     <div class="brand">
       <img src="../assets/logo-64.png" alt="ReviFlow RCM">
-      <span>R&nbsp;e&nbsp;v&nbsp;i&nbsp;F&nbsp;l&nbsp;o&nbsp;w<em>-</em><em>R&nbsp;e&nbsp;V&nbsp;e&nbsp;r&nbsp;i&nbsp;f&nbsp;y</em></span>
+      <span>ReviFlow<em>RCM</em></span>
     </div>
     <span class="crumb">Check eligibility / <b>Benefits detail</b></span>
     <div class="hact">
@@ -643,123 +654,6 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   }
 
 
-  /* anything the payer sent that the mapped sections above do not cover */
-  var MAPPED_TOP=['subscriber','dependents','benefitsInformation','planStatus','provider',
-                  'providers','payer','meta','errors','member','benefits','planInformation','_meta'];
-  function flatten(obj,prefix,out){
-    out=out||[];prefix=prefix||'';
-    if(obj==null)return out;
-    if(Array.isArray(obj)){
-      obj.forEach(function(v,i){flatten(v,prefix+'['+i+']',out);});
-      return out;
-    }
-    if(typeof obj==='object'){
-      Object.keys(obj).forEach(function(k){
-        flatten(obj[k],prefix?prefix+'.'+k:k,out);
-      });
-      return out;
-    }
-    out.push({path:prefix,value:obj});
-    return out;
-  }
-
-  function extrasHTML(N){
-    var rest={};
-    Object.keys(N.raw).forEach(function(k){
-      if(MAPPED_TOP.indexOf(k)<0)rest[k]=N.raw[k];
-    });
-    var rows=flatten(rest).filter(function(r){
-      return r.value!==''&&r.value!=null;
-    });
-    /* the person object often carries more than the banner shows */
-    var pRows=flatten(N.person).filter(function(r){
-      return r.value!==''&&r.value!=null&&
-        !/^(firstName|lastName|middleName|memberId|dateOfBirth|gender|address)/.test(r.path);
-    });
-
-    if(!rows.length&&!pRows.length)return '';
-    return '<section class="card rv" id="everything" data-sec="everything">'+
-      '<div class="chead"><span class="ico"><svg viewBox="0 0 24 24">'+
-        '<path d="M4 6h16M4 12h16M4 18h10"/></svg></span>'+
-        '<div><h2>Everything else the payer returned</h2>'+
-        '<p>Fields outside the sections above, shown exactly as received.</p></div>'+
-        '<span class="cnt">'+(rows.length+pRows.length)+' FIELDS</span></div>'+
-      '<div class="tblwrap"><table class="tbl kv"><thead><tr>'+
-        '<th style="width:44%">Field</th><th>Value</th></tr></thead><tbody>'+
-      pRows.concat(rows).map(function(r,i){
-        return '<tr style="animation-delay:'+Math.min(.5,i*.015)+'s">'+
-          '<td class="kpath">'+esc(r.path)+'</td>'+
-          '<td class="kval">'+esc(String(r.value))+'</td></tr>';
-      }).join('')+
-      '</tbody></table></div></section>';
-  }
-
-
-  /* Plan dates arrive in several shapes: on planStatus, on planInformation,
-     on the benefit lines themselves, or as a "Plan" period inside
-     benefitsDateInformation. Search all of them and take the first hit. */
-  var DATE_BEGIN=['planBegin','plan','planStart','effectiveDate','benefitBegin',
-                  'eligibilityBegin','coverageBegin','serviceDate','admission'];
-  var DATE_END  =['planEnd','planTermination','termination','benefitEnd',
-                  'eligibilityEnd','coverageEnd','expiration','discharge'];
-
-  function dateBags(N){
-    var bags=[];
-    function add(o){ if(o&&typeof o==='object')bags.push(o); }
-    add(N.plan && N.plan.planDateInformation);
-    add(N.plan);
-    (N.status||[]).forEach(function(st){
-      add(st.planDateInformation); add(st.benefitsDateInformation); add(st);
-    });
-    (N.benefits||[]).forEach(function(b){
-      add(b.benefitsDateInformation); add(b.planDateInformation);
-    });
-    add(N.person && N.person.planDateInformation);
-    add(N.subscriber && N.subscriber.planDateInformation);
-    add(N.raw.planDateInformation);
-    return bags;
-  }
-
-  /* "01/01/2026 - 01/01/2027" or "20260101-20270101" in one field */
-  function splitRange(v){
-    var s=String(v||'').trim();
-    var m=s.match(/^(\S+)\s*[-–]\s*(\S+)$/);
-    return m ? { from:m[1], to:m[2] } : null;
-  }
-
-  function planDates(N){
-    var bags=dateBags(N), out={ begin:'', end:'' };
-    for(var i=0;i<bags.length;i++){
-      var bag=bags[i];
-      for(var k in bag){
-        var v=bag[k];
-        if(v==null||typeof v==='object')continue;
-        var r=splitRange(v);
-        if(r && DATE_BEGIN.concat(['planDate','plan']).indexOf(k)>-1){
-          if(!out.begin)out.begin=r.from;
-          if(!out.end)out.end=r.to;
-          continue;
-        }
-        if(!out.begin && DATE_BEGIN.indexOf(k)>-1) out.begin=v;
-        if(!out.end   && DATE_END.indexOf(k)>-1)   out.end=v;
-      }
-      if(out.begin && out.end) break;
-    }
-    /* a bare "planDate" that is a single value counts as the start */
-    if(!out.begin){
-      for(var j=0;j<bags.length;j++){
-        var pd=bags[j].planDate || bags[j].plan;
-        if(pd && typeof pd!=='object'){
-          var rr=splitRange(pd);
-          if(rr){ out.begin=rr.from; out.end=out.end||rr.to; }
-          else out.begin=pd;
-          break;
-        }
-      }
-    }
-    return out;
-  }
-
   /* ══════════ RENDER ══════════ */
   function render(N){
     var p=N.person, out=[];
@@ -856,11 +750,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
           '<path d="M12 3v18M7 8h7a2.5 2.5 0 010 5H9a2.5 2.5 0 000 5h8"/></svg></span>'+
           '<h2>Cost summary</h2>'+
           '<div class="filter" id="netfilter">'+
-            '<button class="on" data-n="all">All networks</button>'+
-            '<button data-n="In network">In network</button>'+
+            '<button data-n="all">All networks</button>'+
+            '<button class="on" data-n="In network">In network</button>'+
             '<button data-n="Out of network">Out of network</button>'+
           '</div></div>'+
-        '<div class="cbody" id="sumBox">'+summaryHTML(N,'all')+'</div></section>');
+        '<div class="cbody" id="sumBox">'+summaryHTML(N,'In network')+'</div></section>');
     }
 
     /* ── accumulators: deductible (C) and out of pocket (G) ── */
@@ -871,7 +765,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
           '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></span>'+
           '<h2>Plan maximums and deductibles</h2>'+
           '<span class="cnt" id="accCnt"></span></div>'+
-        '<div class="cbody"><div class="accs" id="accs">'+accHTML(acc,'all')+'</div></div>'+
+        '<div class="cbody"><div class="accs" id="accs">'+accHTML(acc,'In network')+'</div></div>'+
       '</section>');
     }
 
@@ -949,8 +843,6 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         }).join('<hr class="csep">')+'</div></section>');
     }
 
-    out.push(extrasHTML(N));
-
     out.push('<p class="disc rv"><b>Benefit disclaimer</b>'+
       'This response reflects what the payer returned at the time of the request and is not a guarantee of payment. '+
       'Benefits are subject to contract limits and to the member\u2019s status on the date of service. '+
@@ -992,6 +884,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     return codes.some(function(c){return fam.indexOf(c)>-1;});
   }
 
+  var LEVEL='individual';   /* what the tiles report on */
+
   function summaryHTML(N,net){
     var stc=requestedStc(N);
 
@@ -1016,32 +910,54 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     function cell(label,code,opts){
       opts=opts||{};
       var set=pickSet(code);
-      var list=set.list;
-      if(opts.prefer)list=list.slice().sort(opts.prefer);
+      var list=set.list.slice().sort(opts.prefer||preferIndividual);
       if(!list.length){
         return '<div class="scell"><dt>'+label+'</dt>'+
           '<dd class="none">Not reported</dd>'+
           '<small>Payer sent nothing for this'+(stc&&stc!=='30'?' service type':'')+'</small></div>';
       }
       var best=list[0], amt=amountOf(best);
+      var lvl=levelOf(best);
+      var isFamily=/family|employee and|spouse|child/i.test(String(lvl||''));
       var extra=list.slice(1,3).map(function(b){
         var a=amountOf(b);
         return a?('<span>'+esc([levelOf(b),netOf(b),periodOf(b)].filter(Boolean).join(' · ')||'Also')+
           ' <b>'+a+'</b></span>'):'';
       }).filter(Boolean).join('');
       return '<div class="scell"><dt>'+label+
-          (set.scoped?'':' <em class="planwide">plan-wide</em>')+'</dt>'+
+          (set.scoped?'':' <em class="planwide">plan-wide</em>')+
+          (isFamily?' <em class="famtag">family only</em>':'')+'</dt>'+
         '<dd class="big">'+(amt||'—')+'</dd>'+
-        '<small>'+esc([levelOf(best),netOf(best),periodOf(best)].filter(Boolean).join(' · ')||'As reported')+'</small>'+
+        '<small>'+esc([lvl||'Individual',netOf(best),periodOf(best)]
+          .filter(Boolean).join(' · ')||'As reported')+'</small>'+
         (extra?'<div class="salso">'+extra+'</div>':'')+
       '</div>';
     }
 
-    /* a remaining balance is more useful than the annual figure */
-    var preferRemaining=function(a,b){
+    /* Individual first, then remaining balance over the annual figure.
+       Payers return both, and family totals are misleading at the desk. */
+    function levelRank(b){
+      var l=String(levelOf(b)||'').toLowerCase();
+      var fam=/family|employee and|spouse|child/.test(l);
+      var ind=/individual|employee only|self only/.test(l);
+      if(LEVEL==='family'){
+        if(fam)return 0;
+        if(!l)return 1;
+        if(ind)return 3;
+        return 2;
+      }
+      if(ind)return 0;
+      if(!l)return 1;                       /* unstated usually means individual */
+      if(fam)return 3;
+      return 2;
+    }
+    var preferIndividual=function(a,b){
+      var d=levelRank(a)-levelRank(b);
+      if(d)return d;
       var ra=/remain/i.test(periodOf(a))?0:1, rb=/remain/i.test(periodOf(b))?0:1;
       return ra-rb;
     };
+    var preferRemaining=preferIndividual;
 
     /* name the service from what the payer echoed back, not our own table */
     var label=STC_NAMES[stc]||null;
@@ -1056,8 +972,16 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     var scopedCount=N.benefits.filter(function(b){
       return stcMatches(b,stc)&&(net==='all'||!netOf(b)||netOf(b)===net);}).length;
 
+    var hasFamily=N.benefits.some(function(b){
+      return /family|employee and/i.test(String(levelOf(b)||''))&&
+             (net==='all'||!netOf(b)||netOf(b)===net); });
+
     return '<div class="sumhead"><b>'+esc(label)+'</b>'+
         (stc?'<span class="stcchip">'+esc(stc)+'</span>':'')+
+        (hasFamily?'<span class="lvlseg" id="lvlSeg">'+
+          '<button data-l="individual"'+(LEVEL==='individual'?' class="on"':'')+'>Individual</button>'+
+          '<button data-l="family"'+(LEVEL==='family'?' class="on"':'')+'>Family</button>'+
+        '</span>':'')+
         '<span>'+(net==='all'?'All networks':esc(net))+' · '+scopedCount+' line'+
         (scopedCount===1?'':'s')+'</span></div>'+
       '<div class="sumgrid">'+
@@ -1150,12 +1074,40 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     $('loading').hidden=true;
     $('content').hidden=false;
 
+    /* the summary opens on in-network, so the table agrees from the start */
+    (function(){
+      var shown=0,total=0;
+      document.querySelectorAll('#benefits tbody tr').forEach(function(tr){
+        total++;
+        var rn=tr.dataset.net||'';
+        var keep=!rn||rn==='In network';
+        tr.hidden=!keep;
+        if(keep)shown++;
+      });
+      var cnt=document.querySelector('#benefits .cnt');
+      if(cnt&&total)cnt.textContent=shown+' OF '+total+' · IN NETWORK';
+      var ac=document.getElementById('accCnt');
+      if(ac)ac.textContent='IN NETWORK';
+      var none=document.getElementById('benNone');
+      if(none)none.hidden=shown>0;
+    })();
+
     /* reveal on scroll */
     var io=new IntersectionObserver(function(en){
       en.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});
     },{threshold:.06,rootMargin:'0px 0px -3% 0px'});
     [].slice.call(document.querySelectorAll('.rv')).forEach(function(el,i){
       el.style.transitionDelay=(Math.min(i,8)*0.05)+'s';io.observe(el);
+    });
+
+    /* individual or family */
+    document.addEventListener('click',function(e){
+      var b=e.target.closest('#lvlSeg [data-l]');
+      if(!b)return;
+      LEVEL=b.dataset.l;
+      var net=(document.querySelector('#netfilter button.on')||{dataset:{n:'In network'}}).dataset.n;
+      var sb=$('sumBox');
+      if(sb)sb.innerHTML=summaryHTML(N,net);
     });
 
     /* network filter */
@@ -1225,7 +1177,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     {id:'summary',   label:'Cost summary',        note:'Copay, coinsurance and out of pocket', on:true},
     {id:'maximums',  label:'Maximums and deductibles', note:'Accumulator balances',           on:true},
     {id:'benefits',  label:'Benefit detail',      note:'Every benefit line returned',         on:true},
-    {id:'contact',   label:'Service level contacts', note:'Payer contacts on the response',   on:false}
+    {id:'contact',   label:'Service level contacts', note:'Payer contacts on the response',  on:false}
   ];
 
   $('printBtn').addEventListener('click',function(){

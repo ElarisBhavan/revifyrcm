@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_admin.css">
+<script src="../_guard.js"></script>
 <script src="../_store.js"></script>
 <script src="../_session.js"></script>
 <link rel="stylesheet" href="../_session.css">
@@ -235,7 +236,10 @@
         '<td>'+(p.telehealth?'<span class="pill info">Yes</span>':'<span class="pill off">No</span>')+'</td>'+
         '<td>'+(acct
           ? '<span class="pill ok">'+acct.username+'</span>'
-          : '<span class="pill off">Not created</span>')+'</td>'+
+          : (p.added_by_team
+              ? '<a href="logins.html?provider='+p.id+'" class="pill warn" style="text-decoration:none">'+
+                '⚠ Added by practice · needs a password</a>'
+              : '<span class="pill off">Not created</span>'))+'</td>'+
         '<td class="r"><div class="acts">'+
           '<button class="ib" data-edit="'+p.id+'" title="Edit"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg></button>'+
           '<button class="ib del" data-del="'+p.id+'" title="Remove"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg></button>'+

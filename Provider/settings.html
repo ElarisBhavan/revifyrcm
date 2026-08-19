@@ -225,18 +225,17 @@ input,select,textarea{font:inherit}
 #pwScrim.on{opacity:1!important;visibility:visible!important}
 #pwModal.on{opacity:1!important;visibility:visible!important;transform:translate(-50%,-50%) scale(1)!important}
 .cptchip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:7px;background:var(--green-s);color:var(--green-d);font-family:var(--mono);font-size:10.4px;font-weight:600}
-
-img.brandmark{width:26px;height:26px;flex:none;object-fit:contain;display:block}
-
-
 </style>
 <link rel="stylesheet" href="_prefs.css">
 <script src="_prefs.js"></script>
 <script src="../_notify.js"></script>
+<script src="../_guard.js"></script>
 <script src="../_store.js"></script>
+<script src="../_datepicker.js"></script>
 <script src="../_session.js"></script>
 <link rel="stylesheet" href="../_session.css">
 <script src="../_store.js"></script>
+<link rel="stylesheet" href="../_datepicker.css">
 </head>
 <body>
 
@@ -245,8 +244,8 @@ img.brandmark{width:26px;height:26px;flex:none;object-fit:contain;display:block}
 <header class="hdr">
   <div class="hin">
     <div class="brand">
-    <img class="brandmark" src="../assets/logo-64.png" alt="ReviFlow RCM">
-      <span>R&nbsp;e&nbsp;v&nbsp;i&nbsp;F&nbsp;l&nbsp;o&nbsp;w</span>
+      <span class="mk"><svg viewBox="0 0 34 34" fill="none"><circle cx="17" cy="17" r="11.8" fill="none" stroke="#fff" stroke-width="2.6"/><path d="M11 17.4h2.6l1.9-4.2 2.7 8 2-5.1 1.3 2.4H23" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>ReviFlow<em>RCM</em></span>
     </div>
     <span class="crumb">Provider workspace / <b>Settings</b></span>
     <div class="hact">
@@ -824,9 +823,9 @@ img.brandmark{width:26px;height:26px;flex:none;object-fit:contain;display:block}
     toast._t=setTimeout(function(){$('toast').classList.remove('on');},3400);
   }
   function display(){
-    var f=$('sFirst').value.trim(),l=$('sLast').value.trim(),c=$('sCred').value.trim();
+    var f=$('pFirst').value.trim(),l=$('pLast').value.trim(),c=$('pCred').value.trim();
     var pre=(ME&&ME.name_prefix)?ME.name_prefix+' ':'';
-    $('sDisplay').value=(pre+[f,l].filter(Boolean).join(' ')+(c?', '+c:'')).trim();
+    $('pDisplay').value=(pre+[f,l].filter(Boolean).join(' ')+(c?', '+c:'')).trim();
   }
   function chips(){
     var list=$('cCpt').value.split(',').map(function(x){return x.trim();}).filter(Boolean);
@@ -848,11 +847,11 @@ img.brandmark{width:26px;height:26px;flex:none;object-fit:contain;display:block}
     ORG=orgs.filter(function(o){return o.id===((PROV&&PROV.org_id)||sess.org_id);})[0]||null;
 
     /* ── 1 · personal details ── */
-    $('sFirst').value=(PROV&&PROV.first_name)||ME.first_name||'';
-    $('sLast').value=(PROV&&PROV.last_name)||ME.last_name||'';
-    $('sCred').value=(PROV&&PROV.title)||ME.title||'';     /* job title from the provider record */
-    $('sEmail').value=(PROV&&PROV.email)||ME.email||'';
-    $('sPhone').value=(PROV&&PROV.phone)||ME.phone||'';
+    $('pFirst').value=(PROV&&PROV.first_name)||ME.first_name||'';
+    $('pLast').value=(PROV&&PROV.last_name)||ME.last_name||'';
+    $('pCred').value=(PROV&&PROV.title)||ME.title||'';     /* job title from the provider record */
+    $('pEmail').value=(PROV&&PROV.email)||ME.email||'';
+    $('pPhone').value=(PROV&&PROV.phone)||ME.phone||'';
     display();
     $('avInit').textContent=ME.initials||RFStore.initialsOf(ME.full_name);
     $('acctSub').textContent=(ME.role||'').toUpperCase()+' · '+ME.username;
@@ -1011,7 +1010,7 @@ img.brandmark{width:26px;height:26px;flex:none;object-fit:contain;display:block}
 
   /* ── save everything ── */
   $('save').addEventListener('click',async function(){
-    var f=$('sFirst'),l=$('sLast');
+    var f=$('pFirst'),l=$('pLast');
     f.style.borderColor='';l.style.borderColor='';
     if(!f.value.trim()||!l.value.trim()){
       (!f.value.trim()?f:l).style.borderColor='var(--coral)';
@@ -1022,15 +1021,15 @@ img.brandmark{width:26px;height:26px;flex:none;object-fit:contain;display:block}
 
     if(ME){
       await RFStore.requestNameChange(ME.id,f.value.trim(),l.value.trim());
-      await RFStore.update(ME.id,{email:$('sEmail').value.trim()||null,
-                                  phone:$('sPhone').value.trim()||null,
-                                  title:$('sCred').value.trim()||null});
+      await RFStore.update(ME.id,{email:$('pEmail').value.trim()||null,
+                                  phone:$('pPhone').value.trim()||null,
+                                  title:$('pCred').value.trim()||null});
     }
     /* a provider editing their own record shows up as a remark for the admin */
     if(PROV){
       var ch={};
-      if($('sEmail').value.trim()!==(PROV.email||''))ch.email={from:PROV.email||'',to:$('sEmail').value.trim()};
-      if($('sPhone').value.trim()!==(PROV.phone||''))ch.phone={from:PROV.phone||'',to:$('sPhone').value.trim()};
+      if($('pEmail').value.trim()!==(PROV.email||''))ch.email={from:PROV.email||'',to:$('pEmail').value.trim()};
+      if($('pPhone').value.trim()!==(PROV.phone||''))ch.phone={from:PROV.phone||'',to:$('pPhone').value.trim()};
       if(Object.keys(ch).length)await RFStore.providerRemark(PROV.id,ch,ME.username);
     }
 

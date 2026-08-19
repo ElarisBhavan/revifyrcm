@@ -280,6 +280,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   background:transparent!important;border:none!important;box-shadow:none!important}
 </style>
 <link rel="stylesheet" href="../_session.css">
+<script src="../_guard.js"></script>
 <script src="../_store.js"></script>
 <script src="../_session.js"></script>
 </head>
@@ -604,7 +605,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       t.innerHTML='<span class="mav" style="background:'+p.c+'">'+p.id+'</span><span class="bub"><i></i><i></i><i></i></span>';
       th.appendChild(t);th.scrollTop=th.scrollHeight;
       setTimeout(function(){
-        var el=$('typing');if(el)el.remove();
+        var el=($('typing')||{style:{},classList:{add:function(){},remove:function(){}}});if(el)el.remove();
         var REPLIES=['Understood — I will take a look.','Thanks, noted.','Makes sense. I will follow up this afternoon.',
           'Got it. Anything else you need from me?','Agreed. Let us pick it up at the huddle.','On it.'];
         c.msgs.push({f:responder,t:REPLIES[Math.floor(Math.random()*REPLIES.length)],at:new Date().toISOString()});

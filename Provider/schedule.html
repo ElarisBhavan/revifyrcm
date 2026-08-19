@@ -49,7 +49,7 @@ input{font:inherit}
 .hdr{position:sticky;top:0;z-index:60;border-bottom:1px solid var(--line);background:rgba(250,248,243,.82);backdrop-filter:blur(20px) saturate(170%);-webkit-backdrop-filter:blur(20px) saturate(170%)}
 .hin{max-width:1600px;margin:0 auto;padding:11px clamp(12px,2vw,26px);display:flex;align-items:center;gap:11px}
 .brand{display:flex;align-items:center;gap:10px}
-.brand .mk{width:29px;height:29px;display:grid;place-items:center}
+.brand .mk{width:29px;height:29px;border-radius:9px;background:linear-gradient(140deg,var(--green),var(--indigo));display:grid;place-items:center;box-shadow:0 6px 16px -8px rgba(14,157,115,.8)}
 .brand .mk svg{width:16px;height:16px}
 .brand span{font-family:'Sora',sans-serif;font-size:15px;font-weight:600;letter-spacing:-.036em}
 .brand em{font-style:normal;color:var(--green);font-weight:400;font-size:.9em;margin-left:3px}
@@ -354,13 +354,44 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   cursor:pointer;transition:all .26s var(--e)}
 .durrow button:hover{background:#fff}
 .durrow button.on{background:var(--green-d);border-color:var(--green-d);color:#F3FBF8}
+.flashwrap{position:fixed;left:50%;top:78px;transform:translateX(-50%) translateY(-8px);
+  z-index:140;opacity:0;pointer-events:none;transition:all .34s var(--e)}
+.flashwrap.on{opacity:1;transform:translateX(-50%);pointer-events:auto}
+.flash{display:flex;align-items:flex-start;gap:11px;padding:12px 16px;border-radius:13px;
+  max-width:min(430px,calc(100vw - 28px));box-shadow:0 22px 46px -20px rgba(13,26,22,.5);
+  background:#fff;border:1px solid var(--line-2)}
+.flash svg{width:17px;height:17px;flex:none;fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;margin-top:1px}
+.flash b{display:block;font-size:12.8px;font-weight:700;letter-spacing:-.014em}
+.flash small{display:block;font-size:11.4px;line-height:1.5;margin-top:2px;opacity:.86}
+.flash.warn{background:#FBF2DC;border-color:rgba(192,134,22,.3);color:#7A5507}
+.flash.warn svg{stroke:#C08616}
+.flash.info{background:#E9EFFE;border-color:rgba(59,111,245,.26);color:#25489E}
+.flash.info svg{stroke:#3B6FF5}
+.flash.ok{background:var(--green-s);border-color:rgba(14,157,115,.28);color:var(--green-d)}
+.flash.ok svg{stroke:var(--green-d)}
+.pastnote{display:flex;gap:9px;padding:11px 13px;border-radius:11px;background:var(--paper-2);
+  border:1px solid var(--line-2);font-size:11.6px;line-height:1.55;color:var(--muted);margin-bottom:14px}
+.pastnote svg{width:15px;height:15px;stroke:var(--muted);fill:none;stroke-width:2;flex:none;margin-top:1px}
+.am.readonly input,.am.readonly select,.am.readonly textarea{
+  background:var(--paper-2)!important;color:var(--muted)!important;pointer-events:none}
+.am.readonly .durrow,.am.readonly #aQuick{display:none}
+.ev.past{opacity:.72}
+.ev.past::after{content:'';position:absolute;top:5px;right:6px;width:11px;height:11px;
+  background:no-repeat center/contain url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%235C6A66\' stroke-width=\'2.4\'><rect x=\'4\' y=\'10.5\' width=\'16\' height=\'10\' rx=\'2.5\'/><path d=\'M8 10.5V7.5a4 4 0 018 0v3\'/></svg>");
+  opacity:.55}
+.daypast{display:inline-flex;align-items:center;gap:6px;margin-left:9px;padding:3px 9px;
+  border-radius:6px;background:var(--paper-2);font-family:var(--mono);font-size:9px;
+  font-weight:700;letter-spacing:.06em;color:var(--dim)}
 </style>
 <link rel="stylesheet" href="_prefs.css">
 <script src="_prefs.js"></script>
 <script src="../_notify.js"></script>
 <link rel="stylesheet" href="../_session.css">
+<script src="../_guard.js"></script>
 <script src="../_store.js"></script>
+<script src="../_datepicker.js"></script>
 <script src="../_session.js"></script>
+<link rel="stylesheet" href="../_datepicker.css">
 </head>
 <body>
 
@@ -370,7 +401,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   <div class="hin">
     <div class="brand">
       <img class="mk" src="../assets/logo-64.png" alt="ReviFlow RCM">
-      <span>R&nbsp;e&nbsp;v&nbsp;i&nbsp;F&nbsp;l&nbsp;o&nbsp;w</span>
+      <span>ReviFlow<em>RCM</em></span>
     </div>
     <span class="crumb">Provider workspace / <b>Schedule</b></span>
     <div class="hact">
@@ -406,6 +437,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     </div>
   </div>
 </main>
+
+<div class="flashwrap" id="flashwrap"><div class="flash" id="flash"></div></div>
 
 <div class="pop" id="pop"></div>
 
@@ -588,6 +621,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   var today=new Date(),cur=new Date(today),off={est:0,new:0,can:0,nos:0},DATA=[];
 
   async function render(){
+    markPastDay();
     var ds=iso(cur);
     $('date').value=ds;
     var diff=Math.round((parseDay(ds)-parseDay(iso(today)))/864e5);
@@ -638,7 +672,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         var icon=a.video
           ?'<svg viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="3"/><path d="M16 10l6-3v10l-6-3"/></svg>'
           :'<svg viewBox="0 0 24 24"><path d="M4 21V9l8-5 8 5v12"/></svg>';
-        html+='<div class="ev '+a.kind+(a.guest?' guest':'')+(h<40?' short':'')+hid+'" data-c="'+ci+'" data-a="'+ai+'" '+
+        html+='<div class="ev '+a.kind+(a.guest?' guest':'')+(h<40?' short':'')+
+          (isPast(iso(cur))?' past':'')+hid+'" data-c="'+ci+'" data-a="'+ai+'" '+
           'data-apt="'+a._id+'" data-ed="'+(ed?1:0)+'" '+
           'style="top:'+top+'px;height:'+h+'px;animation-delay:'+(ci*.04+ai*.02)+'s">'+cpDot+
           '<span class="t">'+icon+fmt(a.start)+(a.dur>=45?' – '+fmt(a.start+a.dur):'')+'</span>'+
@@ -858,6 +893,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     $('amNoteText').textContent='This slot is free. Fill in the patient and save to book it.';
     $('aDate').value=iso(cur);
     $('aTime').value=hhmm(mins);
+    if(lockPast(iso(cur))){
+      flash('warn','That date has passed',
+        'Appointments cannot be added to a past date. Pick today or later.');
+      return;
+    }
     var d0=CFG.slotLength||20;
     $('aDur').value=String(d0);
     setEndFrom(mins,d0);
@@ -912,6 +952,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       $('amSub').textContent=(BLOCK_LABEL[a.block_type]||'Block')+' · '+fmt(a.start);
     $('aKind').value=a.kind||'office';
     $('aNew').value=a.is_new?'1':'0';
+    lockPast(a.date||iso(cur));
     $('aStatus').value=a.status||'Scheduled';
     $('amDelete').style.display='';
     amOpen();
@@ -1029,6 +1070,145 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     return [].slice.call($('aAttendees').querySelectorAll('input:checked')).map(function(i){return +i.value;});
   }
 
+
+  /* a short notice above the form, gone in a few seconds */
+  var flashT=null;
+  function flash(kind,title,detail,ms){
+    var w=$('flashwrap'), f=$('flash');
+    if(!w||!f)return;
+    var ic={
+      warn:'<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',
+      info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+      ok:'<path d="M5 13l4 4L19 7"/>'
+    }[kind]||'';
+    f.className='flash '+kind;
+    f.innerHTML='<svg viewBox="0 0 24 24">'+ic+'</svg>'+
+      '<span><b>'+title+'</b>'+(detail?'<small>'+detail+'</small>':'')+'</span>';
+    w.classList.add('on');
+    clearTimeout(flashT);
+    flashT=setTimeout(function(){ w.classList.remove('on'); }, ms||4200);
+  }
+
+
+  /* Reconcile what was typed against the patient roster. */
+  var standingT=null;
+  function checkStanding(){
+    clearTimeout(standingT);
+    standingT=setTimeout(runStanding,220);
+  }
+
+  async function runStanding(){
+    var first=$('aFirst').value.trim(), last=$('aLast').value.trim();
+    var isNew=$('aNew').value==='1';
+    if(!last)return;
+
+    var pool=await loadPool();
+    var L=last.toLowerCase(), F=first.toLowerCase();
+    var match=pool.filter(function(p){
+      return String(p.last||'').toLowerCase()===L &&
+             (!F || !p.first || String(p.first).toLowerCase()===F);
+    })[0];
+
+    if(isNew && match){
+      /* they said new, but a chart already exists */
+      var st={seen:false};
+      try{ st=await RFStore.patientStanding(match.id); }catch(e){}
+      if(st.seen){
+        flash('warn','Patient records already exist',
+          esc(last)+', '+esc(first)+' has been seen before. '+
+          'Switching this to an established patient visit.');
+        $('aNew').value='0';
+        applyNewPatientSlot();
+      }else{
+        flash('info','Patient records already exist',
+          'A chart exists for '+esc(last)+', '+esc(first)+
+          ' but they have never been seen, so this stays a new patient visit.');
+      }
+      /* link the appointment to the chart either way */
+      $('aSearch').dataset.ptid=match.id||'';
+      return;
+    }
+
+    if(!isNew && !match){
+      flash('warn','No records',
+        'No chart found for '+esc(last)+', '+esc(first)+
+        '. A record will be created when this appointment is saved.');
+      $('aNew').value='1';
+      applyNewPatientSlot();
+    }
+  }
+
+  ['aFirst','aLast'].forEach(function(id){
+    var el=$(id);
+    if(el)el.addEventListener('blur',checkStanding);
+  });
+
+
+  /* An appointment in the past is a record of what happened. It can be read,
+     but not re-dated, re-statused or deleted — that would rewrite history the
+     billing and the chart already depend on. */
+  function todayISO(){
+    var d=new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+
+           '-'+String(d.getDate()).padStart(2,'0');
+  }
+  function isPast(ds){ return String(ds||'') < todayISO(); }
+
+  function lockPast(ds){
+    var locked=isPast(ds);
+    var modal=document.querySelector('.am');
+    if(modal)modal.classList.toggle('readonly',locked);
+
+    var save=$('amSave'), del=$('amDelete');
+    if(save){ save.disabled=locked; save.style.display=locked?'none':''; }
+    if(del){ del.disabled=locked; del.style.display=locked?'none':''; }
+
+    var head=document.querySelector('.am .mbody');
+    var note=document.getElementById('pastNote');
+    if(locked){
+      if(!note&&head){
+        note=document.createElement('div');
+        note.id='pastNote';
+        note.className='pastnote';
+        note.innerHTML='<svg viewBox="0 0 24 24" stroke-linecap="round">'+
+          '<rect x="4" y="10.5" width="16" height="10" rx="2.5"/>'+
+          '<path d="M8 10.5V7.5a4 4 0 018 0v3"/></svg>'+
+          '<span><b>Past appointment · view only</b><br>'+
+          'This visit has already happened. Its details, status and time cannot be '+
+          'changed, and it cannot be deleted. Work it up in the patient chart instead.</span>';
+        head.insertBefore(note,head.firstChild);
+      }
+      if(note)note.style.display='';
+    }else if(note){
+      note.style.display='none';
+    }
+    return locked;
+  }
+
+
+  function esc(v){
+    return String(v==null?'':v).replace(/[&<>"]/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});
+  }
+
+  /* a VIEW ONLY badge on a day that has already passed */
+  function markPastDay(){
+    try{
+      var h=document.querySelector('.dhead h2')||document.querySelector('.dayttl')||
+            document.querySelector('.ptop h1');
+      if(!h)return;
+      var tag=h.querySelector('.daypast');
+      if(isPast(iso(cur))){
+        if(!tag){
+          tag=document.createElement('span');
+          tag.className='daypast';
+          tag.textContent='VIEW ONLY';
+          h.appendChild(tag);
+        }
+      }else if(tag){ tag.remove(); }
+    }catch(e){}
+  }
+
   /* ── patient search: shows every match, you pick one ── */
   var POOL=null, PICKED=null, HI=-1;
 
@@ -1039,7 +1219,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     $('aFound').style.display='none';$('aMiss').style.display='none';
     $('aResults').classList.remove('on');HI=-1;
   }
-  function setPicked(p){
+  async function setPicked(p){
     PICKED=p;
     if(p){
       $('aFirst').value=p.first||'';
@@ -1047,25 +1227,71 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       $('aMid').value=p.memberId||p.mid||'';
       $('aPayer').value=p.payer||'';
       $('aCopay').value=p.copay!=null?p.copay:'';
-      $('aNew').value='0';                       /* known patient = established */
       $('aSearch').dataset.ptid=p.id||'';
       if(p.dob)$('aSearch').dataset.dob=p.dob;
+
+      /* A chart can exist for someone who never attended. Only a locked
+         encounter proves they have been seen, so that is what decides. */
+      var st={seen:false,encounters:0};
+      try{ st=await RFStore.patientStanding(p.id); }catch(e){}
+      $('aNew').value=st.seen?'0':'1';
+      $('aSearch').dataset.seen=st.seen?'1':'0';
+
+      if(st.seen){
+        flash('info','Established patient',
+          'Last seen '+(st.lastSeen?fmtNice(st.lastSeen):'previously')+
+          ' · '+st.locked+' completed encounter'+(st.locked===1?'':'s')+'.');
+      }else{
+        flash('warn','Chart exists but never seen',
+          'A record exists for this patient with no completed encounter, '+
+          'so this is billed as a new patient visit.');
+      }
     }else{
-      $('aNew').value='1';                       /* nothing chosen = new patient */
+      $('aNew').value='1';
       delete $('aSearch').dataset.ptid;
       delete $('aSearch').dataset.dob;
+      delete $('aSearch').dataset.seen;
     }
     applyNewPatientSlot();
+  }
+  function fmtNice(d){
+    if(!d)return '';
+    var p=String(d).split('-');
+    return new Date(+p[0],(+p[1]||1)-1,+p[2]||1,12).toLocaleDateString(undefined,
+      {month:'short',day:'numeric',year:'numeric'});
   }
 
   async function loadPool(){
     if(POOL)return POOL;
     var list=[];
-    try{ list=await RFStore.patients(); }catch(e){}
-    if(!list.length){
-      try{ list=JSON.parse(localStorage.getItem('rf_patients')||'[]'); }catch(e){ list=[]; }
+    try{ await RFStore.ready(); list=await RFStore.patients(); }catch(e){}
+
+    /* the store uses first_name / last_name; older rosters used first / last.
+       Normalise both so the search box works either way. */
+    POOL=list.map(function(r){
+      var ins=(r.insurances||[]);
+      var p1=ins.filter(function(x){return x.rank==='1';})[0]||ins[0]||{};
+      return {
+        id:r.id,
+        first:r.first_name||r.first||'',
+        last:r.last_name||r.last||'',
+        dob:r.dob||'',
+        mid:r.internal_id||r.mid||'',
+        memberId:p1.member_id||r.member_id||r.memberId||'',
+        payer:p1.name||r.payer||'',
+        copay:+p1.copay||+r.copay||0,
+        patBal:+r.pat_bal||+r.patBal||0,
+        insBal:+r.ins_bal||+r.insBal||0,
+        visits:+r.visits||0,
+        lastSeen:r.last_seen||r.lastSeen||''
+      };
+    });
+
+    if(!POOL.length){
+      var legacy=[];
+      try{ legacy=JSON.parse(localStorage.getItem('rf_patients')||'[]'); }catch(e){}
+      POOL=legacy;
     }
-    POOL=list;
     return POOL;
   }
 
@@ -1187,6 +1413,14 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
   $('amSave').addEventListener('click',async function(){
     var type=$('aType').value, isPatient=(type==='patient');
+    if(isPast(iso(cur))&&!AM.id){
+      toastMsg('That date has passed','Appointments can only be booked from today onwards');
+      return;
+    }
+    if(AM.id&&isPast(AM.date||iso(cur))){
+      toastMsg('Past appointments are view only','This visit has already happened');
+      return;
+    }
     if(!$('aTime').value){toastMsg('Choose a start time');$('aTime').focus();return;}
     if(!$('aEnd').value){toastMsg('Choose an end time');$('aEnd').focus();return;}
     recalcDur();
@@ -1350,6 +1584,12 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
   $('amDelete').addEventListener('click',async function(){
     if(!AM.id)return;
+    if(isPast(AM.date||iso(cur))){
+      flash('warn','Past appointments cannot be deleted',
+        'This visit is part of the record. Cancel it on the day, or correct '+
+        'the encounter in the patient chart.');
+      return;
+    }
     var a=await RFStore.appt(AM.id);
     var isMeeting=a&&a.block_type==='meeting';
     var others=(a&&a.attendees||[]).filter(function(p){return p!==a.provider_id;}).length;
@@ -1525,5 +1765,42 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 })();
 </script>
 
+
+<script>
+/* Section access: a grant, not just a role. Shows a notice rather than
+   signing anyone out. */
+(function(){
+  var SECTION='schedule';
+  document.addEventListener('DOMContentLoaded',async function(){
+    try{
+      if(typeof RFStore==='undefined'||!RFStore.can)return;
+      await RFStore.ready();
+      var lvl=await RFStore.can(SECTION);
+      if(lvl==='none'){
+        if(window.RFSession&&RFSession.denied)
+          RFSession.denied({section:'schedule'});
+        return;
+      }
+      if(lvl==='view'){
+        /* read only: the page still loads, but nothing that writes is usable */
+        document.body.classList.add('rf-viewonly');
+        var css=document.createElement('style');
+        css.textContent=
+          '.rf-viewonly [data-write],.rf-viewonly .ib.del{opacity:.4;pointer-events:none}'+
+          '.rf-viewonly .rf-ro{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);'+
+            'z-index:900;display:flex;align-items:center;gap:9px;padding:10px 16px;border-radius:11px;'+
+            'background:#0D1A16;color:#F2FBF7;font:600 12px Manrope,system-ui,sans-serif;'+
+            'box-shadow:0 18px 40px -18px rgba(13,26,22,.8)}';
+        document.head.appendChild(css);
+        var note=document.createElement('div');
+        note.className='rf-ro';
+        note.textContent='View only — contact your practice manager to make changes';
+        document.body.appendChild(note);
+        setTimeout(function(){ note.style.display='none'; },6000);
+      }
+    }catch(e){}
+  });
+})();
+</script>
 </body>
 </html>

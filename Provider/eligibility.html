@@ -208,13 +208,20 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 .note.top{display:inline-flex;align-items:center;gap:8px;margin-top:13px;padding:7px 13px;border-radius:99px;
   border:1px solid var(--line-2);background:rgba(255,255,255,.7);font-size:11.8px;color:var(--muted)}
 .note.top svg{width:14px;height:14px;stroke:var(--accent);fill:none;stroke-width:2;flex:none}
+.hint.setup{color:var(--amber,#C08616);margin-top:6px;line-height:1.5}
+.hint.setup b{color:inherit}
+select:disabled{opacity:.6;cursor:not-allowed}
 </style>
 <link rel="stylesheet" href="_prefs.css">
 <script src="_prefs.js"></script>
 <script src="../_notify.js"></script>
 <link rel="stylesheet" href="../_session.css">
+<script src="../_guard.js"></script>
 <script src="../_store.js"></script>
+<script src="../_datepicker.js"></script>
+<script src="../_codes.js"></script>
 <script src="../_session.js"></script>
+<link rel="stylesheet" href="../_datepicker.css">
 </head>
 <body>
 
@@ -277,15 +284,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
           <span>Select payer <u>*</u></span>
           <div class="ctrl">
             <select id="payer" required>
-              <option value="">Select a payer</option>
-              <option>BCBSTX — Blue Cross Blue Shield of Texas</option>
-              <option>CMS — Medicare (National)</option>
-              <option>60054 — Aetna</option>
-              <option>87726 — UnitedHealthcare</option>
-              <option>62308 — Cigna Healthcare</option>
-              <option>SX155 — Humana</option>
-              <option>MCDTX — Texas Medicaid</option>
-              <option>87815 — Blue Cross Blue Shield (out of state)</option>
+              <option value="">Loading payers…</option>
             </select>
           </div>
           <p class="err" id="e-payer">Select a payer.</p>
@@ -474,15 +473,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
           <span>Category <u>*</u></span>
           <div class="ctrl">
             <select id="category" required>
-              <option value="">Select category</option>
-              <option>30 — Health benefit plan coverage</option>
-              <option>98 — Professional visit, office</option>
-              <option>47 — Hospital</option>
-              <option>86 — Emergency services</option>
-              <option>88 — Pharmacy</option>
-              <option>UC — Urgent care</option>
-              <option>MH — Mental health</option>
-              <option>35 — Dental care</option>
+              <option value="">Loading categories…</option>
             </select>
           </div>
           <p class="err" id="e-category">Select a category.</p>
@@ -504,7 +495,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         <label class="f c6">
           <span>CPT code</span>
           <div class="ctrl"><input type="text" id="cpt" maxlength="5" placeholder="99213"></div>
-          <p class="hint">Optional — narrows the benefit response to a specific procedure</p>
+          <p class="hint" id="cptHint">Optional — narrows the response to one procedure.
+            Not every payer supports this; if the check fails, clear it and try again.</p>
         </label>
       </div>
     </section>
@@ -555,7 +547,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
   // default date of service to today
   var dos=document.getElementById('dos');
-  dos.value=new Date().toISOString().slice(0,10);
+  dos.value=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
 
   // digits only
   ['npi','taxid','cpt'].forEach(function(id){
@@ -643,6 +635,74 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       var sess=RFStore.getSession();
       if(!sess)return;
 
+      if(window.RFCodes&&RFCodes.sync)await RFCodes.sync();
+
+      /* payers, as "Payer ID — Name" */
+      var payers=RFCodes.payers();
+      var pel=document.getElementById('payer');
+      if(pel&&!payers.length){
+        pel.innerHTML='<option value="">No payers set up yet</option>';
+        pel.disabled=true;
+        var ph=pel.closest('label');
+        if(ph&&!ph.querySelector('.setup')){
+          var n=document.createElement('p');
+          n.className='hint setup';
+          n.innerHTML='Payers are maintained in <b>Admin → Payers</b>. '+
+            'Ask an administrator to add them before running a check.';
+          ph.appendChild(n);
+        }
+      }
+      if(pel&&payers.length){
+        pel.disabled=false;
+        var keepP=pel.value;
+        pel.innerHTML='<option value="">Select a payer</option>'+
+          payers.map(function(x){
+            return '<option value="'+String(x.payer_id||x.name).replace(/"/g,'&quot;')+'">'+
+              RFCodes.payerLabel(x).replace(/</g,'&lt;')+'</option>';
+          }).join('');
+        if(keepP)pel.value=keepP;
+      }
+
+      /* place of service */
+      var posEl=document.getElementById('pos');
+      var posList=(RFCodes._admin&&RFCodes._admin.pos)||[];
+      if(posEl&&!posList.length){
+        posEl.innerHTML='<option value="">No place of service codes yet</option>';
+      }
+      if(posEl&&posList&&posList.length){
+        var keepPos=posEl.value;
+        posEl.innerHTML='<option value="">Select place of service</option>'+
+          posList.map(function(x){
+            return '<option value="'+x.code+'">'+x.code+' — '+String(x.desc).replace(/</g,'&lt;')+'</option>';
+          }).join('');
+        if(keepPos)posEl.value=keepPos;
+      }
+
+      /* service type category, as "MH — Mental Health" */
+      var catEl=document.getElementById('category');
+      var stcList=(RFCodes._admin&&RFCodes._admin.servicetype)||[];
+      if(catEl&&!stcList.length){
+        catEl.innerHTML='<option value="">No service types set up yet</option>';
+        catEl.disabled=true;
+        var ch=catEl.closest('label');
+        if(ch&&!ch.querySelector('.setup')){
+          var n2=document.createElement('p');
+          n2.className='hint setup';
+          n2.innerHTML='Service types come from <b>Admin → Master data → Service type</b>, '+
+            'entered as a code and description such as MH and Mental health.';
+          ch.appendChild(n2);
+        }
+      }
+      if(catEl&&stcList&&stcList.length){
+        catEl.disabled=false;
+        var keepC=catEl.value;
+        catEl.innerHTML='<option value="">Select category</option>'+
+          stcList.map(function(x){
+            return '<option value="'+x.code+'">'+x.code+' — '+String(x.desc).replace(/</g,'&lt;')+'</option>';
+          }).join('');
+        if(keepC)catEl.value=keepC;
+      }
+
       var orgs=await RFStore.orgs(), provs=await RFStore.providers();
       var CFG=await RFStore.settings();
       var fac=document.getElementById('facility'),
@@ -690,8 +750,35 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         }
       }
 
-      /* providers: only those inside the same facility */
-      var pool=provs.filter(function(p){return myOrg ? p.org_id===myOrg : false;});
+      /* Rendering providers only: same facility, and someone who can actually
+         render a service. Administrators, schedulers and billing staff hold
+         accounts but never appear on a 270, so they are excluded. */
+      var accts=[];
+      try{ accts=await RFStore.list(); }catch(e){}
+      var nonClinical={};
+      accts.forEach(function(a){
+        if(a.provider_ref && ['admin','scheduler','employee'].indexOf(a.role)>-1)
+          nonClinical[String(a.provider_ref)]=true;
+      });
+
+      var pool=provs.filter(function(p){
+        if(myOrg ? p.org_id!==myOrg : true) return false;
+        if(nonClinical[String(p.id)]) return false;
+        if(p.status==='inactive') return false;
+        /* a rendering provider needs an NPI — the payer rejects the request without one */
+        return !!String(p.npi||'').trim();
+      });
+
+      /* nobody has an NPI yet: show the clinical roster so the page still works,
+         and say what is missing */
+      var missingNpi=[];
+      if(!pool.length){
+        pool=provs.filter(function(p){
+          return (myOrg ? p.org_id===myOrg : false) && !nonClinical[String(p.id)];
+        });
+        missingNpi=pool.filter(function(p){return !String(p.npi||'').trim();});
+      }
+
       if(sess.role==='provider') pool = mine ? [mine] : [];
 
       if(sel){
@@ -703,6 +790,18 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
             }).join('');
         }else{
           sel.innerHTML='<option value="">No providers in this facility yet</option>';
+        }
+        if(missingNpi.length){
+          var lbl2=sel.closest('label')||sel.parentNode;
+          if(lbl2&&!lbl2.querySelector('.npihint')){
+            var h=document.createElement('p');
+            h.className='hint npihint';
+            h.style.color='var(--amber)';
+            h.innerHTML='Some providers have no NPI on file. A payer rejects an '+
+              'eligibility request without one — add it under '+
+              '<b>Admin → Organizations → Providers</b>.';
+            lbl2.appendChild(h);
+          }
         }
       }
 
@@ -779,7 +878,12 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         setv('dos',qs.get('dos')||'');
         setv('cpt',(qs.get('cpt')||'').replace(/\D/g,'').slice(0,5));
 
-        /* match the payer label loosely against the dropdown */
+        /* an explicit payer id from the chart wins over a loose name match */
+        var pid=qs.get('payerid'),pel0=document.getElementById('payer');
+        if(pid&&pel0){
+          var exact=[].slice.call(pel0.options).filter(function(o){return o.value===pid;})[0];
+          if(exact)pel0.value=pid;
+        }
         var payer=qs.get('payer'),pel=document.getElementById('payer');
         if(payer&&pel){
           var want=payer.toLowerCase();
@@ -796,15 +900,21 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         /* tell the user where this came from */
         var kick=document.querySelector('.kick');
         if(kick){
-          kick.innerHTML='<i></i>From schedule · '+(qs.get('last')||'')+', '+(qs.get('first')||'');
+          kick.innerHTML='<i></i>From '+(qs.get('from')==='chart'?'chart':'schedule')+' · '+
+            (qs.get('last')||'')+', '+(qs.get('first')||'');
           kick.style.borderColor='rgba(14,157,115,.4)';
           kick.style.background='var(--accent-soft)';
           kick.style.color='var(--accent-deep)';
         }
         var back=document.querySelector('.hbtn');
         if(back&&back.getAttribute('href')==='provider-dashboard.html'){
-          back.setAttribute('href','schedule.html');
-          back.lastChild.textContent='Back to schedule';
+          if(qs.get('from')==='chart'&&qs.get('ref')){
+            back.setAttribute('href','../Patient/patient-record.html?ref='+encodeURIComponent(qs.get('ref')));
+            back.lastChild.textContent='Back to chart';
+          }else{
+            back.setAttribute('href','schedule.html');
+            back.lastChild.textContent='Back to schedule';
+          }
         }
       }
     }catch(e){ console.warn('eligibility scope skipped',e); }
@@ -820,20 +930,24 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   };
   function payerId(){
     var v=document.getElementById('payer').value||'';
-    var m=v.match(/\(([^)]+)\)\s*$/);              // "Aetna (60054)" -> 60054
+    /* admin-managed options carry the id as the value */
+    if(/^[A-Z0-9]{2,10}$/i.test(v))return v;
+    var m=v.match(/\(([^)]+)\)\s*$/);
     if(m)return m[1];
-    m=v.match(/^([A-Z0-9]+)\s*—/);                 // "CMS — Medicare" -> CMS
+    m=v.match(/^([A-Z0-9]+)\s*—/);
     if(m)return m[1];
     return v.split(' ')[0];
   }
   function ymd(v){return (v||'').replace(/-/g,'');}
   function stcOf(){
     var v=document.getElementById('category').value||'30';
+    if(/^[A-Z0-9]{1,2}$/i.test(v))return v.toUpperCase();
     var m=v.match(/^([A-Z0-9]{1,2})\s*—/);
     return m?m[1]:'30';
   }
   function posOf(){
     var v=document.getElementById('pos').value||'';
+    if(/^\d{2}$/.test(v))return v;
     var m=v.match(/^(\d{2})/);return m?m[1]:'11';
   }
 
@@ -997,7 +1111,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   /* live vs offline badge */
   fetch(API,{method:'OPTIONS'}).then(function(r){
     var chip=document.getElementById('modeChip');
-    if(r.ok||r.status===204){chip.innerHTML='<i></i>Live · ReVerify connected';}
+    if(r.ok||r.status===204){chip.innerHTML='<i></i>Live · ReviFlow connected';}
     else{chip.innerHTML='<i></i>Offline · /api/eligibility not reachable';chip.style.color='var(--danger)';}
   }).catch(function(){
     var chip=document.getElementById('modeChip');
@@ -1022,7 +1136,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     });
     // date of service goes back to today
     var d=document.getElementById('dos');
-    if(d)d.value=new Date().toISOString().slice(0,10);
+    if(d)d.value=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
     // wipe any lingering error / result state
     document.querySelectorAll('#elig .bad').forEach(function(el){el.classList.remove('bad');});
     document.querySelectorAll('#elig .err').forEach(function(el){el.classList.remove('show');});
@@ -1040,6 +1154,43 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     clearForm();
   });
 
+})();
+</script>
+
+<script>
+/* Section access: a grant, not just a role. Shows a notice rather than
+   signing anyone out. */
+(function(){
+  var SECTION='eligibility';
+  document.addEventListener('DOMContentLoaded',async function(){
+    try{
+      if(typeof RFStore==='undefined'||!RFStore.can)return;
+      await RFStore.ready();
+      var lvl=await RFStore.can(SECTION);
+      if(lvl==='none'){
+        if(window.RFSession&&RFSession.denied)
+          RFSession.denied({section:'eligibility'});
+        return;
+      }
+      if(lvl==='view'){
+        /* read only: the page still loads, but nothing that writes is usable */
+        document.body.classList.add('rf-viewonly');
+        var css=document.createElement('style');
+        css.textContent=
+          '.rf-viewonly [data-write],.rf-viewonly .ib.del{opacity:.4;pointer-events:none}'+
+          '.rf-viewonly .rf-ro{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);'+
+            'z-index:900;display:flex;align-items:center;gap:9px;padding:10px 16px;border-radius:11px;'+
+            'background:#0D1A16;color:#F2FBF7;font:600 12px Manrope,system-ui,sans-serif;'+
+            'box-shadow:0 18px 40px -18px rgba(13,26,22,.8)}';
+        document.head.appendChild(css);
+        var note=document.createElement('div');
+        note.className='rf-ro';
+        note.textContent='View only — contact your practice manager to make changes';
+        document.body.appendChild(note);
+        setTimeout(function(){ note.style.display='none'; },6000);
+      }
+    }catch(e){}
+  });
 })();
 </script>
 </body>

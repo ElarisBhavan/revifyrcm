@@ -57,6 +57,18 @@
     return null;
   }
 
+  function homeFor(){
+    var s = read();
+    var p = location.pathname;
+    var up = /\/Admin\/|\/Provider\/|\/Patient\/|\/Employee\//i.test(p) ? '' : '';
+    if(s && s.role === 'admin')
+      return (/\/Admin\//i.test(p) ? '' : 'Admin/') + 'admin-dashboard.html';
+    if(/\/Admin\//i.test(p)) return '../Provider/provider-dashboard.html';
+    if(/\/Patient\/|\/Employee\//i.test(p)) return '../Provider/provider-dashboard.html';
+    if(/\/Provider\//i.test(p)) return 'provider-dashboard.html';
+    return 'Provider/provider-dashboard.html';
+  }
+
   function loginUrl(reason){
     var p = location.pathname;
     var base = /\/Admin\//i.test(p) ? ''
@@ -100,6 +112,9 @@
     /* ── end ── */
     end: function(reason){
       var s = read();
+      try{
+        if(s && window.RFStore && RFStore.logSignOut) RFStore.logSignOut(s.username, reason);
+      }catch(e){}
       wipe();
       broadcast({ type:'logout', reason: reason || 'manual', username: s && s.username });
       return true;
@@ -118,10 +133,55 @@
       var s = read();
       if(!s){ location.replace(loginUrl()); return null; }
       if(roles && roles.length && roles.indexOf(s.role) < 0){
-        location.replace(loginUrl('denied'));
+        /* the session is fine — this page simply is not theirs.
+           Signing them out would be wrong and confusing. */
+        API.denied();
         return null;
       }
       return s;
+    },
+
+    /* Show a blocking notice rather than ending the session. */
+    denied: function(opts){
+      opts = opts || {};
+      if(document.getElementById('rf-denied')) return;
+
+      var wrap = document.createElement('div');
+      wrap.id = 'rf-denied';
+      wrap.className = 'rf-denied';
+      wrap.setAttribute('role','alertdialog');
+      wrap.setAttribute('aria-modal','true');
+
+      var section = opts.section ? ('the ' + opts.section + ' section') : 'this section';
+      var back = opts.back || document.referrer;
+      var home = homeFor();
+
+      wrap.innerHTML =
+        '<div class="rf-denied-scrim"></div>' +
+        '<div class="rf-denied-card">' +
+          '<span class="rf-denied-ic">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+            '<rect x="4" y="10.5" width="16" height="10" rx="2.6"/>' +
+            '<path d="M8 10.5V7.5a4 4 0 018 0v3"/><path d="M12 15v2"/></svg>' +
+          '</span>' +
+          '<h2>You do not have access to this</h2>' +
+          '<p>Your account has no access to ' + section +
+            '. Contact your practice manager if you need it.</p>' +
+          '<div class="rf-denied-acts">' +
+            (back ? '<button type="button" class="rf-denied-btn" data-rf="back">Go back</button>' : '') +
+            '<a class="rf-denied-btn pri" href="' + home + '">Back to my workspace</a>' +
+          '</div>' +
+        '</div>';
+
+      document.body.appendChild(wrap);
+      document.body.style.overflow = 'hidden';
+      requestAnimationFrame(function(){ wrap.classList.add('on'); });
+
+      var btn = wrap.querySelector('[data-rf="back"]');
+      if(btn) btn.addEventListener('click', function(){
+        if(history.length > 1) history.back(); else location.href = home;
+      });
+      /* deliberately not dismissable — the page behind it is not theirs to use */
     },
 
     onChange: function(fn){ listeners.push(fn); },

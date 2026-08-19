@@ -9,63 +9,62 @@
 (function(){
   /* 'api'   — accounts live in Postgres, shared by everyone (needs deployment)
      'local' — accounts live in this browser only, for offline development */
-  const DRIVER = 'local';           // ← change to 'api' once deployed
-  const DB = 'reviflow', STORE = 'accounts', META = 'meta', VER = 7;
-  const ORGS = 'orgs', PROVIDERS = 'providers', PATIENTS = 'patients', APPTS = 'appts', TASKS = 'tasks', CLAIMS = 'claims', ENC = 'encounters', HIST = 'history', CRED = 'credentialing';
+  /* ─────────────────────────────────────────────────────────────
+     WHERE THE DATA LIVES — change this one word when you are ready.
+
+       'local'  every browser keeps its own copy. Nothing is shared.
+                Right for building and testing.
+
+       'api'    one shared database on the server. Everyone who opens
+                the link sees the same patients, claims and logins.
+                Requires the database, the schema and a signed BAA,
+                because this is the point at which PHI leaves the
+                browser and reaches a server.
+
+     Nothing else needs editing. Every page reads this. */
+  const DRIVER = (typeof window !== 'undefined' && window.RF_DRIVER) || 'local';
+  /* ───────────────────────────────────────────────────────────── */
+  /* Bumped on every release. Printed to the console and shown in the page
+     footer, so which build is actually loaded is never in doubt. */
+  const BUILD = '2026.08.15-a';
+  window.RF_BUILD = BUILD;
+
+  const DB = 'reviflow', STORE = 'accounts', META = 'meta', VER = 10;
+  const ORGS = 'orgs', PROVIDERS = 'providers', PATIENTS = 'patients', APPTS = 'appts', TASKS = 'tasks', CLAIMS = 'claims', ENC = 'encounters', HIST = 'history', CRED = 'credentialing', PAYERS = 'payers', MASTER = 'master', PAYMENTS = 'payments';
 
   /* ── IndexedDB plumbing ── */
-  function idb(){
+  /* Names every store the app relies on, so a database left incomplete by an
+     earlier version can be detected and repaired rather than failing silently. */
+  function requiredStores(){
+    return [STORE, META, ORGS, PROVIDERS, PATIENTS, ENC, PAYERS, MASTER,
+            CRED, HIST, CLAIMS, TASKS, APPTS, PAYMENTS];
+  }
+
+  let _dbCache = null;
+
+  function openAt(version){
     return new Promise((res, rej) => {
-      const r = indexedDB.open(DB, VER);
+      const r = version ? indexedDB.open(DB, version) : indexedDB.open(DB);
       r.onupgradeneeded = () => {
         const d = r.result;
+        /* Every store is created idempotently, so a browser on any earlier
+           version upgrades cleanly to the current one. */
         if(!d.objectStoreNames.contains(STORE)){
           const s = d.createObjectStore(STORE, { keyPath:'id', autoIncrement:true });
           s.createIndex('username','username',{ unique:true });
         }
-        if(!d.objectStoreNames.contains(META)) d.createObjectStore(META, { keyPath:'k' });
-        if(!d.objectStoreNames.contains(ORGS))
-          d.createObjectStore(ORGS, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(PROVIDERS))
-          d.createObjectStore(PROVIDERS, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(PATIENTS))
-          d.createObjectStore(PATIENTS, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(ENC))
-          d.createObjectStore(ENC, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(CRED))
-          d.createObjectStore(CRED, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(HIST))
-          d.createObjectStore(HIST, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(CLAIMS))
-          d.createObjectStore(CLAIMS, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(ENC))
-          d.createObjectStore(ENC, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(CRED))
-          d.createObjectStore(CRED, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(HIST))
-          d.createObjectStore(HIST, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(CLAIMS))
-          d.createObjectStore(CLAIMS, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(TASKS))
-          d.createObjectStore(TASKS, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(ENC))
-          d.createObjectStore(ENC, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(CRED))
-          d.createObjectStore(CRED, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(HIST))
-          d.createObjectStore(HIST, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(CLAIMS))
-          d.createObjectStore(CLAIMS, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(ENC))
-          d.createObjectStore(ENC, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(CRED))
-          d.createObjectStore(CRED, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(HIST))
-          d.createObjectStore(HIST, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(CLAIMS))
-          d.createObjectStore(CLAIMS, { keyPath:'id', autoIncrement:true });
-        if(!d.objectStoreNames.contains(TASKS))
-          d.createObjectStore(TASKS, { keyPath:'id', autoIncrement:true });
+        if(!d.objectStoreNames.contains(META))
+          d.createObjectStore(META, { keyPath:'k' });
+
+        [ORGS, PROVIDERS, PATIENTS, ENC, PAYERS, CRED, HIST, CLAIMS, TASKS, PAYMENTS].forEach(name => {
+          if(!d.objectStoreNames.contains(name))
+            d.createObjectStore(name, { keyPath:'id', autoIncrement:true });
+        });
+
+        if(!d.objectStoreNames.contains(MASTER)){
+          const ms = d.createObjectStore(MASTER, { keyPath:'id', autoIncrement:true });
+          ms.createIndex('set','set',{ unique:false });
+        }
         if(!d.objectStoreNames.contains(APPTS)){
           const ap = d.createObjectStore(APPTS, { keyPath:'id', autoIncrement:true });
           ap.createIndex('date','date',{ unique:false });
@@ -73,13 +72,38 @@
       };
       r.onsuccess = () => {
         const d = r.result;
-        d.onversionchange = () => d.close();
+        d.onversionchange = () => { d.close(); _dbCache = null; };
         res(d);
       };
       r.onerror = () => rej(r.error || new Error('Could not open the local database'));
       r.onblocked = () => rej(new Error(
         'Another ReviFlow tab is open with an older version. Close the other tabs and reload.'));
     });
+  }
+
+  async function idb(){
+    if(_dbCache) return _dbCache;
+
+    let d = await openAt(VER);
+
+    /* A database can sit at the current version yet be missing stores if an
+       earlier build's upgrade handler was faulty. Reads against a missing
+       store throw, which looks exactly like lost data. Bump the version once
+       to force the handler to run and create whatever is absent. */
+    const missing = requiredStores().filter(n => !d.objectStoreNames.contains(n));
+    if(missing.length){
+      console.warn('ReviFlow: repairing the local database, missing stores →', missing.join(', '));
+      const next = d.version + 1;
+      d.close();
+      d = await openAt(next);
+      const still = requiredStores().filter(n => !d.objectStoreNames.contains(n));
+      if(still.length)
+        throw new Error('The local database could not be repaired. Missing: ' + still.join(', '));
+      console.info('ReviFlow: database repaired. Your records were not touched.');
+    }
+
+    _dbCache = d;
+    return d;
   }
   async function tx(store, mode, fn){
     const d = await idb();
@@ -229,6 +253,15 @@
     }
     return out.join('');
   }
+  function suggestUsername(full){
+    const n = splitName(full);
+    const isDr = /^dr\.?\s/i.test(String(full||''));
+    const base = (isDr ? 'dr.' : (n.first ? n.first[0].toLowerCase() + '.' : '')) + (n.last || '');
+    return base.toLowerCase().replace(/[^a-z0-9._-]/g,'');
+  }
+
+  const round2 = n => Math.round((+n||0)*100)/100;
+
   const initialsOf = n => String(n||'').replace(/^Dr\.?\s+/i,'')
     .split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
 
@@ -292,6 +325,10 @@
     try{ return JSON.parse(localStorage.getItem(SKEY) || 'null'); }catch(e){ return null; }
   };
   const clearSession = () => {
+    try{
+      const me = (window.RFSession ? RFSession.get() : null);
+      if(me) logEvent(me.username, 'logout');
+    }catch(e){}
     if(DRIVER === 'api'){
       /* let the server drop the cookie too; the local end is immediate */
       try{ fetch('/api/auth?action=logout', { method:'POST', credentials:'same-origin' }); }catch(e){}
@@ -311,11 +348,36 @@
     return { ok:r.ok, status:r.status, body:j };
   }
 
+
+  /* ═══ shared data ═══
+     When DRIVER is 'api' these replace the browser database, so every user
+     of the link sees the same records. The shapes returned are identical, so
+     nothing above this layer changes. */
+  async function dapi(kind, action, payload, id){
+    const q = '/api/data?kind=' + kind + '&action=' + action + (id != null ? '&id=' + id : '');
+    const r = await fetch(q, {
+      method:'POST', credentials:'same-origin',
+      headers:{ 'Content-Type':'application/json' },
+      body: payload ? JSON.stringify(payload) : undefined
+    });
+    let j = {}; try{ j = await r.json(); }catch{}
+    if(!r.ok) throw new Error(j.message || j.error || ('The server returned ' + r.status));
+    return j;
+  }
+  const dList = (kind, filter) => dapi(kind,'list',{ filter: filter||{} }).then(j => j.records || []);
+  const dSave = (kind, rec)    => dapi(kind,'save',{ record: rec });
+  const dDel  = (kind, id)     => dapi(kind,'delete', null, id);
+
   /* ═══ public API ═══ */
+  console.info('%cReviFlow build '+BUILD+' · accounts: '+
+    (DRIVER==='api' ? 'shared (server)' : 'this browser only'),
+    'color:#0A5C46;font-weight:700');
+
   window.RFStore = {
+    BUILD,
     driver: DRIVER,
     tempAdmin: TEMP_ADMIN,
-    randomSecret, otpauth, verifyTotp, tempPassword, initialsOf, splitName,
+    randomSecret, otpauth, verifyTotp, tempPassword, initialsOf, splitName, suggestUsername,
     getSession, clearSession,
 
     async ready(){
@@ -475,27 +537,6 @@
     splitName,
 
     /* a provider editing their own profile files a remark; the name of record is unchanged */
-    async requestNameChange(id, first, last){
-      const a = (await all()).find(x => x.id === id);
-      if(!a) return { error:'Not found' };
-      const wasFirst = a.first_name || splitName(a.full_name).first;
-      const wasLast  = a.last_name  || splitName(a.full_name).last;
-      if(wasFirst === first && wasLast === last) return { ok:true, changed:false };
-
-      a.pending_name = { first, last, at:new Date().toISOString() };
-      a.remarks = a.remarks || [];
-      a.remarks.unshift({
-        type:'name_change',
-        text:`Requested name change from "${wasFirst} ${wasLast}" to "${first} ${last}"`,
-        from:{ first:wasFirst, last:wasLast },
-        to:{ first, last },
-        at:new Date().toISOString(),
-        by:a.username, status:'pending'
-      });
-      await put(a);
-      await audit(a.username,'name_change_request',a.username,{ from:wasFirst+' '+wasLast, to:first+' '+last });
-      return { ok:true, changed:true };
-    },
 
     /* admin accepts the requested name */
     async approveNameChange(id){
@@ -588,9 +629,13 @@
     },
 
     /* ═══ ORGANIZATIONS ═══ */
-    async orgs(){ return (await rows(ORGS)).sort((a,b)=>a.name.localeCompare(b.name)); },
+    async orgs(){
+      if(DRIVER==='api') return dList('org');
+ return (await rows(ORGS)).sort((a,b)=>a.name.localeCompare(b.name)); },
     async org(id){ return (await rows(ORGS)).find(o => o.id === id) || null; },
     async saveOrg(o){
+      if(DRIVER==='api'){ try{ const j=await dSave('org',arguments[0]); return { ok:true, id:j.id, ...(j.record||{}) }; }catch(e){ return { error:String(e.message||e) }; } }
+
       try{
       const me = getSession();
       if(!o.name) return { error:'Organization name is required' };
@@ -616,12 +661,18 @@
 
     /* ═══ PROVIDERS ═══ */
     async providers(orgId){
+      if(DRIVER==='api'){
+        const all = await dList('provider');
+        return orgId ? all.filter(x => String(x.org_id)===String(orgId)) : all;
+      }
       const list = (await rows(PROVIDERS)).sort((a,b)=>
         (a.last_name||'').localeCompare(b.last_name||''));
       return orgId ? list.filter(p => p.org_id === orgId) : list;
     },
     async provider(id){ return (await rows(PROVIDERS)).find(p => p.id === id) || null; },
     async saveProvider(p){
+      if(DRIVER==='api'){ try{ const j=await dSave('provider',arguments[0]); return { ok:true, id:j.id, ...(j.record||{}) }; }catch(e){ return { error:String(e.message||e) }; } }
+
       try{
       const me = getSession();
       if(!p.full_name) return { error:'Provider name is required' };
@@ -669,7 +720,9 @@
     },
 
     /* ═══ PATIENTS (shared by scheduling and the patient dashboard) ═══ */
-    async patients(){ return rows(PATIENTS); },
+    async patients(){
+      if(DRIVER==='api') return dList('patient');
+ return rows(PATIENTS); },
     async savePatient(pt){
       if(!pt.id){ pt.created_at = new Date().toISOString(); }
       const id = await save_(PATIENTS, pt);
@@ -754,8 +807,33 @@
         /* an attendee copy points at the organiser's row via linked_to */
         const rootId = (target && target.linked_to) || id;
         const doomed = list.filter(a => a.id === rootId || a.linked_to === rootId);
+
+        /* An encounter exists only because an appointment did. Remove the
+           empty ones with it; keep any that have been worked on, since a
+           locked or coded encounter is clinical and billing evidence. */
+        const encs = await rows(ENC);
+        let encRemoved = 0, encKept = 0;
+        for(const a of doomed){
+          const linked = encs.filter(e => String(e.appt_id) === String(a.id));
+          for(const e of linked){
+            const worked = (e.lines || []).length > 0 || e.status === 'locked';
+            if(worked){
+              /* keep it, but cut the link and say why */
+              e.appt_id = null;
+              e.orphaned_at = new Date().toISOString();
+              e.orphan_reason = 'The appointment was deleted after this encounter was started';
+              await save_(ENC, e);
+              encKept++;
+            }else{
+              await kill(ENC, e.id);
+              encRemoved++;
+            }
+          }
+        }
+
         for(const a of doomed) await kill(APPTS, a.id);
-        return { ok:true, removed: doomed.length };
+        return { ok:true, removed: doomed.length,
+                 encountersRemoved: encRemoved, encountersKept: encKept };
       }catch(err){ return { error:String(err && err.message || err) }; }
     },
 
@@ -821,28 +899,6 @@
       else if(/Firefox\//.test(ua)) br = 'Firefox';
       else if(/Safari\//.test(ua)) br = 'Safari';
       return { os, br, label: os + ' · ' + br };
-    },
-    async touchDevice(){
-      const me = getSession();
-      if(!me) return;
-      const key = 'devices:' + me.username;
-      const list = (await meta(key)) || [];
-      const id = this._deviceId(), d = this._describe();
-      const i = list.findIndex(x => x.id === id);
-      const rec = { id, label: d.label, os: d.os, br: d.br,
-                    first: i > -1 ? list[i].first : new Date().toISOString(),
-                    last: new Date().toISOString() };
-      if(i > -1) list[i] = rec; else list.unshift(rec);
-      await setMeta(key, list.slice(0,12));
-      return rec;
-    },
-    async devices(){
-      const me = getSession();
-      if(!me) return [];
-      const list = (await meta('devices:' + me.username)) || [];
-      const here = this._deviceId();
-      return list.map(d => ({ ...d, current: d.id === here }))
-                 .sort((a,b) => (b.current?1:0) - (a.current?1:0) || new Date(b.last) - new Date(a.last));
     },
     async revokeDevice(id){
       const me = getSession();
@@ -1006,7 +1062,6 @@
       })).sort((x,y) => x.role.localeCompare(y.role) || x.name.localeCompare(y.name));
     },
 
-    async tasks(){ return rows(TASKS); },
 
     /* everything this account is allowed to see, and in what capacity */
     async myTasks(){
@@ -1027,29 +1082,6 @@
         .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
     },
 
-    async saveTask(t){
-      try{
-        const me = getSession();
-        if(t.id === undefined || t.id === null || t.id === '') delete t.id;
-        if(!t.to)    return { error:'Choose who the task is for' };
-        if(!t.title) return { error:'Give the task a name' };
-
-        if(!t.id){
-          t.created_at = new Date().toISOString();
-          t.from = me ? me.username : 'system';
-          t.from_name = me ? me.name : 'System';
-          t.status = t.status || 'open';
-          t.ref = 'TSK-' + Math.floor(4000 + Math.random() * 5999);
-          t.history = [{ at:t.created_at, by:t.from, by_name:t.from_name,
-                         what:'Assigned to ' + (t.to_name || t.to) }];
-        }
-        t.cc = t.cc || [];
-        t.org_id = t.org_id || (me ? me.org_id : null);
-        t.updated_at = new Date().toISOString();
-        const id = await save_(TASKS, t);
-        return { ok:true, id: t.id || id, ref:t.ref };
-      }catch(err){ return { error:'Save failed: ' + (err && err.message || err) }; }
-    },
 
     async updateTask(id, patch, note){
       try{
@@ -1078,16 +1110,6 @@
       }catch(err){ return { error:String(err && err.message || err) }; }
     },
 
-    async removeTask(id){
-      try{
-        const me = getSession();
-        const t = (await rows(TASKS)).find(x => x.id === id);
-        if(!t) return { error:'Not found' };
-        if(t.from !== me.username) return { error:'Only the person who raised a task can delete it' };
-        await kill(TASKS, id);
-        return { ok:true };
-      }catch(err){ return { error:String(err && err.message || err) }; }
-    },
 
     /* ═══ TASKS ═══
        Visible to the assignee, the person who raised it, and anyone in CC.
@@ -1196,65 +1218,14 @@
     },
 
     /* ═══ CLAIMS ═══ */
-    async claims(filter){
-      let list = await rows(CLAIMS);
-      if(filter && filter.patient_ref) list = list.filter(c => c.patient_ref === filter.patient_ref);
-      if(filter && filter.org_id)      list = list.filter(c => c.org_id === filter.org_id);
-      if(filter && filter.provider_id) list = list.filter(c => String(c.provider_id) === String(filter.provider_id));
-      return list.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-    },
-    async claim(id){ return (await rows(CLAIMS)).find(c => c.id === id) || null; },
-    async claimForAppt(apptId){
-      return (await rows(CLAIMS)).find(c => String(c.appt_ref) === String(apptId)) || null;
-    },
-    async saveClaim(c){
-      try{
-        const me = getSession();
-        if(c.id === undefined || c.id === null || c.id === '') delete c.id;
-        if(!c.patient_ref) return { error:'The claim must be attached to a patient' };
-        if(!c.lines || !c.lines.length) return { error:'Add at least one service line' };
-        if(!c.id){
-          c.created_at = new Date().toISOString();
-          c.created_by = me ? me.username : 'system';
-          c.created_by_name = me ? (me.name || me.username) : 'system';
-          c.number = 'CLM' + Math.floor(900000 + Math.random()*99999);
-          c.status = c.status || 'draft';
-          c.history = [{ at:c.created_at, by:c.created_by, what:'created',
-                         detail:'Claim drafted from '+(c.dos||'service') }];
-        }
-        c.total = (c.lines||[]).reduce((t,l) => t + (+l.charge||0) * (+l.units||1), 0);
-        c.updated_at = new Date().toISOString();
-        const id = await save_(CLAIMS, c);
-        return { ok:true, id: c.id || id, number:c.number };
-      }catch(err){ return { error:'Save failed: '+(err && err.message || err) }; }
-    },
-    async setClaimStatus(id, status, note){
-      const me = getSession();
-      const c = (await rows(CLAIMS)).find(x => x.id === id);
-      if(!c) return { error:'Not found' };
-      c.status = status;
-      c.history = [{ at:new Date().toISOString(), by:me?me.username:'system',
-                     what:'status', detail:status + (note?' — '+note:'') }].concat(c.history||[]);
-      if(status === 'submitted') c.submitted_at = new Date().toISOString();
-      c.updated_at = new Date().toISOString();
-      await save_(CLAIMS, c);
-      return { ok:true };
-    },
-    async removeClaim(id){ await kill(CLAIMS, id); return { ok:true }; },
-
-    /* appointments for one patient, newest first */
-    async apptsForPatient(ref){
-      return (await rows(APPTS))
-        .filter(a => String(a.patient_ref) === String(ref) && (a.block_type||'patient')==='patient')
-        .sort((a,b) => (b.date+String(b.start).padStart(4,'0')).localeCompare(a.date+String(a.start).padStart(4,'0')));
-    },
-
     /* ═══ CLAIMS ═══ */
     async claims(filter){
       let list = await rows(CLAIMS);
       if(filter && filter.patient_ref) list = list.filter(c => c.patient_ref === filter.patient_ref);
       if(filter && filter.appt_id)     list = list.filter(c => c.appt_id === filter.appt_id);
       if(filter && filter.org_id)      list = list.filter(c => c.org_id === filter.org_id);
+      if(filter && filter.provider_id)
+        list = list.filter(c => String(c.provider_id) === String(filter.provider_id));
       return list.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
     },
     async claim(id){ return (await rows(CLAIMS)).find(c => c.id === id) || null; },
@@ -1262,6 +1233,8 @@
       return (await rows(CLAIMS)).find(c => String(c.appt_id) === String(apptId)) || null;
     },
     async saveClaim(c){
+      if(DRIVER==='api'){ try{ const j=await dSave('claim',arguments[0]); return { ok:true, id:j.id, ...(j.record||{}) }; }catch(e){ return { error:String(e.message||e) }; } }
+
       try{
         const me = getSession();
         if(c.id === undefined || c.id === null || c.id === '') delete c.id;
@@ -1294,7 +1267,9 @@
       await save_(CLAIMS, c);
       return { ok:true };
     },
-    async removeClaim(id){ await kill(CLAIMS, id); return { ok:true }; },
+    async removeClaim(id){
+      if(DRIVER==='api'){ try{ await dDel('claim',id); return { ok:true }; }catch(e){ return { error:String(e.message||e) }; } }
+ await kill(CLAIMS, id); return { ok:true }; },
 
     /* every appointment for one patient, newest first */
     async apptsForPatient(ref, last, first, memberId){
@@ -1317,8 +1292,138 @@
                        .localeCompare(a.date+String(a.start).padStart(4,'0')));
     },
 
+    /* Has this person been seen? A locked encounter is the reliable signal —
+       a chart can exist for someone who never attended. */
+    async patientStanding(ref){
+      if(!ref) return { exists:false, seen:false, encounters:0, locked:0 };
+      const p = await this.patient(ref);
+      if(!p) return { exists:false, seen:false, encounters:0, locked:0 };
+      const encs = (await rows(ENC)).filter(e => String(e.patient_ref) === String(ref));
+      const locked = encs.filter(e => e.status === 'locked');
+      return {
+        exists: true,
+        seen: locked.length > 0,
+        encounters: encs.length,
+        locked: locked.length,
+        lastSeen: locked.map(e => e.dos).sort().pop() || null,
+        patient: p
+      };
+    },
+
+    /* ═══ PAYMENTS ═══
+       Two kinds arrive: a remittance from a payer, which posts against the
+       encounters it names, and a payment taken from a patient at the desk. */
+    async payments(filter){
+      let list = await rows(PAYMENTS);
+      const f = filter || {};
+      if(f.patient_ref != null)
+        list = list.filter(p => String(p.patient_ref) === String(f.patient_ref));
+      if(f.kind) list = list.filter(p => p.kind === f.kind);
+      if(f.from) list = list.filter(p => String(p.at||'').slice(0,10) >= f.from);
+      if(f.to)   list = list.filter(p => String(p.at||'').slice(0,10) <= f.to);
+      return list.sort((a,b) => String(b.at||'').localeCompare(String(a.at||'')));
+    },
+
+    async savePayment(p){
+      try{
+        if(p.id === undefined || p.id === null || p.id === '') delete p.id;
+        const me = getSession();
+        if(!p.id){
+          p.at = p.at || new Date().toISOString();
+          p.taken_by = me ? (me.name || me.username) : 'system';
+        }
+        if(!p.amount && p.amount !== 0) return { error:'An amount is required' };
+        const id = await save_(PAYMENTS, p);
+        return { ok:true, id: p.id || id };
+      }catch(err){ return { error:'Save failed: '+(err && err.message || err) }; }
+    },
+
+    /* Post a payment against an encounter's billing, so the chart and the
+       payments screen never disagree about what is outstanding. */
+    async postToEncounter(encId, patch, note){
+      const e = (await rows(ENC)).find(x => String(x.id) === String(encId));
+      if(!e) return { error:'That encounter no longer exists' };
+      e.billing = e.billing || {};
+      if(patch.ins_paid   != null) e.billing.ins_paid   = round2((+e.billing.ins_paid||0) + +patch.ins_paid);
+      if(patch.pat_paid   != null) e.billing.pat_paid   = round2((+e.billing.pat_paid||0) + +patch.pat_paid);
+      if(patch.writeoff   != null) e.billing.writeoff   = round2((+e.billing.writeoff||0) + +patch.writeoff);
+      if(patch.pat_resp   != null) e.billing.pat_resp   = +patch.pat_resp;
+      e.billing.last_posted = new Date().toISOString();
+      if(note){
+        e.billing.notes = (e.billing.notes || []);
+        e.billing.notes.push({ at:new Date().toISOString(), note });
+      }
+      await save_(ENC, e);
+      return { ok:true, encounter:e };
+    },
+
+    /* What a patient still owes, encounter by encounter. The same arithmetic
+       the chart uses, so the two can never drift. */
+    async patientBalances(ref){
+      const encs = (await rows(ENC))
+        .filter(e => String(e.patient_ref) === String(ref) && e.status === 'locked');
+      const pt = (await rows(PATIENTS)).find(x => String(x.id) === String(ref));
+      const ins = ((pt && pt.insurances) || []).find(x => x.rank === '1');
+
+      return encs.map(e => {
+        const fee = (e.lines||[]).reduce((x,l) => x + (+l.fee||0)*(+l.units||1), 0);
+        const b = e.billing || {};
+        const resp = b.resp || (ins ? 'ins' : 'self');
+        const copay = ins ? (+ins.copay||0) : 0;
+        const patResp = b.pat_resp != null ? +b.pat_resp : (resp === 'self' ? fee : copay);
+        const wo = +b.writeoff||0, patPaid = +b.pat_paid||0, insPaid = +b.ins_paid||0;
+        const insResp = Math.max(0, fee - patResp - wo);
+        return {
+          enc_id:e.id, dos:e.dos, fee, patResp, patPaid, wo, insPaid, insResp,
+          patBal: round2(Math.max(0, patResp - patPaid)),
+          insBal: round2(Math.max(0, insResp - insPaid)),
+          lines: e.lines || []
+        };
+      }).sort((a,b) => String(b.dos||'').localeCompare(String(a.dos||'')));
+    },
+
+    /* Everyone who owes something, for the payments screen. */
+    async outstandingPatients(){
+      const pts = await rows(PATIENTS);
+      const encs = (await rows(ENC)).filter(e => e.status === 'locked');
+      const byPt = {};
+      encs.forEach(e => { (byPt[String(e.patient_ref)] = byPt[String(e.patient_ref)] || []).push(e); });
+
+      const out = [];
+      for(const pt of pts){
+        const mine = byPt[String(pt.id)];
+        if(!mine || !mine.length) continue;
+        const ins = (pt.insurances||[]).find(x => x.rank === '1');
+        let patBal = 0, insBal = 0, oldest = null;
+        mine.forEach(e => {
+          const fee = (e.lines||[]).reduce((x,l) => x + (+l.fee||0)*(+l.units||1), 0);
+          const b = e.billing || {};
+          const resp = b.resp || (ins ? 'ins' : 'self');
+          const copay = ins ? (+ins.copay||0) : 0;
+          const patResp = b.pat_resp != null ? +b.pat_resp : (resp === 'self' ? fee : copay);
+          const wo = +b.writeoff||0;
+          const pb = Math.max(0, patResp - (+b.pat_paid||0));
+          const ib = Math.max(0, fee - patResp - wo - (+b.ins_paid||0));
+          patBal += pb; insBal += ib;
+          if(pb > 0 && (!oldest || String(e.dos||'') < oldest)) oldest = e.dos;
+        });
+        if(patBal > 0.004 || insBal > 0.004){
+          out.push({
+            patient_ref: pt.id,
+            name: [pt.last_name, pt.first_name].filter(Boolean).join(', '),
+            internal_id: pt.internal_id, phone: pt.phone, email: pt.email,
+            payer: ins ? ins.name : 'Self pay',
+            patBal: round2(patBal), insBal: round2(insBal), oldest
+          });
+        }
+      }
+      return out.sort((a,b) => b.patBal - a.patBal);
+    },
+
     /* ═══ PATIENT DEMOGRAPHICS ═══ */
     async patient(ref){
+      if(DRIVER==='api') return dapi('patient','get',null,ref).then(j=>j.record).catch(()=>null);
+
       const list = await rows(PATIENTS);
       return list.find(p => String(p.id) === String(ref)) || null;
     },
@@ -1340,15 +1445,26 @@
       return null;
     },
     async savePatientRec(p){
+      if(DRIVER==='api'){
+        try{ const j=await dSave('patient',p); return { ok:true, id:j.id, internal_id:(j.record||{}).internal_id }; }
+        catch(e){ return { error:String(e.message||e) }; }
+      }
       try{
         if(p.id === undefined || p.id === null || p.id === '') delete p.id;
         if(!p.last_name) return { error:'Last name is required' };
+
+        /* an edit must not drop fields the editing screen never loaded */
+        if(p.id){
+          const prev = (await rows(PATIENTS)).find(x => x.id === p.id);
+          if(prev) p = { ...prev, ...p, id: prev.id };
+        }
         if(!p.id){
           p.created_at = new Date().toISOString();
           p.internal_id = p.internal_id ||
             (String(p.last_name).slice(0,3) + String(p.first_name||'XX').slice(0,3)).toUpperCase() +
             String(Math.floor(10 + Math.random()*89));
           p.insurances = p.insurances || [];
+          p.status = p.status || 'active';
         }
         p.updated_at = new Date().toISOString();
         const id = await save_(PATIENTS, p);
@@ -1358,6 +1474,7 @@
 
     /* ═══ ENCOUNTERS ═══ */
     async encounters(patientRef){
+      if(DRIVER==='api') return dList('encounter',{ patient_ref:patientRef });
       const list = await rows(ENC);
       return list.filter(e => String(e.patient_ref) === String(patientRef))
                  .sort((a,b) => (b.dos||'').localeCompare(a.dos||''));
@@ -1367,6 +1484,8 @@
       return (await rows(ENC)).find(e => String(e.appt_id) === String(apptId)) || null;
     },
     async saveEncounter(e){
+      if(DRIVER==='api'){ try{ const j=await dSave('encounter',arguments[0]); return { ok:true, id:j.id, ...(j.record||{}) }; }catch(e){ return { error:String(e.message||e) }; } }
+
       try{
         if(e.id === undefined || e.id === null || e.id === '') delete e.id;
         const me = getSession();
@@ -1381,7 +1500,9 @@
         return { ok:true, id: e.id || id };
       }catch(err){ return { error:'Save failed: '+(err && err.message || err) }; }
     },
-    async removeEncounter(id){ await kill(ENC, id); return { ok:true }; },
+    async removeEncounter(id){
+      if(DRIVER==='api'){ try{ await dDel('encounter',id); return { ok:true }; }catch(e){ return { error:String(e.message||e) }; } }
+ await kill(ENC, id); return { ok:true }; },
 
     /* ═══ ACTIVITY HISTORY ═══ */
     async history(patientRef){
@@ -1451,6 +1572,370 @@
         enrollments: [], log: []
       });
       return await this.credentialing(provider.id);
+    },
+
+    /* ═══ PAYERS ═══
+       One list, referenced by eligibility, credentialing, claims and charts. */
+    async payers(){
+      if(DRIVER==='api') return dList('payer');
+
+      return (await rows(PAYERS)).sort((a,b) =>
+        String(a.name||'').localeCompare(String(b.name||'')));
+    },
+    async payer(id){ return (await rows(PAYERS)).find(p => p.id === id) || null; },
+    async findPayer(q){
+      if(!q) return null;
+      const list = await rows(PAYERS);
+      const Q = String(q).trim().toLowerCase();
+      return list.find(p => String(p.payer_id||'').toLowerCase() === Q) ||
+             list.find(p => String(p.name||'').toLowerCase() === Q) ||
+             list.find(p => String(p.name||'').toLowerCase().includes(Q)) || null;
+    },
+    async savePayer(p){
+      if(DRIVER==='api'){ try{ const j=await dSave('payer',arguments[0]); return { ok:true, id:j.id, ...(j.record||{}) }; }catch(e){ return { error:String(e.message||e) }; } }
+
+      try{
+        if(p.id === undefined || p.id === null || p.id === '') delete p.id;
+        if(!p.name) return { error:'Payer name is required' };
+        const list = await rows(PAYERS);
+        const clash = list.find(x => x.id !== p.id &&
+          String(x.payer_id||'').toLowerCase() === String(p.payer_id||'').toLowerCase() &&
+          String(p.payer_id||'') !== '');
+        if(clash) return { error:`Payer ID ${p.payer_id} is already used by ${clash.name}` };
+        const me = getSession();
+        if(!p.id){
+          p.created_at = new Date().toISOString();
+          p.created_by = me ? me.username : 'system';
+          p.status = p.status || 'active';
+        }
+        p.updated_at = new Date().toISOString();
+        const id = await save_(PAYERS, p);
+        return { ok:true, id: p.id || id };
+      }catch(err){ return { error:'Save failed: '+(err && err.message || err) }; }
+    },
+    async removePayer(id){
+      if(DRIVER==='api'){ try{ await dDel('payer',id); return { ok:true }; }catch(e){ return { error:String(e.message||e) }; } }
+ await kill(PAYERS, id); return { ok:true }; },
+    async importPayers(list){
+      let added = 0, updated = 0, failed = [];
+      const existing = await rows(PAYERS);
+      for(const raw of list){
+        if(!raw.name){ failed.push({ row:raw._row, why:'No payer name' }); continue; }
+        const match = existing.find(x =>
+          (raw.payer_id && String(x.payer_id||'').toLowerCase() === String(raw.payer_id).toLowerCase()) ||
+          String(x.name||'').toLowerCase() === String(raw.name).toLowerCase());
+        const rec = match ? { ...match, ...raw, id: match.id } : { ...raw };
+        delete rec._row;
+        const r = await this.savePayer(rec);
+        if(r.ok){ match ? updated++ : added++; }
+        else failed.push({ row:raw._row, why:r.error });
+      }
+      return { ok:true, added, updated, failed };
+    },
+
+    /* ═══ MASTER DATA ═══
+       set: cpt | hcpcs | icd10 | pos | modifier | servicetype | fee */
+    async master(set){
+      const list = await rows(MASTER);
+      const out = set ? list.filter(m => m.set === set) : list;
+      return out.sort((a,b) => String(a.code||'').localeCompare(String(b.code||'')));
+    },
+    async masterItem(id){ return (await rows(MASTER)).find(m => m.id === id) || null; },
+    async saveMaster(m){
+      try{
+        if(m.id === undefined || m.id === null || m.id === '') delete m.id;
+        if(!m.set)  return { error:'A code set is required' };
+        if(!m.code) return { error:'A code is required' };
+        const list = await rows(MASTER);
+        const clash = list.find(x => x.id !== m.id && x.set === m.set &&
+          String(x.code).toLowerCase() === String(m.code).toLowerCase());
+        if(clash) return { error:`${m.code} already exists in this code set` };
+        const me = getSession();
+        if(!m.id){
+          m.created_at = new Date().toISOString();
+          m.created_by = me ? me.username : 'system';
+          m.status = m.status || 'active';
+        }
+        m.updated_at = new Date().toISOString();
+        const id = await save_(MASTER, m);
+        return { ok:true, id: m.id || id };
+      }catch(err){ return { error:'Save failed: '+(err && err.message || err) }; }
+    },
+    async removeMaster(id){ await kill(MASTER, id); return { ok:true }; },
+    async importMaster(set, list){
+      let added = 0, updated = 0, failed = [];
+      const existing = (await rows(MASTER)).filter(m => m.set === set);
+      for(const raw of list){
+        if(!raw.code){ failed.push({ row:raw._row, why:'No code' }); continue; }
+        const match = existing.find(x =>
+          String(x.code).toLowerCase() === String(raw.code).toLowerCase());
+        const rec = match ? { ...match, ...raw, set, id: match.id } : { ...raw, set };
+        delete rec._row;
+        const r = await this.saveMaster(rec);
+        if(r.ok){ match ? updated++ : added++; }
+        else failed.push({ row:raw._row, why:r.error });
+      }
+      return { ok:true, added, updated, failed };
+    },
+    /* the fee for a CPT, from the fee schedule if one exists */
+    async feeFor(code){
+      const list = await rows(MASTER);
+      const fee = list.find(m => m.set === 'fee' && String(m.code) === String(code));
+      if(fee && fee.fee != null) return Number(fee.fee);
+      const cpt = list.find(m => m.set === 'cpt' && String(m.code) === String(code));
+      return cpt && cpt.fee != null ? Number(cpt.fee) : 0;
+    },
+
+    /* ═══ PATIENT IMPORT ═══ */
+    async importPatients(list){
+      let added = 0, updated = 0, failed = [];
+      const existing = await rows(PATIENTS);
+      for(const raw of list){
+        if(!raw.last_name){ failed.push({ row:raw._row, why:'No last name' }); continue; }
+        const match = existing.find(x =>
+          (raw.internal_id && String(x.internal_id||'').toLowerCase() === String(raw.internal_id).toLowerCase()) ||
+          (String(x.last_name||'').toLowerCase() === String(raw.last_name).toLowerCase() &&
+           String(x.first_name||'').toLowerCase() === String(raw.first_name||'').toLowerCase() &&
+           String(x.dob||'') === String(raw.dob||'')));
+        const rec = match ? { ...match, ...raw, id: match.id } : { ...raw };
+        delete rec._row;
+        const r = await this.savePatientRec(rec);
+        if(r.ok){ match ? updated++ : added++; }
+        else failed.push({ row:raw._row, why:r.error });
+      }
+      return { ok:true, added, updated, failed };
+    },
+    async removePatient(id){
+      if(DRIVER==='api'){ try{ await dDel('patient',id); return { ok:true }; }catch(e){ return { error:String(e.message||e) }; } }
+ await kill(PATIENTS, id); return { ok:true }; },
+
+    /* ═══ TEAM MEMBERS ═══
+       A supervisor adds people to their organisation. Providers land in the
+       provider table so admin sees them; everyone else becomes a pending
+       account request. Either way the admin issues the password. */
+    /* every section a practice manager can grant access to */
+    SECTIONS: [
+      { key:'schedule',      label:'Schedule',        note:'Appointments and provider columns' },
+      { key:'patients',      label:'Patient records', note:'Charts, encounters and billing' },
+      { key:'eligibility',   label:'Eligibility',     note:'Real-time and batch checks' },
+      { key:'claims',        label:'Claims',          note:'Submitted claims and status' },
+      { key:'credentialing', label:'Credentialing',   note:'Payer enrolment and attestations' },
+      { key:'tasks',         label:'Tasks',           note:'Assigned work and CC visibility' },
+      { key:'teams',         label:'Teams',           note:'Adding and editing team members' },
+      { key:'reports',       label:'Reports',         note:'Dashboard figures and exports' }
+    ],
+
+    defaultAccess(){
+      const out = {};
+      this.SECTIONS.forEach(s => { out[s.key] = 'none'; });
+      return out;
+    },
+    /* a provider's access follows their role rather than a grant */
+    providerAccess(){
+      return { schedule:'edit', patients:'edit', eligibility:'edit', claims:'edit',
+               credentialing:'view', tasks:'edit', teams:'none', reports:'view' };
+    },
+
+    /* What a role can do before a practice manager sets anything.
+       Locking a new account out of everything looks like a broken app,
+       so each role starts with what its job obviously needs. */
+    roleDefaults(role){
+      switch(role){
+        case 'admin':
+        case 'supervisor':
+          return { schedule:'edit', patients:'edit', eligibility:'edit', claims:'edit',
+                   credentialing:'edit', tasks:'edit', teams:'edit', reports:'edit' };
+        case 'provider':
+          return this.providerAccess();
+        case 'scheduler':
+          return { schedule:'edit', patients:'edit', eligibility:'edit', claims:'view',
+                   credentialing:'none', tasks:'edit', teams:'none', reports:'view' };
+        case 'employee':
+          return { schedule:'view', patients:'edit', eligibility:'edit', claims:'edit',
+                   credentialing:'none', tasks:'edit', teams:'none', reports:'view' };
+        default:
+          return this.defaultAccess();
+      }
+    },
+
+    async setAccess(username, access){
+      const me = getSession();
+      if(!me || !['supervisor','scheduler','admin'].includes(me.role))
+        return { error:'Only a practice manager or administrator can change access' };
+      const a = (await all()).find(x => x.username === username);
+      if(a){
+        a.access = access;
+        a.access_set_by = me.username;
+        a.access_set_at = new Date().toISOString();
+        await put(a);
+      }
+      const list = (await meta('team_requests')) || [];
+      const i = list.findIndex(r => r.issued_username === username ||
+                                    r.suggested_username === username);
+      if(i > -1){ list[i].access = access; await setMeta('team_requests', list); }
+      return { ok:true };
+    },
+    async getAccess(username){
+      const a = (await all()).find(x => x.username === username);
+      if(a && a.access) return a.access;
+      const list = (await meta('team_requests')) || [];
+      const r = list.find(x => x.issued_username === username || x.suggested_username === username);
+      if(r && r.access) return r.access;
+      return this.roleDefaults(a ? a.role : (getSession() || {}).role);
+    },
+    async can(section){
+      const me = getSession();
+      if(!me) return 'none';
+      if(me.role === 'admin' || me.role === 'supervisor') return 'edit';
+      if(me.role === 'provider') return this.providerAccess()[section] || 'none';
+
+      const acc = await this.getAccess(me.username);
+      /* an account with no stored grant falls back to what its role needs */
+      if(!acc || !Object.keys(acc).length) return this.roleDefaults(me.role)[section] || 'none';
+      return acc[section] || 'none';
+    },
+
+    async addTeamMember(data){
+      try{
+        const me = getSession();
+        if(!me) return { error:'Not signed in' };
+        if(!['supervisor','scheduler','admin'].includes(me.role))
+          return { error:'Only a practice manager or administrator can add team members' };
+        if(!data.full_name) return { error:'A name is required' };
+        if(!data.role)      return { error:'Choose what they do' };
+        if(data.role === 'supervisor')
+          return { error:'A practice manager can only be created from the admin console' };
+
+        const orgId = data.org_id || me.org_id;
+        if(!orgId) return { error:'No organisation is linked to your account' };
+
+        const n = splitName(data.full_name);
+        let providerId = null;
+
+        /* a provider needs a record in the provider table, which is what
+           admin's Providers screen reads */
+        if(data.role === 'provider'){
+          const r = await this.saveProvider({
+            org_id: orgId,
+            full_name: data.full_name,
+            title: data.title || '',
+            email: data.email || '',
+            phone: data.phone || '',
+            specialty: data.specialty || '',
+            npi: data.npi || '',
+            taxonomy: data.taxonomy || '',
+            license: data.license || '',
+            state: data.state || '',
+            availability: data.availability || 'Mon–Fri, 08:00 – 17:00',
+            favourite_cpt: '',
+            telehealth: !!data.telehealth,
+            address: data.address || '',
+            added_by_team: true
+          });
+          if(r.error) return r;
+          providerId = r.id;
+        }
+
+        /* the request an administrator will action */
+        const list = (await meta('team_requests')) || [];
+        const req = {
+          id: 'tr_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36),
+          org_id: orgId,
+          full_name: data.full_name,
+          first_name: n.first, last_name: n.last,
+          role: data.role, team: data.team || '',
+          title: data.title || '', email: data.email || '', phone: data.phone || '',
+          specialty: data.specialty || '', npi: data.npi || '',
+          provider_ref: providerId,
+          suggested_username: data.username || suggestUsername(data.full_name),
+          access: data.role === 'provider' ? this.providerAccess()
+                  : (data.access || this.defaultAccess()),
+          status: 'pending',
+          requested_by: me.username,
+          requested_name: me.name || me.username,
+          requested_at: new Date().toISOString()
+        };
+        list.unshift(req);
+        await setMeta('team_requests', list.slice(0,300));
+        return { ok:true, id:req.id, provider_ref:providerId, username:req.suggested_username };
+      }catch(err){ return { error:'Save failed: '+(err && err.message || err) }; }
+    },
+
+    async teamRequests(orgId){
+      const list = (await meta('team_requests')) || [];
+      const accts = await all();
+      /* a request is fulfilled once an account exists for it */
+      const out = list.map(r => {
+        const acct = accts.find(a =>
+          (r.provider_ref && a.provider_ref === r.provider_ref) ||
+          a.username === r.issued_username);
+        return { ...r, account: acct ? { username:acct.username, status:acct.status,
+                                         must_change:acct.must_change } : null,
+                 status: acct ? 'active' : (r.status || 'pending') };
+      });
+      return orgId ? out.filter(r => String(r.org_id) === String(orgId)) : out;
+    },
+
+    async markTeamRequest(id, patch){
+      const list = (await meta('team_requests')) || [];
+      const i = list.findIndex(r => r.id === id);
+      if(i < 0) return { error:'Not found' };
+      list[i] = { ...list[i], ...patch };
+      await setMeta('team_requests', list);
+      return { ok:true };
+    },
+    async removeTeamRequest(id){
+      const list = ((await meta('team_requests')) || []).filter(r => r.id !== id);
+      await setMeta('team_requests', list);
+      return { ok:true };
+    },
+
+    /* ═══ LOGIN AND LOGOUT HISTORY ═══ */
+    async loginEvents(opts){
+      opts = opts || {};
+      const list = (await meta('events')) || [];
+      const accts = await all();
+      const byName = {};
+      accts.forEach(a => { byName[a.username] = a; });
+
+      let out = list.map(e => ({ ...e, account: byName[e.username] || null }));
+      if(opts.from) out = out.filter(e => e.at >= opts.from);
+      if(opts.to)   out = out.filter(e => e.at <= opts.to + 'T23:59:59.999Z');
+      if(opts.username) out = out.filter(e => e.username === opts.username);
+      if(opts.orgId) out = out.filter(e => e.account && String(e.account.org_id) === String(opts.orgId));
+      return out.sort((a,b) => new Date(b.at) - new Date(a.at));
+    },
+
+    /* pair each login with the logout that followed it */
+    async sessionsReport(opts){
+      const events = await this.loginEvents(opts);
+      const byUser = {};
+      events.slice().reverse().forEach(e => {
+        (byUser[e.username] = byUser[e.username] || []).push(e);
+      });
+
+      const out = [];
+      Object.keys(byUser).forEach(u => {
+        const seq = byUser[u];
+        let open = null;
+        seq.forEach(e => {
+          if(e.event === 'login'){
+            if(open) out.push({ ...open, out_at:null, seconds:null, incomplete:true });
+            open = { username:u, account:e.account, in_at:e.at };
+          }else if(e.event === 'logout' && open){
+            out.push({ ...open, out_at:e.at,
+                       seconds: Math.max(0, (new Date(e.at) - new Date(open.in_at))/1000) });
+            open = null;
+          }
+        });
+        if(open) out.push({ ...open, out_at:null, seconds:null, incomplete:true });
+      });
+      return out.sort((a,b) => new Date(b.in_at) - new Date(a.in_at));
+    },
+
+    /* called by the session manager as it tears a session down */
+    logSignOut(username, reason){
+      try{ logEvent(username, reason === 'idle' ? 'timeout' : 'logout'); }catch(e){}
     },
 
     async events(){ return (await meta('events')) || []; },

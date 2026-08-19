@@ -1,101 +1,93 @@
-# Connecting the eligibility page to Stedi
+# Stedi setup
 
-The browser never talks to Stedi directly — the API key would be readable in
-page source and Stedi blocks cross-origin browser calls. A Netlify Function
-sits in between.
+## The 404 you are seeing
 
-```
-eligibility.html  →  POST /api/eligibility  →  netlify/functions/eligibility.js  →  Stedi
-                     (no key in browser)        (key read from env var)
-```
+`/api/claims` returned **404**, which comes from your own site — not Stedi.
+Stedi answers `400` or `422` when it dislikes a claim, never 404 at that URL.
+Nothing reached them, which matches what you saw in their portal.
 
-## One-time setup
+Two things must both be published:
 
-**1. Add the key in Netlify**
+1. **`netlify/functions/claims.js`** — the function itself.
+2. **The `/api/claims` redirect in `netlify.toml`:**
 
-Site configuration → Environment variables → Add a variable
-
-```
-Key:   STEDI_API_KEY
-Value: <your Stedi API key>
-```
-
-Set it for all deploy contexts, then **Deploys → Trigger deploy → Clear cache
-and deploy site**. Environment variables are only picked up on a fresh build.
-
-**2. Push these files**
-
-```
-netlify.toml                      functions dir + /api/eligibility redirect
-netlify/functions/eligibility.js  the proxy
-.env.example                      placeholder, safe to commit
-.gitignore                        keeps .env out of git
+```toml
+[[redirects]]
+  from = "/api/claims"
+  to   = "/.netlify/functions/claims"
+  status = 200
+  force = true
 ```
 
-That is the whole setup. No build step, no server to keep running.
+After deploying, open the Claims page. It now pings the endpoint on load and
+shows a red banner if it is still missing, so you do not discover it mid-submission.
 
-## Testing locally (optional)
+To check by hand:
 
-```bash
-npm i -g netlify-cli
-cp .env.example .env      # then paste your real key into .env
-netlify dev               # serves the site AND the function
+```
+curl -X POST https://your-site.netlify.app/api/claims \
+  -H 'Content-Type: application/json' \
+  --data '{"dryRun":true,"claim":{"control":"PING","lines":[],"dx":[]}}'
 ```
 
-`netlify dev` is only for local testing. The deployed site does not need it.
+- **404** → the function or redirect is not published.
+- **401/403** → deployed, but you are not signed in (expected from curl).
+- **503 `not_configured`** → deployed, but `STEDI_API_KEY` is missing.
+- **200 with a payload** → working.
 
-## Which key to use
+## Environment variables
 
-Stedi issues test and production keys. A **test key** returns Stedi's mock
-payloads and only matches specific member details — anything else comes back as
-an AAA error, which is expected. Use these to confirm the pipe works:
-
-| Payer | Member ID | First / Last | DOB | Expect |
-|---|---|---|---|---|
-| Aetna (60054) | `1234567890` | Jane Doe | 1980-01-01 | Active coverage |
-| UnitedHealthcare (87726) | `0000000000` | John Doe | 1970-05-15 | Active coverage |
-| Any | `AAA72` | any | any | AAA-72 error view |
-
-Confirm the exact mock values against Stedi's current docs before relying on
-them — they are versioned and do change:
-<https://www.stedi.com/docs/healthcare/api-reference/mock-requests-eligibility-checks>
-
-Swap to a production key and real member data returns real coverage. Nothing in
-the UI changes.
-
-## Field mapping
-
-| Form field | Stedi field |
+| Variable | Purpose |
 |---|---|
-| Select payer | `tradingPartnerServiceId` (ID parsed from the label) |
-| Choose facility | `provider.organizationName` |
-| NPI | `provider.npi` |
-| Tax ID | `provider.taxId` |
-| Member first / last name | `subscriber.firstName` / `subscriber.lastName` |
-| Date of birth | `subscriber.dateOfBirth` (converted to `YYYYMMDD`) |
-| Member ID | `subscriber.memberId` |
-| Category | `encounter.serviceTypeCodes[0]` (code parsed from the label) |
-| Date of service | `encounter.dateOfService` |
-| CPT code | `encounter.procedureCode` |
-| Relationship ≠ Self | adds a `dependents[]` entry; subscriber name fields switch to the subscriber |
+| `STEDI_API_KEY` | Sent as the `Authorization` header. |
+| `STEDI_SUBMITTER_ID` | Your submitter identification. |
+| `STEDI_USAGE` | `T` for test, `P` for live. **Defaults to `T`.** |
 
-`controlNumber` is generated per request in the function if absent.
+Set these under **Site settings → Environment variables**, then redeploy.
+Environment changes need a fresh deploy to take effect.
 
-## Status badge
+## Test versus live
 
-The chip under the page title reports the state of the connection:
+`usageIndicator` defaults to `T`. Per Stedi's documentation, a test claim is
+**not sent to the payer** — Stedi validates it and returns a 277CA
+acknowledgment so you can exercise the whole pipeline safely. Test claims are
+visible in the portal only when **Test mode is toggled ON** in the claims view.
 
-- **Live · Stedi connected** — the function answered
-- **Offline · deploy to Netlify for live results** — you opened the HTML file
-  directly, so `/api/eligibility` does not exist
+If you were looking at the portal with test mode off, that is another reason a
+claim would appear to be missing.
 
-## Security notes before go-live
+Set `STEDI_USAGE=P` when you are ready for real claims.
 
-- The key is only in the Netlify environment. Never put it in any file under
-  version control, and never in client-side JS.
-- Add authentication in front of the function. As written, anyone who finds the
-  URL can spend your Stedi quota. Netlify Identity, a shared secret header, or
-  a JWT check inside the handler all work.
-- Eligibility responses contain PHI. Do not log the full response body, and
-  keep the `sessionStorage` copy that feeds the detail page in mind when you
-  set your session policy.
+## Before real claims will pay
+
+**Transaction enrollment.** Some payers require a provider to be registered
+before they accept 837 claims through a new clearinghouse. Check the payer in
+Stedi's Payer Network, and if enrollment is needed:
+
+1. Create a provider record in the Stedi portal under Providers.
+2. Submit an enrollment request for professional claims under Enrollments.
+
+This is done in Stedi, not in this application.
+
+## What this build sends
+
+- `Idempotency-Key` on every request, so a retry after a network failure cannot
+  double-bill. Safe to reuse for 24 hours.
+- A patient control number that is **17 characters or fewer, alphanumeric and
+  unpredictable**, following Stedi's guidance. Predictable numbers create
+  duplicates across patients and break ERA matching.
+- Amounts as strings, the rendering provider on each service line, and
+  `serviceFacilityLocation` inside `claimInformation` — verified against the
+  documented request shape with 30 assertions.
+
+## SFTP
+
+Not yet implemented. It is where **835 remittances** arrive, so it is the piece
+worth adding when you want payments posted automatically:
+
+```
+sftp <username>@transfer.us.stedi.com      # port 22
+put your-claim-file.x12 to-stedi/
+ls from-stedi/                             # 999s, 277CAs and 835 ERAs
+get from-stedi/<response-file>.x12
+```

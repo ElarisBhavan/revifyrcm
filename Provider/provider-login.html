@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="../_guard.js"></script>
 <script src="../_store.js"></script>
 <script src="../_session.js"></script>
 <style>
@@ -249,7 +250,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     </form>
 
 
-    <p class="foot">Not a provider? <a href="reviflow.html">Choose a different role</a></p>
+    <p class="foot">Not a provider? <a href="../reviflow.html">Choose a different role</a></p>
   </div>
 </main>
 
@@ -278,6 +279,12 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
     btn.classList.add('busy');
     await RFStore.ready();
+
+    /* Signing in as a different person replaces the live session. Ending it
+       first stops a stale account from picking up the redirect. */
+    var live=RFStore.getSession();
+    if(live && live.username!==u.value.trim())RFStore.clearSession();
+
     var res=await RFStore.login(u.value.trim(),p.value);
     btn.classList.remove('busy');
 
@@ -285,7 +292,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     if(res.mustChange||res.mfaRequired){
       sessionStorage.setItem('rf_pending',JSON.stringify({id:res.id,name:res.name,
         mode:res.mustChange?'change':'mfa',from:'provider'}));
-      window.location.href='../Admin/admin-login.html';
+      window.location.href='../Admin/admin-login.html?switch=1';
       return;
     }
     if(res.ok&&res.account){
@@ -329,5 +336,54 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   });
 })();
 </script>
+<script>
+/* If someone is already signed in, say so rather than letting the redirect
+   look like the wrong credentials were accepted. */
+(function(){
+  document.addEventListener('DOMContentLoaded',async function(){
+    if(typeof RFStore==='undefined')return;
+    await RFStore.ready();
+    var sess=RFStore.getSession();
+    if(!sess)return;
+    var host=document.querySelector('.card')||document.querySelector('form');
+    if(!host)return;
+    var who=sess.name||sess.username;
+    var role=({admin:'Administrator',supervisor:'Practice manager',provider:'Provider',
+               scheduler:'Scheduler',employee:'Employee'})[sess.role]||sess.role;
+    var home=sess.role==='admin'?'../Admin/admin-dashboard.html':'provider-dashboard.html';
+    var box=document.createElement('div');
+    box.className='rf-already';
+    box.innerHTML=
+      '<div class="ra-in"><span class="ra-av">'+String(who||'?').slice(0,2).toUpperCase()+'</span>'+
+      '<div class="ra-b"><b>'+who+' is already signed in</b>'+
+      '<small>'+role+' · this browser allows one account at a time</small></div></div>'+
+      '<div class="ra-acts">'+
+        '<a class="ra-btn pri" href="'+home+'">Continue as '+who+'</a>'+
+        '<button type="button" class="ra-btn" id="raSwitch">Sign in as someone else</button>'+
+      '</div>'+
+      '<p class="ra-note">Signing in as someone else ends this session in every open tab. '+
+        'To use two accounts at once, open the second in a private window.</p>';
+    host.insertBefore(box,host.firstChild);
+    document.getElementById('raSwitch').addEventListener('click',function(){
+      RFStore.clearSession(); box.remove();
+    });
+  });
+})();
+</script>
+<style>
+.rf-already{margin-bottom:18px;padding:15px;border-radius:14px;background:#FBF2DC;
+  border:1px solid rgba(192,134,22,.28)}
+.ra-in{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+.ra-av{width:34px;height:34px;flex:none;border-radius:11px;display:grid;place-items:center;
+  background:#7A5507;color:#FBF2DC;font-family:'JetBrains Mono',monospace;font-size:11.4px;font-weight:700}
+.ra-b b{display:block;font-size:13px;font-weight:700;color:#7A5507}
+.ra-b small{display:block;font-size:11px;color:#7A5507;opacity:.82;margin-top:2px}
+.ra-acts{display:flex;gap:8px;flex-wrap:wrap}
+.ra-btn{flex:1;min-width:140px;display:inline-flex;align-items:center;justify-content:center;
+  padding:10px 14px;border-radius:10px;border:1px solid rgba(122,85,7,.3);background:#fff;
+  font-size:12.4px;font-weight:600;color:#7A5507;cursor:pointer;text-decoration:none}
+.ra-btn.pri{background:#7A5507;border-color:#7A5507;color:#FBF2DC}
+.ra-note{margin-top:10px;font-size:10.8px;line-height:1.5;color:#7A5507;opacity:.85}
+</style>
 </body>
 </html>
