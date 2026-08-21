@@ -26,7 +26,7 @@
   /* ───────────────────────────────────────────────────────────── */
   /* Bumped on every release. Printed to the console and shown in the page
      footer, so which build is actually loaded is never in doubt. */
-  const BUILD = '2026.08.15-a';
+  const BUILD = '2026.08.20-local-a';
   window.RF_BUILD = BUILD;
 
   const DB = 'reviflow', STORE = 'accounts', META = 'meta', VER = 10;
@@ -317,12 +317,13 @@
   const setSession = a => {
     const p = sessionPayload(a);
     if(window.RFSession) window.RFSession.start(p);
-    else { try{ localStorage.setItem(SKEY, JSON.stringify(p)); }catch(e){} }
+    else { try{ sessionStorage.setItem(SKEY, JSON.stringify(p)); }catch(e){} }
     return p;
   };
   const getSession = () => {
     if(window.RFSession) return window.RFSession.get();
-    try{ return JSON.parse(localStorage.getItem(SKEY) || 'null'); }catch(e){ return null; }
+    /* per tab, matching _session.js when it is not loaded */
+    try{ return JSON.parse(sessionStorage.getItem(SKEY) || 'null'); }catch(e){ return null; }
   };
   const clearSession = () => {
     try{
@@ -334,7 +335,7 @@
       try{ fetch('/api/auth?action=logout', { method:'POST', credentials:'same-origin' }); }catch(e){}
     }
     if(window.RFSession) return window.RFSession.end('manual');
-    try{ localStorage.removeItem(SKEY); }catch(e){}
+    try{ sessionStorage.removeItem(SKEY); }catch(e){}
   };
 
   /* ── remote driver: the same interface, served by Netlify Functions ── */
@@ -715,8 +716,13 @@
     /* which providers still have no login */
     async providersWithoutLogin(){
       const accts = await all();
-      const ids = new Set(accts.map(a => a.provider_ref).filter(Boolean));
-      return (await rows(PROVIDERS)).filter(p => !ids.has(p.id));
+      /* compare as text; the link's type varies by driver */
+      const linked = new Set(
+        accts.map(a => a.provider_ref)
+             .filter(v => v !== null && v !== undefined && v !== '')
+             .map(String));
+      const provs = await this.providers();
+      return provs.filter(p => !linked.has(String(p.id)));
     },
 
     /* ═══ PATIENTS (shared by scheduling and the patient dashboard) ═══ */
@@ -762,6 +768,16 @@
 
     /* ═══ APPOINTMENTS ═══ */
     async appts(date, providerIds){
+      if(DRIVER==='api'){
+        const filter = {};
+        if(date) filter.date = date;
+        const list = await dList('appt', filter);
+        if(providerIds && providerIds.length){
+          const set = new Set(providerIds.map(String));
+          return list.filter(a => set.has(String(a.provider_id))).sort((a,b)=>a.start-b.start);
+        }
+        return list.sort((a,b)=>a.start-b.start);
+      }
       let list = await rows(APPTS);
       if(date) list = list.filter(a => a.date === date);
       if(providerIds && providerIds.length){
@@ -770,8 +786,26 @@
       }
       return list.sort((a,b) => a.start - b.start);
     },
-    async appt(id){ return (await rows(APPTS)).find(a => a.id === id) || null; },
+    async appt(id){
+      if(DRIVER==='api') return dapi('appt','get',null,id).then(j=>j.record).catch(()=>null);
+      return (await rows(APPTS)).find(a => a.id === id) || null;
+    },
     async saveAppt(a){
+      if(DRIVER==='api'){
+        try{
+          if(!a.provider_id) return { error:'Choose a provider' };
+          if(!a.date) return { error:'Choose a date' };
+          if(a.start == null) return { error:'Choose a start time' };
+          a.dur = +a.dur || 20;
+          const existing = await dList('appt',{date:a.date});
+          const clash = existing.find(x => String(x.provider_id)===String(a.provider_id) &&
+            String(x.id)!==String(a.id||'') && a.start < (+x.start + +x.dur) &&
+            +x.start < (+a.start + +a.dur));
+          if(clash) return { error:`That overlaps ${clash.patient_last||'an existing appointment'}.` };
+          const j=await dSave('appt',a);
+          return {ok:true,id:j.id,...(j.record||{})};
+        }catch(e){ return {error:String(e.message||e)}; }
+      }
       try{
         if(a.id === undefined || a.id === null || a.id === '') delete a.id;
         if(!a.provider_id) return { error:'Choose a provider' };
@@ -801,6 +835,9 @@
       }catch(err){ return { error:'Save failed: '+(err && err.message || err) }; }
     },
     async removeAppt(id){
+      if(DRIVER==='api'){
+        try{ await dDel('appt',id); return {ok:true}; }catch(e){ return {error:String(e.message||e)}; }
+      }
       try{
         const list = await rows(APPTS);
         const target = list.find(a => a.id === id);
@@ -839,6 +876,14 @@
 
     /* keep attendee copies in step when the organiser edits a meeting */
     async syncMeeting(rootId, patch){
+      if(DRIVER==='api'){
+        try{
+          const list=await dList('appt');
+          const copies=list.filter(a=>a.linked_to===rootId);
+          for(const c of copies) await dSave('appt',{...c,...patch,id:c.id,provider_id:c.provider_id,linked_to:rootId});
+          return {ok:true,synced:copies.length};
+        }catch(e){return {error:String(e.message||e)}}
+      }
       try{
         const list = await rows(APPTS);
         const copies = list.filter(a => a.linked_to === rootId);
@@ -1115,6 +1160,15 @@
        Visible to the assignee, the person who raised it, and anyone in CC.
        Nobody else — so a task sent to an admin never surfaces for an employee. */
     async tasks(){
+      if(DRIVER==='api'){
+        const me = getSession();
+        if(!me) return [];
+        const list = await dList('task');
+        return list.map(t => ({...t,
+          _role: t.assignee===me.username ? 'assignee' : (t.created_by===me.username ? 'owner' : 'cc'),
+          _readonly: t.assignee!==me.username && t.created_by!==me.username
+        })).sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+      }
       const me = getSession();
       if(!me) return [];
       const u = me.username;
@@ -1158,6 +1212,23 @@
     },
 
     async saveTask(t){
+      if(DRIVER==='api'){
+        try{
+          const me=getSession();
+          if(!me) return {error:'Not signed in'};
+          if(!t.title) return {error:'Give the task a name'};
+          if(!t.assignee) return {error:'Choose who the task is for'};
+          if(!t.id){
+            t.created_at=new Date().toISOString(); t.created_by=me.username;
+            t.from_name=me.name||me.username; t.status=t.status||'open';
+            t.history=[{at:t.created_at,by:me.username,what:'created',
+              detail:'Assigned to '+(t.assignee_name||t.assignee)}];
+            t.ref=t.ref||('TSK-'+Math.floor(4000+Math.random()*5999));
+          }
+          t.updated_at=new Date().toISOString();
+          const j=await dSave('task',t); return {ok:true,id:j.id,ref:(j.record||{}).ref};
+        }catch(e){return {error:String(e.message||e)}}
+      }
       try{
         const me = getSession();
         if(!me) return { error:'Not signed in' };
@@ -1196,6 +1267,16 @@
     },
 
     async addTaskNote(id, text){
+      if(DRIVER==='api'){
+        try{
+          const me=getSession(), j=await dapi('task','get',null,id);
+          const t=j.record;
+          if(!t||!me) return {error:'Not found'};
+          if(t.assignee!==me.username && t.created_by!==me.username) return {error:'You have view-only access to this task'};
+          t.history=[{at:new Date().toISOString(),by:me.username,what:'note',detail:text}].concat(t.history||[]);
+          t.updated_at=new Date().toISOString(); await dSave('task',t); return {ok:true};
+        }catch(e){return {error:String(e.message||e)}}
+      }
       const me = getSession();
       const t = (await rows(TASKS)).find(x => x.id === id);
       if(!t || !me) return { error:'Not found' };
@@ -1209,6 +1290,9 @@
     },
 
     async removeTask(id){
+      if(DRIVER==='api'){
+        try{ await dDel('task',id); return {ok:true}; }catch(e){return {error:String(e.message||e)}}
+      }
       const me = getSession();
       const t = (await rows(TASKS)).find(x => x.id === id);
       if(!t) return { error:'Not found' };
@@ -1314,6 +1398,10 @@
        Two kinds arrive: a remittance from a payer, which posts against the
        encounters it names, and a payment taken from a patient at the desk. */
     async payments(filter){
+      if(DRIVER==='api'){
+        return dList('payment', filter||{}).then(list =>
+          list.sort((a,b)=>String(b.at||'').localeCompare(String(a.at||''))));
+      }
       let list = await rows(PAYMENTS);
       const f = filter || {};
       if(f.patient_ref != null)
@@ -1325,6 +1413,15 @@
     },
 
     async savePayment(p){
+      if(DRIVER==='api'){
+        try{
+          const me=getSession();
+          if(p.id==='' || p.id===null) delete p.id;
+          if(!p.amount && p.amount!==0) return {error:'An amount is required'};
+          if(!p.id){p.at=p.at||new Date().toISOString();p.taken_by=me?(me.name||me.username):'system';}
+          const j=await dSave('payment',p); return {ok:true,id:j.id,...(j.record||{})};
+        }catch(e){return {error:String(e.message||e)}}
+      }
       try{
         if(p.id === undefined || p.id === null || p.id === '') delete p.id;
         const me = getSession();
@@ -1341,6 +1438,20 @@
     /* Post a payment against an encounter's billing, so the chart and the
        payments screen never disagree about what is outstanding. */
     async postToEncounter(encId, patch, note){
+      if(DRIVER==='api'){
+        try{
+          const j=await dapi('encounter','get',null,encId); const e=j.record;
+          if(!e) return {error:'That encounter no longer exists'};
+          e.billing=e.billing||{};
+          if(patch.ins_paid!=null) e.billing.ins_paid=round2((+e.billing.ins_paid||0)+ +patch.ins_paid);
+          if(patch.pat_paid!=null) e.billing.pat_paid=round2((+e.billing.pat_paid||0)+ +patch.pat_paid);
+          if(patch.writeoff!=null) e.billing.writeoff=round2((+e.billing.writeoff||0)+ +patch.writeoff);
+          if(patch.pat_resp!=null) e.billing.pat_resp=+patch.pat_resp;
+          e.billing.last_posted=new Date().toISOString();
+          if(note) e.billing.notes=(e.billing.notes||[]).concat([{at:new Date().toISOString(),note}]);
+          const saved=await dSave('encounter',e); return {ok:true,encounter:saved.record||e};
+        }catch(e){return {error:String(e.message||e)}}
+      }
       const e = (await rows(ENC)).find(x => String(x.id) === String(encId));
       if(!e) return { error:'That encounter no longer exists' };
       e.billing = e.billing || {};
@@ -1360,6 +1471,20 @@
     /* What a patient still owes, encounter by encounter. The same arithmetic
        the chart uses, so the two can never drift. */
     async patientBalances(ref){
+      if(DRIVER==='api'){
+        const encs=(await dList('encounter',{patient_ref:ref})).filter(e=>e.status==='locked');
+        const pt=await this.patient(ref);
+        const ins=((pt&&pt.insurances)||[]).find(x=>x.rank==='1');
+        return encs.map(e=>{
+          const fee=(e.lines||[]).reduce((x,l)=>x+(+l.fee||0)*(+l.units||1),0);
+          const b=e.billing||{}, resp=b.resp||(ins?'ins':'self'), copay=ins?(+ins.copay||0):0;
+          const patResp=b.pat_resp!=null?+b.pat_resp:(resp==='self'?fee:copay);
+          const wo=+b.writeoff||0, patPaid=+b.pat_paid||0, insPaid=+b.ins_paid||0;
+          const insResp=Math.max(0,fee-patResp-wo);
+          return {enc_id:e.id,dos:e.dos,fee,patResp,patPaid:patPaid,wo,insPaid,insResp,
+            patBal:round2(Math.max(0,patResp-patPaid)),insBal:round2(Math.max(0,insResp-insPaid)),lines:e.lines||[]};
+        }).sort((a,b)=>String(b.dos||'').localeCompare(String(a.dos||'')));
+      }
       const encs = (await rows(ENC))
         .filter(e => String(e.patient_ref) === String(ref) && e.status === 'locked');
       const pt = (await rows(PATIENTS)).find(x => String(x.id) === String(ref));
@@ -1384,6 +1509,28 @@
 
     /* Everyone who owes something, for the payments screen. */
     async outstandingPatients(){
+      if(DRIVER==='api'){
+        const pts=await dList('patient'), encs=(await dList('encounter')).filter(e=>e.status==='locked');
+        const out=[];
+        for(const pt of pts){
+          const mine=encs.filter(e=>String(e.patient_ref)===String(pt.id));
+          if(!mine.length) continue;
+          const ins=(pt.insurances||[]).find(x=>x.rank==='1');
+          let patBal=0,insBal=0,oldest=null;
+          mine.forEach(e=>{
+            const fee=(e.lines||[]).reduce((x,l)=>x+(+l.fee||0)*(+l.units||1),0), b=e.billing||{};
+            const resp=b.resp||(ins?'ins':'self'), copay=ins?(+ins.copay||0):0;
+            const patResp=b.pat_resp!=null?+b.pat_resp:(resp==='self'?fee:copay);
+            const wo=+b.writeoff||0;
+            const pb=Math.max(0,patResp-(+b.pat_paid||0)), ib=Math.max(0,fee-patResp-wo-(+b.ins_paid||0));
+            patBal+=pb; insBal+=ib; if(pb>0&&(!oldest||String(e.dos||'')<oldest)) oldest=e.dos;
+          });
+          if(patBal>0.004||insBal>0.004) out.push({patient_ref:pt.id,name:[pt.last_name,pt.first_name].filter(Boolean).join(', '),
+            internal_id:pt.internal_id,phone:pt.phone,email:pt.email,payer:ins?ins.name:'Self pay',
+            patBal:round2(patBal),insBal:round2(insBal),oldest});
+        }
+        return out.sort((a,b)=>b.patBal-a.patBal);
+      }
       const pts = await rows(PATIENTS);
       const encs = (await rows(ENC)).filter(e => e.status === 'locked');
       const byPt = {};
@@ -1506,11 +1653,22 @@
 
     /* ═══ ACTIVITY HISTORY ═══ */
     async history(patientRef){
+      if(DRIVER==='api') return dList('history',{patient_ref:patientRef}).then(list =>
+        list.sort((a,b)=>new Date(b.at||0)-new Date(a.at||0)));
       const list = await rows(HIST);
       return list.filter(h => !patientRef || String(h.patient_ref) === String(patientRef))
                  .sort((a,b) => new Date(b.at) - new Date(a.at));
     },
     async logHistory(patientRef, what, detail, extra){
+      if(DRIVER==='api'){
+        try{
+          const me=getSession();
+          await dSave('history',{patient_ref:patientRef,what,detail:detail||'',
+            by:me?(me.name||me.username):'system',username:me?me.username:'system',
+            at:new Date().toISOString(),...(extra||{})});
+        }catch(e){}
+        return;
+      }
       try{
         const me = getSession();
         await save_(HIST, {
@@ -1527,11 +1685,24 @@
        One record per provider, holding their identifiers and a payer
        enrolment for each plan they are being credentialed with. */
     async credentialing(providerRef){
+      if(DRIVER==='api'){
+        const list=await dList('credentialing');
+        return providerRef==null ? list : (list.find(c=>String(c.provider_ref)===String(providerRef))||null);
+      }
       const list = await rows(CRED);
       if(providerRef == null) return list;
       return list.find(c => String(c.provider_ref) === String(providerRef)) || null;
     },
     async saveCredentialing(rec){
+      if(DRIVER==='api'){
+        try{
+          if(!rec.provider_ref) return {error:'A provider is required'};
+          const me=getSession();
+          if(!rec.id){rec.created_at=new Date().toISOString();rec.created_by=me?me.username:'system';rec.enrollments=rec.enrollments||[];rec.log=rec.log||[];}
+          rec.updated_at=new Date().toISOString();
+          const j=await dSave('credentialing',rec); return {ok:true,id:j.id,...(j.record||{})};
+        }catch(e){return {error:String(e.message||e)}}
+      }
       try{
         if(rec.id === undefined || rec.id === null || rec.id === '') delete rec.id;
         if(!rec.provider_ref) return { error:'A provider is required' };
@@ -1548,6 +1719,15 @@
       }catch(err){ return { error:'Save failed: '+(err && err.message || err) }; }
     },
     async logCredentialing(providerRef, what, detail){
+      if(DRIVER==='api'){
+        try{
+          const rec=await this.credentialing(providerRef);
+          if(!rec) return {error:'Not found'};
+          const me=getSession();
+          rec.log=[{at:new Date().toISOString(),by:me?(me.name||me.username):'system',what,detail:detail||''}].concat(rec.log||[]);
+          await dSave('credentialing',rec); return {ok:true};
+        }catch(e){return {error:String(e.message||e)}}
+      }
       const rec = await this.credentialing(providerRef);
       if(!rec) return { error:'Not found' };
       const me = getSession();

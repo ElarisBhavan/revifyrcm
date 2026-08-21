@@ -13,6 +13,10 @@
 
 const NAME = 'claim-queue';
 
+/* Stamped so a stale deploy is obvious rather than inferred. If the diagnostic
+   does not report this exact value, the file being served is not this file. */
+const QUEUE_STORE_VERSION = '2026.08.19-c';
+
 function env(...names){
   for(const n of names){
     const v = process.env[n];
@@ -31,20 +35,29 @@ async function blobs(){
     throw err;
   }
 
-  const siteID = env('NETLIFY_BLOBS_SITE_ID','NETLIFY_SITE_ID','SITE_ID');
-  const token  = env('NETLIFY_BLOBS_TOKEN','NETLIFY_API_TOKEN','NETLIFY_AUTH_TOKEN');
+  /* Netlify reserves the NETLIFY_ prefix for its own variables and does not
+     pass user-set ones through, so a token stored under NETLIFY_API_TOKEN is
+     saved in the interface but never reaches this code. RF_ names are checked
+     first for that reason; the reserved ones are still read in case the
+     runtime happens to supply them. */
+  const siteID = env('RF_SITE_ID','BLOBS_SITE_ID',
+                     'NETLIFY_BLOBS_SITE_ID','NETLIFY_SITE_ID','SITE_ID');
+  const token  = env('RF_BLOBS_TOKEN','BLOBS_TOKEN',
+                     'NETLIFY_BLOBS_TOKEN','NETLIFY_API_TOKEN','NETLIFY_AUTH_TOKEN');
 
   /* automatic first — inside a Netlify function this normally just works */
   try{
     const s = mod.getStore({ name:NAME, consistency:'strong' });
-    await s.get('_probe').catch(()=>null);   /* prove it is really wired up */
+    await s.get('_probe');   /* must actually reach the service */
     return wrapBlob(s, 'blobs-auto');
   }catch(e){
     if(!siteID || !token){
       const err = new Error(
         'Netlify Blobs is not configured automatically on this deploy, and no '
-        + 'siteID or token was supplied. Set NETLIFY_SITE_ID and NETLIFY_API_TOKEN '
-        + 'in the site environment, or set DATABASE_URL to use Postgres instead.');
+        + 'siteID or token reached this function. Note that Netlify reserves the '
+        + 'NETLIFY_ prefix and does not pass user-set variables with that name '
+        + 'through — use RF_SITE_ID and RF_BLOBS_TOKEN instead. Simpler still, '
+        + 'set DATABASE_URL and the queue will use Postgres.');
       err.reason = 'blobs_unconfigured'; err.detail = String(e && e.message || e);
       throw err;
     }
@@ -53,11 +66,20 @@ async function blobs(){
   /* explicit credentials, exactly as the error message asks for */
   try{
     const s = mod.getStore({ name:NAME, consistency:'strong', siteID, token });
-    await s.get('_probe').catch(()=>null);
+    /* Opening a store performs no request, so it always appears to work.
+       Read something to prove the credentials are actually accepted —
+       otherwise a rejected token looks like a working store and the Postgres
+       fallback is never reached. */
+    await s.get('_probe');
     return wrapBlob(s, 'blobs-manual');
   }catch(e){
-    const err = new Error('Netlify Blobs refused the supplied siteID and token.');
-    err.reason = 'blobs_rejected'; err.detail = String(e && e.message || e);
+    const msg = String(e && e.message || e);
+    const err = new Error(/401/.test(msg)
+      ? 'Netlify Blobs rejected the token (401). The token must be a personal '
+        + 'access token from User settings → Applications, and the site id must '
+        + 'be the API ID shown under Site configuration → General.'
+      : 'Netlify Blobs refused the supplied siteID and token: ' + msg);
+    err.reason = 'blobs_rejected'; err.detail = msg;
     throw err;
   }
 }
@@ -121,10 +143,19 @@ let cached = null;
 async function open(){
   if(cached) return cached;
   const tried = [];
-  try{ cached = await blobs(); return cached; }
-  catch(e){ tried.push({ store:'blobs', reason:e.reason, message:e.message, detail:e.detail }); }
-  try{ cached = await pg(); return cached; }
-  catch(e){ tried.push({ store:'postgres', reason:e.reason, message:e.message }); }
+
+  /* Postgres first when it is configured: it is the store this project needs
+     anyway, and it does not depend on a token that can be silently refused. */
+  const hasDb = !!env('DATABASE_URL','NETLIFY_DATABASE_URL');
+  const order = hasDb ? [pg, blobs] : [blobs, pg];
+
+  for(const attempt of order){
+    try{ cached = await attempt(); return cached; }
+    catch(e){
+      tried.push({ store: attempt === pg ? 'postgres' : 'blobs',
+                   reason:e.reason, message:e.message, detail:e.detail });
+    }
+  }
 
   const err = new Error('No storage is available for the claim queue.');
   err.reason = 'no_storage';
@@ -135,11 +166,15 @@ async function open(){
 /* what is configured, without throwing */
 async function diagnose(){
   const out = {
+    version: QUEUE_STORE_VERSION,
     submitHour: process.env.CLAIMS_CRON_HOUR || '21',
     timezone: process.env.CLAIMS_TZ || 'America/Chicago',
     hasApiKey: !!process.env.STEDI_API_KEY,
-    siteIdSet: !!env('NETLIFY_BLOBS_SITE_ID','NETLIFY_SITE_ID','SITE_ID'),
-    tokenSet: !!env('NETLIFY_BLOBS_TOKEN','NETLIFY_API_TOKEN','NETLIFY_AUTH_TOKEN'),
+    siteIdSet: !!env('RF_SITE_ID','BLOBS_SITE_ID','NETLIFY_BLOBS_SITE_ID','NETLIFY_SITE_ID','SITE_ID'),
+    tokenSet: !!env('RF_BLOBS_TOKEN','BLOBS_TOKEN','NETLIFY_BLOBS_TOKEN','NETLIFY_API_TOKEN','NETLIFY_AUTH_TOKEN'),
+    /* which names actually arrived, so a reserved-prefix problem is obvious */
+    seen: Object.keys(process.env).filter(k =>
+      /^(RF_|BLOBS_|NETLIFY_SITE|NETLIFY_API|NETLIFY_AUTH|NETLIFY_BLOBS|DATABASE_URL|SITE_ID)/.test(k)),
     databaseUrlSet: !!env('DATABASE_URL','NETLIFY_DATABASE_URL'),
     store: null, canWrite: false, tried: []
   };
@@ -155,10 +190,11 @@ async function diagnose(){
     out.tried = e.tried || [{ reason:e.reason, message:e.message }];
     out.fix = out.databaseUrlSet
       ? 'Postgres is configured but did not open. Check DATABASE_URL.'
-      : 'Set NETLIFY_SITE_ID and NETLIFY_API_TOKEN in the site environment, '
-        + 'or set DATABASE_URL to use Postgres instead. Redeploy afterwards.';
+      : 'Set RF_SITE_ID and RF_BLOBS_TOKEN — not the NETLIFY_ names, which are '
+        + 'reserved and never reach a function. Or set DATABASE_URL and skip '
+        + 'Blobs entirely. Redeploy afterwards.';
   }
   return out;
 }
 
-module.exports = { open, diagnose };
+module.exports = { open, diagnose, VERSION: QUEUE_STORE_VERSION };

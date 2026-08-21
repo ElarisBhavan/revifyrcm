@@ -654,6 +654,63 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   }
 
 
+
+  /* Stamped so a stale copy of this file is visible in the console. */
+  var RESULT_BUILD='2026.08.19-c';
+  console.info('%cReviFlow eligibility result '+RESULT_BUILD+
+    ' · planDates '+(typeof planDates==='function'?'present':'MISSING'),
+    'color:#0A5C46;font-weight:700');
+
+  /* When a plan begins and ends.
+     Payers report this in several places and none of them consistently: on the
+     plan record, on the plan-status lines, or as dated benefit entries. Take
+     the earliest start and the latest end across all of them, so a plan is not
+     shown as open-ended just because one field was empty. */
+  function planDates(N){
+    var begins=[], ends=[];
+
+    function push(o){
+      if(!o) return;
+      var b = o.planBegin || o.planBeginDate || o.eligibilityBegin ||
+              o.eligibilityBeginDate || o.benefitBegin || o.periodStart ||
+              o.startDate || o.effectiveDate || o.plan;
+      var e = o.planEnd || o.planEndDate || o.eligibilityEnd ||
+              o.eligibilityEndDate || o.benefitEnd || o.periodEnd ||
+              o.endDate || o.expirationDate || o.terminationDate;
+      if(b) begins.push(String(b));
+      if(e) ends.push(String(e));
+    }
+
+    push(N.plan);
+    push(N.plan && N.plan.planDateInformation);
+    push(N.raw && N.raw.planDateInformation);
+    (N.status||[]).forEach(function(st){
+      push(st); push(st.planDateInformation);
+    });
+    (N.benefits||[]).forEach(function(b){
+      push(b.benefitsDateInformation);
+      /* a date sitting directly on the benefit line counts too */
+      if(b.planBegin || b.planEnd || b.benefitBegin || b.benefitEnd) push(b);
+    });
+    push(N.person && N.person.planDateInformation);
+    push(N.subscriber && N.subscriber.planDateInformation);
+
+    /* dates arrive as YYYYMMDD or YYYY-MM-DD; compare on digits alone */
+    var key = function(v){ return String(v).replace(/\D/g,''); };
+    var pick = function(list, latest){
+      var best = null;
+      list.forEach(function(v){
+        var k = key(v);
+        if(k.length < 8) return;
+        if(best === null) { best = v; return; }
+        best = (latest ? (k > key(best)) : (k < key(best))) ? v : best;
+      });
+      return best;
+    };
+
+    return { begin: pick(begins, false), end: pick(ends, true) };
+  }
+
   /* ══════════ RENDER ══════════ */
   function render(N){
     var p=N.person, out=[];

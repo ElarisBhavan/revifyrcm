@@ -78,6 +78,12 @@
       <span class="n" id="nLogin">—<small>ACCOUNTS</small></span>
       <span class="tbadge" id="waitBadge" hidden></span>
     </a>
+    <a class="tile" href="import.html">
+      <span class="ti" style="background:var(--teal-s)"><svg viewBox="0 0 24 24" style="stroke:var(--teal)"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg></span>
+      <h3>Data Import</h3>
+      <p>Load Excel or CSV data into the shared PostgreSQL database.</p>
+      <span class="n">IMPORT<small>EXCEL · CSV</small></span>
+    </a>
     <a class="tile" href="hours.html">
       <span class="ti" style="background:var(--coral-s)"><svg viewBox="0 0 24 24" style="stroke:var(--coral)"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
       <h3>Track Hours</h3>
@@ -149,7 +155,7 @@
   (async function(){
     await RFStore.ready();
     var me=RFStore.getSession();
-    if(!me||me.role!=='admin'){location.href='admin-login.html';return;}
+    if(!me||me.role!=='admin'){location.href='../reviflow.html';return;}
     $('meAv').textContent=me.initials||'SA';
     $('meName').textContent=me.name||me.username;
     $('meRole').textContent=(me.role||'').toUpperCase()+' · '+(me.title||'');
