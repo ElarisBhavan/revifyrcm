@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../_session.css">
 <script src="../_guard.js"></script>
+<script src="../_config.js"></script>
 <script src="../_store.js"></script>
 <script src="../_codes.js"></script>
 <script src="../_session.js"></script>
@@ -478,6 +479,170 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 .encopt .c{flex:1;min-width:0;font-size:11.6px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .encopt .b{font-family:var(--mono);font-size:12.4px;font-weight:600;color:var(--danger);flex:none}
 
+
+/* ══ posting a cheque ══ */
+.chq{padding:0;overflow:visible;margin-bottom:14px}
+.chqTop{display:flex;align-items:flex-start;gap:22px;padding:20px 22px 0;flex-wrap:wrap}
+.chqTitle{flex:1;min-width:240px}
+.chqTitle h2{font-family:'Sora',sans-serif;font-size:17px;font-weight:600;
+  letter-spacing:-.038em;margin-bottom:4px}
+.chqTitle p{font-size:12.4px;color:var(--muted);line-height:1.55;max-width:46ch}
+
+/* the running balance sits beside the heading, where the eye already is */
+.chqTally{display:flex;gap:1px;background:var(--line);border:1px solid var(--line);
+  border-radius:13px;overflow:hidden;flex:none}
+.chqTally>div{padding:10px 18px;background:var(--paper);min-width:118px}
+.chqTally dt{font-family:var(--mono);font-size:8px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--dim);margin-bottom:3px}
+.chqTally dd{font-family:'Sora',sans-serif;font-size:17px;font-weight:600;letter-spacing:-.038em}
+.chqTally .left dd{color:var(--amber)}
+.chqTally.done .left{background:var(--accent-soft)}
+.chqTally.done .left dd{color:var(--accent-deep)}
+.chqTally.over .left{background:var(--danger-soft)}
+.chqTally.over .left dd{color:var(--danger)}
+
+/* one row, each field the width of what it holds */
+.chqFields{display:flex;gap:14px;flex-wrap:wrap;padding:18px 22px 22px}
+.cf{display:flex;flex-direction:column;min-width:0}
+.cf.w-payer{flex:2 1 260px}
+.cf.w-ref{flex:1 1 190px}
+.cf.w-date{flex:0 0 168px}
+.cf.w-amt{flex:0 0 168px}
+.cf > span{font-size:10.8px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.cf u{text-decoration:none;color:var(--coral);font-weight:700}
+.cf input{width:100%;padding:11px 13px;border-radius:11px;border:1px solid var(--line-2);
+  background:rgba(255,255,255,.85);font-size:13.4px;
+  transition:border-color .24s var(--ease),box-shadow .24s var(--ease),background .24s var(--ease)}
+.cf input:hover{border-color:rgba(14,26,23,.24)}
+.cf input:focus{outline:none;background:#fff;border-color:var(--accent-deep);
+  box-shadow:0 0 0 3px rgba(14,157,115,.12)}
+.cf input.bigmoney{font-family:'Sora',sans-serif;font-size:16.5px;font-weight:600;
+  letter-spacing:-.03em;text-align:right}
+
+.chqFind{padding:0;overflow:visible}
+.mpfind{position:relative;padding:18px 22px 0}
+.mpsearch{display:flex;align-items:center;gap:11px;padding:13px 16px;border-radius:13px;
+  border:1px solid var(--line-2);background:rgba(255,255,255,.85);
+  transition:all .24s var(--ease)}
+.mpsearch:focus-within{background:#fff;border-color:var(--accent-deep);
+  box-shadow:0 0 0 3px rgba(14,157,115,.12)}
+.mpsearch svg{width:16px;height:16px;stroke:var(--dim);fill:none;stroke-width:2;flex:none}
+.mpsearch input{flex:1;min-width:0;border:none;background:none;outline:none;font-size:13.4px}
+.mpsearch kbd{flex:none;font-family:var(--mono);font-size:9.4px;color:var(--dim);
+  padding:3px 9px;border-radius:6px;background:var(--paper-2)}
+@media (max-width:640px){.mpsearch kbd{display:none}}
+
+.mpresults{position:absolute;top:calc(100% + 6px);left:22px;right:22px;z-index:30;
+  border-radius:13px;background:#fff;border:1px solid var(--line-2);overflow:hidden;
+  box-shadow:0 24px 50px -22px rgba(14,26,23,.42)}
+.mphit{display:flex;align-items:center;gap:12px;width:100%;padding:11px 15px;border:none;
+  background:none;text-align:left;cursor:pointer;border-bottom:1px solid var(--line);
+  transition:background .2s}
+.mphit:last-child{border-bottom:none}
+.mphit:hover{background:var(--accent-soft)}
+.mphit .av{width:32px;height:32px;flex:none;border-radius:10px;display:grid;place-items:center;
+  background:linear-gradient(140deg,#0E9D73,#3B6FF5);color:#fff;
+  font-family:var(--mono);font-size:10.6px;font-weight:700}
+.mphit .nm{flex:1;min-width:0}
+.mphit .nm b{display:block;font-size:12.8px;font-weight:600}
+.mphit .nm small{display:block;font-size:10.6px;color:var(--dim);margin-top:1px}
+.mphit .ow{font-family:var(--mono);font-size:10.6px;color:var(--indigo);flex:none}
+.mpnone{padding:18px;text-align:center;font-size:12px;color:var(--dim)}
+
+.mplines{margin-top:18px}
+.mphead{display:grid;grid-template-columns:1.7fr .8fr .9fr .9fr 104px 104px 104px 40px;
+  gap:12px;align-items:center;padding:9px 22px;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:var(--paper-2);font-family:var(--mono);font-size:8.4px;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.mprow{display:grid;grid-template-columns:1.7fr .8fr .9fr .9fr 104px 104px 104px 40px;
+  gap:12px;align-items:center;padding:7px 22px;font-size:11.8px}
+.mphead .r,.mprow .r{text-align:right}
+.mpgroup{border-bottom:1px solid var(--line)}
+.mpgroup:last-of-type{border-bottom:none}
+.mpwho{display:flex;align-items:center;gap:10px;padding:12px 22px 5px}
+.mpwho .av{width:26px;height:26px;flex:none;border-radius:8px;display:grid;place-items:center;
+  background:var(--paper-2);font-family:var(--mono);font-size:9.4px;font-weight:700;color:var(--muted)}
+.mpwho b{font-size:12.8px;font-weight:600;letter-spacing:-.018em}
+.mpwho span{font-family:var(--mono);font-size:9.4px;color:var(--dim)}
+.mprow .dos{font-family:var(--mono);font-size:11.4px;font-weight:600}
+.mprow .fig{font-family:var(--mono);color:var(--muted)}
+.mprow .fig.owed{color:var(--indigo);font-weight:600}
+.mpin{width:100%;padding:8px 10px;border-radius:9px;border:1px solid var(--line-2);
+  background:#fff;font-family:var(--mono);font-size:11.8px;text-align:right}
+.mpin:focus{outline:none;border-color:var(--accent-deep);box-shadow:0 0 0 3px rgba(14,157,115,.12)}
+.mpin.filled{border-color:var(--accent-deep);background:var(--accent-soft);font-weight:600}
+
+.mpempty{padding:52px 24px;text-align:center;color:var(--muted);line-height:1.65;font-size:12.6px}
+.mpempty svg{width:38px;height:38px;stroke:var(--line-2);fill:none;stroke-width:1.5;margin-bottom:12px}
+.mpempty b{display:block;font-family:'Sora',sans-serif;font-size:15px;color:var(--ink);margin-bottom:6px}
+.mpactions{display:flex;align-items:center;gap:9px;padding:15px 22px;
+  border-top:1px solid var(--line);background:var(--paper-2);flex-wrap:wrap}
+
+@media (max-width:1000px){
+  .chqTally{width:100%}
+  .chqTally>div{flex:1;min-width:0}
+}
+@media (max-width:820px){
+  .mphead{display:none}
+  .mprow{grid-template-columns:1fr 1fr;gap:8px;padding:10px 22px;
+    border-bottom:1px dashed var(--line)}
+  .mprow .dos{grid-column:1/-1}
+  .mprow .fig::before{content:attr(data-l) " ";font-size:9px;color:var(--dim);
+    font-family:var(--mono);letter-spacing:.06em}
+  .cf.w-date,.cf.w-amt{flex:1 1 140px}
+}
+.autoNote{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;
+  background:var(--indigo-soft);border:1px solid rgba(90,108,255,.2);
+  font-size:11.4px;font-weight:600;color:#2A3580;white-space:nowrap}
+.autoNote::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--indigo);
+  animation:autoPulse 2.6s ease-in-out infinite}
+@keyframes autoPulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (max-width:700px){.autoNote{display:none}}
+/* ══ panes ══ */
+.pane{padding:0;overflow:visible}
+.paneTop{display:flex;align-items:flex-start;gap:20px;padding:20px 22px 16px;
+  flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.paneTitle{flex:1;min-width:230px}
+.paneTitle h2{font-family:'Sora',sans-serif;font-size:17px;font-weight:600;
+  letter-spacing:-.038em;margin-bottom:4px}
+.paneTitle p{font-size:12.4px;color:var(--muted);line-height:1.55;max-width:52ch}
+.paneTools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+.agefilter,.mprange{display:flex;gap:2px;padding:3px;border-radius:11px;
+  background:rgba(14,26,23,.05);border:1px solid var(--line)}
+.agefilter button,.mprange button{padding:7px 13px;border:none;background:none;border-radius:8px;
+  font-family:'Manrope',system-ui,sans-serif;font-size:11.6px;font-weight:600;color:var(--muted);
+  cursor:pointer;white-space:nowrap;transition:all .24s var(--ease)}
+.agefilter button:hover,.mprange button:hover{color:var(--ink);background:rgba(255,255,255,.75)}
+.agefilter button.on,.mprange button.on{background:#fff;color:var(--accent-deep);
+  box-shadow:0 5px 13px -8px rgba(14,26,23,.5)}
+
+.minisearch{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:11px;
+  border:1px solid var(--line-2);background:#fff;width:196px;transition:all .24s var(--ease)}
+.minisearch:focus-within{border-color:var(--accent-deep);box-shadow:0 0 0 3px rgba(14,157,115,.12)}
+.minisearch svg{width:14px;height:14px;stroke:var(--dim);fill:none;stroke-width:2;flex:none}
+.minisearch input{flex:1;min-width:0;border:none;background:none;outline:none;font-size:12.6px}
+
+.eraSum{font-family:var(--mono);font-size:11px;color:var(--muted);
+  padding:7px 13px;border-radius:99px;background:var(--paper-2)}
+
+/* the search row on the cheque screen */
+.mpbar{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.mpbar .sp{flex:1}
+.mpsearch{width:262px;flex:none}
+.mphint{font-size:11.2px;color:var(--dim);white-space:nowrap}
+@media (max-width:820px){.mphint{display:none}.mpsearch{width:100%}}
+
+/* a credit sitting on an account */
+.credit{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:6px;
+  background:var(--accent-soft);color:var(--accent-deep);
+  font-family:var(--mono);font-size:9.2px;font-weight:700}
+.owerow .oweamt .cr{display:block;font-size:10.8px;color:var(--accent-deep);margin-top:2px}
+.mprow .wobtn{padding:5px 9px;border-radius:7px;border:1px solid var(--line-2);background:#fff;
+  font-size:10.2px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;
+  transition:all .22s var(--ease)}
+.mprow .wobtn:hover{border-color:var(--amber);color:var(--amber);background:var(--amber-soft)}
 </style>
 </head>
 <body>
@@ -503,7 +668,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     </div>
     <div class="ptop-act">
       <button class="btn sec" id="checkEra">
-        <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9"/><path d="M12 7v5l3 2"/></svg>Check for remittances</button>
+        <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9"/><path d="M12 7v5l3 2"/></svg>Check now</button>
+      <span class="autoNote">Remittances arrive on their own at 10:00 PM</span>
     </div>
   </div>
 
@@ -512,36 +678,103 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   <div class="paytabs" id="payTabs">
     <button class="paytab on" data-p="owing">Patient balances<span class="n" id="nOwing">0</span></button>
     <button class="paytab" data-p="era">Insurance payments<span class="n" id="nEra">0</span></button>
-    <button class="paytab" data-p="posted">Posted<span class="n" id="nPosted">0</span></button>
+    <button class="paytab" data-p="manual">Post a cheque</button>
   </div>
 
   <section class="paypane on" data-pane="owing">
-    <div class="card">
-      <div class="chead">
-        <div><h2>Outstanding balances</h2><p>Every patient with something to pay, largest first.</p></div>
-        <span class="sub"><input type="search" id="oweQ" placeholder="Search a patient…" class="sel" style="min-width:190px"></span>
+    <div class="card pane">
+      <div class="paneTop">
+        <div class="paneTitle">
+          <h2>Outstanding balances</h2>
+          <p>Everyone with something to pay, largest first. Age is counted from
+             the oldest unpaid visit.</p>
+        </div>
+        <div class="paneTools">
+          <span class="agefilter" id="oweAge">
+            <button data-a="all" class="on">All</button>
+            <button data-a="30">30+</button>
+            <button data-a="60">60+</button>
+            <button data-a="90">90+</button>
+          </span>
+          <label class="minisearch">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input type="search" id="oweQ" placeholder="Find a patient">
+          </label>
+        </div>
       </div>
       <div id="oweList"></div>
     </div>
   </section>
 
   <section class="paypane" data-pane="era">
-    <div class="card">
-      <div class="chead">
-        <div><h2>Insurance payments</h2><p>Remittances from payers, and what each one posts against.</p></div>
+    <div class="card pane">
+      <div class="paneTop">
+        <div class="paneTitle">
+          <h2>Insurance payments</h2>
+          <p>Remittances from payers, and what each one posts against. Collected
+             overnight — review, then post.</p>
+        </div>
+        <div class="paneTools">
+          <span class="eraSum" id="eraSum"></span>
+        </div>
       </div>
       <div id="eraList"></div>
     </div>
   </section>
 
-  <section class="paypane" data-pane="posted">
-    <div class="card">
-      <div class="chead">
-        <span class="ci" style="background:var(--accent-soft)"><svg viewBox="0 0 24 24" style="stroke:var(--accent-deep)"><path d="M5 13l4 4L19 7"/></svg></span>
-        <div><h2>Everything posted</h2><p>Payments applied to accounts, newest first.</p></div>
-        <span class="sub"><button class="btn sec sm" id="payCsv"><svg viewBox="0 0 24 24"><path d="M12 3v13M7 12l5 5 5-5"/><path d="M4 20h16"/></svg>Export</button></span>
+  <section class="paypane" data-pane="manual">
+
+    <!-- what arrived: one row, sized to what each field actually holds -->
+    <div class="card chq">
+      <div class="chqTop">
+        <div class="chqTitle">
+          <h2>Post a cheque or EFT</h2>
+          <p>One cheque usually covers several patients. Enter it once, then
+             allocate it patient by patient.</p>
+        </div>
+        <div class="chqTally" id="mpTally">
+          <div><dt>Cheque</dt><dd id="tChq">$0.00</dd></div>
+          <div><dt>Applied</dt><dd id="tApp">$0.00</dd></div>
+          <div class="left"><dt>Left to apply</dt><dd id="tLeft">$0.00</dd></div>
+        </div>
       </div>
-      <div id="postedList"></div>
+
+      <div class="chqFields">
+        <label class="cf w-payer"><span>Payer <u>*</u></span>
+          <input type="text" id="mpPayer" list="mpPayers" autocomplete="off" placeholder="Who sent it"></label>
+        <label class="cf w-ref"><span>Cheque or EFT number <u>*</u></span>
+          <input type="text" id="mpRef" placeholder="55021"></label>
+        <label class="cf w-date"><span>Date paid</span>
+          <input type="date" id="mpDate" min="1900-01-01" max="2100-12-31"></label>
+        <label class="cf w-amt"><span>Amount <u>*</u></span>
+          <input type="text" id="mpAmt" inputmode="decimal" placeholder="0.00" class="bigmoney"></label>
+      </div>
+      <datalist id="mpPayers"></datalist>
+    </div>
+
+    <!-- who it is for -->
+    <div class="card chqFind">
+      <div class="mpfind">
+        <div class="mpbar">
+          <label class="mpsearch">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input type="search" id="mpQ" placeholder="Add a patient" autocomplete="off">
+          </label>
+
+          <!-- which visits to offer: a cheque nearly always covers recent ones -->
+          <span class="mprange" id="mpRange">
+            <button data-r="7" class="on">7 days</button>
+            <button data-r="30">30 days</button>
+            <button data-r="90">90 days</button>
+            <button data-r="all">All</button>
+          </span>
+
+          <span class="sp"></span>
+          <span class="mphint" id="mpHint">Showing visits from the last 7 days</span>
+        </div>
+        <div class="mpresults" id="mpResults" hidden></div>
+      </div>
+      <div class="mplines" id="mpLines"></div>
     </div>
   </section>
 </main>
@@ -621,12 +854,27 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     await refresh();
   })();
 
+  /* Remittances the nightly job has already collected. */
+  async function loadWaiting(){
+    try{
+      var r=await fetch('/api/era?action=waiting',{credentials:'same-origin'});
+      if(!r.ok)return;
+      var j=await r.json();
+      if(j.collected&&j.collected.length){
+        ERAS=j.collected.map(function(c){
+          var e=c.remittance||{}; e._key=c.key; return e; });
+        paintEra();
+      }
+    }catch(e){}
+  }
+
   async function refresh(){
     OWING=await RFStore.outstandingPatients();
     PAYMENTS=await RFStore.payments({});
     PATS=await RFStore.patients();
     try{ CLAIMS=await RFStore.claims({}); }catch(e){ CLAIMS=[]; }
-    paintKpis(); paintOwing(); paintPosted(); paintEra();
+    paintKpis(); paintOwing(); paintEra(); paintManual();
+    loadWaiting();
   }
 
   function paintKpis(){
@@ -655,21 +903,39 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         '<b>'+x[1]+'</b><small>'+x[2]+'</small></div>';
     }).join('');
     $('nOwing').textContent=OWING.length;
-    $('nPosted').textContent=PAYMENTS.length;
   }
 
   /* ── patient balances ── */
-  var oweQ='';
+  var oweQ='', oweAge='all';
+
+  /* money taken beyond what a visit needed, still held for the patient */
+  function creditFor(ref){
+    return (PAYMENTS||[]).filter(function(p){
+      return p.credit && String(p.patient_ref)===String(ref);
+    }).reduce(function(a,p){ return a+(+p.amount||0); },0);
+  }
+
+  $('oweAge').addEventListener('click',function(e){
+    var b=e.target.closest('[data-a]');
+    if(!b)return;
+    oweAge=b.dataset.a;
+    this.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});
+    paintOwing();
+  });
+
   function paintOwing(){
     var list=OWING.filter(function(o){
-      if(!oweQ)return true;
-      return (o.name+' '+(o.internal_id||'')).toLowerCase().indexOf(oweQ)>-1;
+      if(oweQ && (o.name+' '+(o.internal_id||'')).toLowerCase().indexOf(oweQ)<0)return false;
+      if(oweAge!=='all' && ageDays(o.oldest) < +oweAge)return false;
+      return true;
     });
     if(!list.length){
       $('oweList').innerHTML='<div class="empty" style="padding:46px 24px">'+
         '<svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg><br>'+
-        '<b>'+(oweQ?'Nobody matches':'Nothing outstanding')+'</b>'+
-        (oweQ?'Try a different name.':'Every locked encounter has been paid in full.')+'</div>';
+        '<b>'+(oweQ?'Nobody matches':oweAge!=='all'?'Nothing that old':'Nothing outstanding')+'</b>'+
+        (oweQ?'Try a different name.'
+             :oweAge!=='all'?'No balance has been outstanding for '+oweAge+' days or more.'
+             :'Every locked encounter has been paid in full.')+'</div>';
       return;
     }
     $('oweList').innerHTML=list.map(function(o){
@@ -683,6 +949,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         (o.patBal>0?'<span class="oweage '+cls+'">'+age+' DAYS</span>':'')+
         '<span class="oweamt">'+
           '<span class="pat">'+money(o.patBal)+'</span>'+
+          (creditFor(o.patient_ref)>0
+            ? '<span class="cr">'+money(creditFor(o.patient_ref))+' credit held</span>' : '')+
           (o.insBal>0?'<span class="ins">'+money(o.insBal)+' with the payer</span>':
             '<span class="ins">patient balance</span>')+
         '</span>'+
@@ -804,59 +1072,375 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   });
 
   /* ── posted ── */
-  function paintPosted(){
-    if(!PAYMENTS.length){
-      $('postedList').innerHTML='<div class="empty" style="padding:46px 24px">'+
-        '<svg viewBox="0 0 24 24" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/>'+
-        '<path d="M2 10h20"/></svg><br><b>Nothing posted yet</b>'+
-        'Payments appear here as they are collected or received.</div>';
-      return;
-    }
-    $('postedList').innerHTML=PAYMENTS.map(function(p){
-      var pt=PATS.filter(function(x){return String(x.id)===String(p.patient_ref);})[0];
-      var name=pt?[pt.last_name,pt.first_name].filter(Boolean).join(', '):'—';
-      return '<div class="payrow">'+
-        '<span class="paykind '+esc(p.kind)+'">'+(p.kind==='era'?'INSURANCE':'PATIENT')+'</span>'+
-        '<span class="who">'+esc(name)+
-          (p.payer?' · '+esc(p.payer):'')+
-          (p.dos?' · visit '+fmtD(p.dos):'')+'</span>'+
-        '<span class="meta">'+esc(p.method||'')+
-          (p.reference?' · '+esc(p.reference):'')+'</span>'+
-        '<span class="meta">'+fmtT(p.at)+
-          (p.taken_by?' · '+esc(p.taken_by):'')+'</span>'+
-        '<span class="amt">'+money(p.amount)+'</span></div>';
-    }).join('');
+
+
+  /* ══════════ POSTING A CHEQUE BY HAND ══════════
+     One cheque routinely covers several patients, so this is built around
+     a running balance: enter what arrived, then allocate it patient by
+     patient until nothing is left. */
+  var MP = { lines: [], range: 7 };
+
+  /* Which visits to offer. A cheque nearly always covers recent ones, and
+     showing two years of history makes the right visit harder to find. */
+  $('mpRange').addEventListener('click', function(e){
+    var b = e.target.closest('[data-r]');
+    if(!b) return;
+    MP.range = b.dataset.r === 'all' ? null : +b.dataset.r;
+    this.querySelectorAll('button').forEach(function(x){
+      x.classList.toggle('on', x === b); });
+    $('mpHint').textContent = MP.range
+      ? 'Showing visits from the last ' + MP.range + ' days'
+      : 'Showing every unpaid visit';
+  });
+
+  function withinRange(dos){
+    if(!MP.range || !dos) return true;
+    var p = String(dos).split('-');
+    var d = new Date(+p[0], (+p[1]||1)-1, +p[2]||1, 12);
+    return (Date.now() - d) / 86400000 <= MP.range;
   }
 
-  $('payCsv').addEventListener('click',function(){
-    if(!PAYMENTS.length){toast('Nothing to export','',true);return;}
-    var head=['Date','Kind','Patient','Payer','Visit','Method','Reference','Amount','Taken by'];
-    var rows=PAYMENTS.map(function(p){
-      var pt=PATS.filter(function(x){return String(x.id)===String(p.patient_ref);})[0];
-      return [p.at,(p.kind==='era'?'Insurance':'Patient'),
-        pt?[pt.last_name,pt.first_name].filter(Boolean).join(' '):'',
-        p.payer||'',p.dos||'',p.method||'',p.reference||'',
-        (+p.amount||0).toFixed(2),p.taken_by||''];
-    });
-    var csv=[head].concat(rows).map(function(r){
-      return r.map(function(c){return '"'+String(c==null?'':c).replace(/"/g,'""')+'"';}).join(',');
-    }).join('\n');
-    var a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
-    a.download='payments-'+new Date().toISOString().slice(0,10)+'.csv';
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    toast('Exported',PAYMENTS.length+' payments');
+  function mpAmt(){ return num($('mpAmt').value); }
+  function mpApplied(){
+    /* Write-offs are allocation, not money: they account for part of a charge
+       without any cash arriving, so they close a balance and belong here. */
+    return MP.lines.reduce(function(a,l){
+      return a + num(l.paid) + num(l.patPay) + num(l.wo); }, 0);
+  }
+  function mpLeft(){ return Math.round((mpAmt() - mpApplied()) * 100) / 100; }
+
+  function paintManual(){
+    var payers = (window.RFCodes && RFCodes.payers) ? RFCodes.payers() : [];
+    $('mpPayers').innerHTML = payers.map(function(p){
+      return '<option value="'+esc(p.name)+'">'+esc(p.payer_id||'')+'</option>'; }).join('');
+    paintTally();
+    paintLines();
+  }
+
+  function paintTally(){
+    var left = mpLeft();
+    $('tChq').textContent  = money(mpAmt());
+    $('tApp').textContent  = money(mpApplied());
+    $('tLeft').textContent = money(left);
+    var box = $('mpTally');
+    box.classList.toggle('done', Math.abs(left) < 0.005 && mpAmt() > 0);
+    box.classList.toggle('over', left < -0.005);
+  }
+
+  ['mpAmt','mpPayer','mpRef','mpDate'].forEach(function(id){
+    $(id).addEventListener('input', paintTally);
   });
+
+  /* ── find a patient ── */
+  var mpTimer = null;
+  $('mpQ').addEventListener('input', function(){
+    var q = this.value.trim().toLowerCase();
+    clearTimeout(mpTimer);
+    if(q.length < 2){ $('mpResults').hidden = true; return; }
+    mpTimer = setTimeout(async function(){
+      var hits = PATS.filter(function(p){
+        return ([p.last_name, p.first_name, p.internal_id, p.member_id]
+          .filter(Boolean).join(' ').toLowerCase().indexOf(q) > -1);
+      }).slice(0, 8);
+
+      $('mpResults').hidden = false;
+      $('mpResults').innerHTML = hits.length
+        ? hits.map(function(p){
+            var owed = (OWING.filter(function(o){
+              return String(o.patient_ref) === String(p.id); })[0] || {}).insBal || 0;
+            return '<button type="button" class="mphit" data-pick="'+p.id+'">'+
+              '<span class="av">'+esc(initials([p.last_name,p.first_name].join(', ')))+'</span>'+
+              '<span class="nm"><b>'+esc([p.last_name,p.first_name].filter(Boolean).join(', '))+'</b>'+
+                '<small>'+esc(p.internal_id||'')+(p.member_id?' · '+esc(p.member_id):'')+'</small></span>'+
+              (owed>0?'<span class="ow">'+money(owed)+' with payers</span>':'')+
+            '</button>';
+          }).join('')
+        : '<div class="mpnone">Nobody matches that.</div>';
+    }, 160);
+  });
+
+  /* ── open a patient's unpaid visits ── */
+  $('mpResults').addEventListener('click', async function(e){
+    var b = e.target.closest('[data-pick]');
+    if(!b) return;
+    var ref = +b.dataset.pick;
+    var pt = PATS.filter(function(p){ return String(p.id) === String(ref); })[0];
+    var bals = await RFStore.patientBalances(ref);
+    var open = bals.filter(function(x){
+      return (x.insBal > 0 || x.patBal > 0) && withinRange(x.dos); });
+
+    if(!open.length){
+      var any = bals.some(function(x){ return x.insBal > 0 || x.patBal > 0; });
+      toast(any ? 'Nothing in this date range' : 'Nothing outstanding',
+        any ? 'Widen the range to see older visits'
+            : [pt.last_name, pt.first_name].filter(Boolean).join(', ')+' owes nothing',
+        true);
+      return;
+    }
+
+    /* skip anything already on this cheque */
+    open.forEach(function(x){
+      if(MP.lines.some(function(l){ return String(l.enc_id) === String(x.enc_id); })) return;
+      /* Everything starts at zero. A guessed figure gets posted unread, and a
+         patient balance is often a deductible the payer never intended to pay. */
+      MP.lines.push({
+        enc_id: x.enc_id, patient_ref: ref,
+        name: [pt.last_name, pt.first_name].filter(Boolean).join(', '),
+        dos: x.dos, fee: x.fee,
+        patResp: x.patResp, patBal: x.patBal, insBal: x.insBal,
+        paid: 0, patPay: 0, wo: 0
+      });
+    });
+
+    $('mpQ').value = '';
+    $('mpResults').hidden = true;
+    paintLines(); paintTally();
+  });
+
+  function paintLines(){
+    if(!MP.lines.length){
+      $('mpLines').innerHTML =
+        '<div class="mpempty">'+
+        '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">'+
+        '<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20M6 15h5"/></svg>'+
+        '<b>No visits on this cheque yet</b>'+
+        'Search for a patient above. Add as many as the cheque covers — the '+
+        'running total keeps track of what is left.</div>';
+      return;
+    }
+
+    /* grouped by patient, because that is how a remittance reads */
+    var byPt = {}, order = [];
+    MP.lines.forEach(function(l){
+      if(!byPt[l.patient_ref]){ byPt[l.patient_ref] = []; order.push(l.patient_ref); }
+      byPt[l.patient_ref].push(l);
+    });
+
+    $('mpLines').innerHTML =
+      '<div class="mphead"><span>Visit</span><span class="r">Charged</span>'+
+      '<span class="r">Patient owes</span><span class="r">Payer owes</span>'+
+      '<span class="r">Payer paid</span><span class="r">Patient paid</span>'+
+      '<span class="r">Written off</span><span></span></div>'+
+      order.map(function(ref){
+        var group = byPt[ref];
+        var owes = group.reduce(function(a,x){ return a + x.insBal; }, 0);
+        return '<div class="mpgroup">'+
+          '<div class="mpwho">'+
+            '<span class="av">'+esc(initials(group[0].name))+'</span>'+
+            '<b>'+esc(group[0].name)+'</b>'+
+            '<span>'+group.length+' visit'+(group.length===1?'':'s')+
+              ' · '+money(owes)+' with the payer</span></div>'+
+          group.map(function(l){
+            var i = MP.lines.indexOf(l);
+            var rest = Math.round((l.fee - num(l.paid) - num(l.patPay) - num(l.wo)) * 100) / 100;
+            return '<div class="mprow">'+
+              '<span class="dos">'+fmtD(l.dos)+
+                (rest>0.004?'<button class="wobtn" data-worest="'+i+'" '+
+                  'title="Write off what is left on this visit">w/o '+money(rest)+'</button>':'')+
+              '</span>'+
+              '<span class="r fig" data-l="Charged">'+money(l.fee)+'</span>'+
+              '<span class="r fig" data-l="Patient owes">'+money(l.patBal)+'</span>'+
+              '<span class="r fig owed" data-l="Payer owes">'+money(l.insBal)+'</span>'+
+              '<span class="r"><input class="mpin'+(+l.paid?' filled':'')+
+                '" data-f="paid" data-i="'+i+'" aria-label="Payer paid" '+
+                'inputmode="decimal" value="'+(+l.paid).toFixed(2)+'"></span>'+
+              '<span class="r"><input class="mpin'+(+l.patPay?' filled':'')+
+                '" data-f="patPay" data-i="'+i+'" aria-label="Patient paid" '+
+                'inputmode="decimal" value="'+(+l.patPay).toFixed(2)+'"></span>'+
+              '<span class="r"><input class="mpin'+(+l.wo?' filled':'')+
+                '" data-f="wo" data-i="'+i+'" aria-label="Written off" '+
+                'inputmode="decimal" value="'+(+l.wo).toFixed(2)+'"></span>'+
+              '<span class="r"><button class="ib" data-drop="'+i+'" title="Take off this cheque">'+
+                '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></span>'+
+            '</div>';
+          }).join('')+
+        '</div>';
+      }).join('')+
+      '<div class="mpactions">'+
+        '<button class="btn sec" id="mpFill">Fill from what payers owe</button>'+
+        '<button class="btn sec" id="mpWoRest">Write off the rest</button>'+
+        '<button class="btn sec" id="mpClear">Start again</button>'+
+        '<span class="sp"></span>'+
+        '<button class="btn pri" id="mpPost">'+
+          '<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Post this cheque</button>'+
+      '</div>';
+  }
+
+  $('mpLines').addEventListener('input', function(e){
+    var el = e.target.closest('.mpin');
+    if(!el) return;
+    var l = MP.lines[+el.dataset.i];
+    if(!l) return;
+    l[el.dataset.f] = num(el.value);
+    el.classList.toggle('filled', num(el.value) > 0);
+    paintTally();
+  });
+
+  $('mpLines').addEventListener('click', async function(e){
+    var wo = e.target.closest('[data-worest]');
+    if(wo){
+      var l = MP.lines[+wo.dataset.worest];
+      if(l){
+        /* whatever nobody paid is written off, so the visit closes at zero */
+        l.wo = Math.round((l.fee - num(l.paid) - num(l.patPay)) * 100) / 100;
+        if(l.wo < 0) l.wo = 0;
+        paintLines(); paintTally();
+      }
+      return;
+    }
+
+    var drop = e.target.closest('[data-drop]');
+    if(drop){ MP.lines.splice(+drop.dataset.drop, 1); paintLines(); paintTally(); return; }
+
+    if(e.target.closest('#mpClear')){
+      if(MP.lines.length && !confirm('Take every visit off this cheque?')) return;
+      MP.lines = []; paintLines(); paintTally(); return;
+    }
+
+    if(e.target.closest('#mpFill')){
+      /* Pay what each payer owes, visit by visit, in the order they were added
+         and oldest first within a patient — so a cheque that runs out part way
+         stops at a whole visit rather than splitting one arbitrarily. */
+      var left = mpAmt();
+      MP.lines.forEach(function(l){
+        var take = Math.min(l.insBal, Math.max(0, left));
+        l.paid = Math.round(take * 100) / 100;
+        left = Math.round((left - take) * 100) / 100;
+      });
+      paintLines(); paintTally();
+      if(left > 0.005)
+        toast(money(left)+' still to allocate','Add another patient, or write it off');
+      else
+        toast('Cheque fully allocated', MP.lines.length+' visit'+(MP.lines.length===1?'':'s'));
+      return;
+    }
+
+    if(e.target.closest('#mpWoRest')){
+      /* close every remaining balance on this cheque */
+      var n = 0;
+      MP.lines.forEach(function(l){
+        var rest = Math.round((l.fee - num(l.paid) - num(l.patPay) - num(l.wo)) * 100) / 100;
+        if(rest > 0.004){ l.wo = Math.round((num(l.wo) + rest) * 100) / 100; n++; }
+      });
+      paintLines(); paintTally();
+      toast(n?('Wrote off the rest on '+n+' visit'+(n===1?'':'s')):'Nothing left to write off','');
+      return;
+    }
+
+    if(e.target.closest('#mpPost')) await postCheque(e.target.closest('#mpPost'));
+  });
+
+  async function postCheque(btn){
+    var payer = $('mpPayer').value.trim();
+    var ref   = $('mpRef').value.trim();
+    var amt   = mpAmt();
+
+    if(!payer){ toast('Who sent it?','Enter the payer',true); $('mpPayer').focus(); return; }
+    if(!ref){ toast('Which cheque?','Enter the cheque or EFT number',true); $('mpRef').focus(); return; }
+    if(amt<=0){ toast('How much?','Enter the amount',true); $('mpAmt').focus(); return; }
+    if(!MP.lines.length){ toast('Nothing to post','Add at least one visit',true); return; }
+
+    var left = mpLeft();
+    if(Math.abs(left) > 0.005){
+      var msg = left > 0
+        ? money(left)+' of this cheque has not been applied to anything.\n\nPost it anyway?'
+        : money(-left)+' more has been applied than the cheque is for.\n\nPost it anyway?';
+      if(!confirm(msg)) return;
+    }
+
+    btn.disabled = true;
+    var posted = 0, credits = {};
+
+    for(var i=0;i<MP.lines.length;i++){
+      var l = MP.lines[i];
+      var insPay = num(l.paid), patPay = num(l.patPay), wo = num(l.wo);
+      if(!insPay && !patPay && !wo) continue;
+
+      /* A patient may have paid more than they owed on this visit — a
+         deductible estimated high, or money taken at the desk before the payer
+         adjudicated. The excess is not lost: it becomes a credit on the
+         account rather than being posted against a balance that is not there. */
+      var over = 0;
+      if(patPay > l.patBal + 0.004){
+        over = Math.round((patPay - l.patBal) * 100) / 100;
+        patPay = l.patBal;
+        credits[l.patient_ref] = Math.round(((credits[l.patient_ref]||0) + over) * 100) / 100;
+      }
+
+      await RFStore.postToEncounter(l.enc_id,
+        { ins_paid:insPay, pat_paid:patPay, writeoff:wo },
+        'Cheque '+ref+' · '+payer);
+
+      if(insPay || wo){
+        await RFStore.savePayment({
+          kind:'era', patient_ref:l.patient_ref, enc_id:l.enc_id,
+          amount:insPay, writeoff:wo, payer:payer, reference:ref,
+          method:'Cheque', dos:l.dos, manual:true,
+          paid_on: $('mpDate').value || null
+        });
+      }
+      if(patPay){
+        await RFStore.savePayment({
+          kind:'patient', patient_ref:l.patient_ref, enc_id:l.enc_id,
+          amount:patPay, reference:ref, method:'Cheque', dos:l.dos, manual:true,
+          paid_on: $('mpDate').value || null
+        });
+      }
+
+      await RFStore.logHistory(l.patient_ref,'payment_posted',
+        [insPay?money(insPay)+' from '+payer:'',
+         patPay?money(patPay)+' from the patient':'',
+         wo?money(wo)+' written off':''].filter(Boolean).join(' · ')+
+        ' · cheque '+ref);
+      posted++;
+    }
+
+    /* record any excess as money held for the patient */
+    var creditNames = [];
+    for(var ref2 in credits){
+      var amt2 = credits[ref2];
+      if(amt2 <= 0.004) continue;
+      await RFStore.savePayment({
+        kind:'patient', patient_ref:+ref2, enc_id:null, amount:amt2,
+        reference:ref, method:'Cheque', credit:true,
+        note:'Credit on account — paid more than the balance',
+        paid_on: $('mpDate').value || null
+      });
+      await RFStore.logHistory(+ref2,'credit_added',
+        money(amt2)+' held as a credit · cheque '+ref);
+      var pt2 = PATS.filter(function(x){ return String(x.id)===String(ref2); })[0];
+      creditNames.push((pt2?[pt2.last_name,pt2.first_name].filter(Boolean).join(', '):'A patient')+
+        ' · '+money(amt2));
+    }
+
+    btn.disabled = false;
+    MP.lines = [];
+    $('mpPayer').value=''; $('mpRef').value=''; $('mpAmt').value=''; $('mpDate').value='';
+    await refresh();
+    toast('Cheque '+ref+' posted',
+      posted+' visit'+(posted===1?'':'s')+' · '+money(amt)+
+      (creditNames.length ? ' · credit held for '+creditNames.join(' and ') : ''));
+  }
 
   /* ── remittances ── */
   function paintEra(){
     $('nEra').textContent=ERAS.length;
+    var sum=$('eraSum');
+    if(sum){
+      var tot=ERAS.reduce(function(a,e){return a+(+e.total_paid||0);},0);
+      var cls=ERAS.reduce(function(a,e){return a+((e.claims||[]).length);},0);
+      sum.textContent=ERAS.length
+        ? ERAS.length+' remittance'+(ERAS.length===1?'':'s')+' · '+cls+
+          ' claim'+(cls===1?'':'s')+' · '+money(tot)
+        : '';
+    }
     if(!ERAS.length){
       $('eraList').innerHTML='<div class="empty" style="padding:46px 24px">'+
         '<svg viewBox="0 0 24 24" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/>'+
-        '<path d="M2 10h20"/></svg><br><b>No remittances loaded</b>'+
-        'Select <b>Check for remittances</b> to fetch what the payers have sent. '+
-        'A remittance normally arrives a week or two after a claim.</div>';
+        '<path d="M2 10h20"/></svg><br><b>No remittances waiting</b>'+
+        'Payers send these a week or two after a claim, and they are collected '+
+        'automatically every night at <b>10:00 PM</b> — nothing needs doing here. '+
+        '<b>Check now</b> only fetches them early.</div>';
       return;
     }
     $('eraList').innerHTML=ERAS.map(function(e,i){
@@ -910,7 +1494,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       }else if(!r.ok){
         toast('Could not check',j.message||j.error||('The service returned '+r.status),true);
       }else if(!j.count){
-        toast('Nothing waiting','No new remittances from any payer');
+        /* Nothing found is the normal answer, not a fault: the overnight job
+           has usually collected everything already. */
+        toast('Nothing new right now',
+          'Remittances are collected automatically at 10:00 PM, so there is '+
+          'rarely anything to fetch by hand.');
       }else{
         ERAS=[];
         for(var i=0;i<j.reports.length && i<20;i++){
@@ -930,7 +1518,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       toast('Remittance service unreachable','Deploy /api/era to use this',true);
     }
     btn.disabled=false;
-    btn.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9"/><path d="M12 7v5l3 2"/></svg>Check for remittances';
+    btn.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 109 9"/><path d="M12 7v5l3 2"/></svg>Check now';
   });
 
   document.addEventListener('click',async function(e){

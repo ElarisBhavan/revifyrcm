@@ -94,6 +94,38 @@ exports.handler = async (event) => {
   const action = (qs.action || 'list').toLowerCase();
 
   try{
+    /* What the nightly job has already collected. The page reads this first,
+       so remittances are there on opening rather than after a wait. */
+    if(action === 'waiting'){
+      let store;
+      try{ store = await require('./_queue-store.js').open(); }
+      catch(e){ return { statusCode:200, headers:CORS, body: JSON.stringify({
+        ok:true, collected:[], note:'No storage configured; use Check for remittances.' }) }; }
+
+      const keys = await store.list();
+      const out = [];
+      for(const k of keys){
+        if(String(k).indexOf('era_') !== 0) continue;
+        const v = await store.get(k).catch(()=>null);
+        if(v && v.status === 'waiting') out.push({ key:k, ...v });
+      }
+      out.sort((a,b) => String(b.collected_at||'').localeCompare(String(a.collected_at||'')));
+      return { statusCode:200, headers:CORS, body: JSON.stringify({
+        ok:true, count:out.length, collected:out }) };
+    }
+
+    /* mark one as dealt with, so it stops being offered */
+    if(action === 'done'){
+      const k = (event.queryStringParameters||{}).key;
+      if(!k) return { statusCode:400, headers:CORS, body: JSON.stringify({ error:'no_key' }) };
+      try{
+        const store = await require('./_queue-store.js').open();
+        const v = await store.get(k);
+        if(v){ v.status = 'posted'; v.posted_at = new Date().toISOString(); await store.set(k, v); }
+      }catch(e){}
+      return { statusCode:200, headers:CORS, body: JSON.stringify({ ok:true }) };
+    }
+
     /* which remittances are waiting */
     if(action === 'list'){
       const r = await fetch(BASE + '?reportTypeCode=835', {

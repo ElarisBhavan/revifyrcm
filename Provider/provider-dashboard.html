@@ -11,6 +11,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="../_guard.js"></script>
+<script src="../_driver.js"></script>
+<script src="../_config.js"></script>
 <script src="../_store.js"></script>
 <script src="../_session.js"></script>
 <style>
@@ -253,6 +255,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
   <div class="bento">
 
+
+
     <a class="tile t-a" href="eligibility.html">
       <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
       <div class="ico">
@@ -270,21 +274,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       </div>
     </a>
 
-    <a class="tile t-b" href="dashboard.html">
-      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
-      <div class="ico">
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-          <rect class="il" x="4" y="5" width="24" height="22" rx="4"/>
-          <rect class="ifill bar1" x="9" y="16" width="3.6" height="7" rx="1.8"/>
-          <rect class="ifill bar2" x="15" y="13" width="3.6" height="10" rx="1.8"/>
-          <rect class="ifill bar3" x="21" y="10" width="3.6" height="13" rx="1.8"/>
-        </svg>
-      </div>
-      <div class="body">
-        <h2>Dashboard</h2>
-        <p>Collections, A/R and denial trends, live.</p>
-      </div>
-    </a>
+
 
     <a class="tile t-s" href="schedule.html">
       <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
@@ -302,100 +292,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       </div>
     </a>
 
-    <a class="tile t-s" href="attendance.html">
-      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
-      <div class="ico">
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-          <circle class="il" cx="13" cy="11" r="5"/>
-          <path class="il" d="M4 26c0-5 4-8 9-8s9 3 9 8"/>
-          <path class="ib wave" d="M22 12l3 3 5-6"/>
-          <circle class="ifill pulseIdle" cx="26" cy="24" r="2.6"/>
-        </svg>
-      </div>
-      <div class="body">
-        <h2>Attendance</h2>
-        <p>Team presence</p>
-      </div>
-    </a>
 
-    <a class="tile t-b" href="tasks.html">
-      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
-      <div class="ico">
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-          <path class="il" d="M8 5h13l6 6v16a3 3 0 01-3 3H8a3 3 0 01-3-3V8a3 3 0 013-3z"/>
-          <path class="il" d="M20 5v7h7" opacity=".7"/>
-          <path class="ib line1" d="M11 18h11"/>
-          <path class="ib line2" d="M11 23h7"/>
-          <circle class="ifill pulseIdle" cx="24" cy="23" r="2.4"/>
-        </svg>
-      </div>
-      <div class="body">
-        <h2>Tasks</h2>
-        <p>Documentation flags and sign-offs waiting on you.</p>
-        <div class="stat"><b>4</b><small>NEED SIGN-OFF</small></div>
-      </div>
-    </a>
-
-    <a class="tile t-s" href="message.html">
-      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
-      <div class="ico">
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-          <path class="il" d="M28 20a3 3 0 01-3 3H11l-5 5V8a3 3 0 013-3h16a3 3 0 013 3z"/>
-          <path class="ib line1" d="M11 12h12"/>
-          <path class="ib line2" d="M11 17h7"/>
-          <circle class="ifill pulseIdle" cx="23" cy="17" r="2.2"/>
-        </svg>
-      </div>
-      <div class="body">
-        <h2>Messages</h2>
-        <p>Chat and call</p>
-      </div>
-    </a>
-
-    <a class="tile t-t" href="teams.html" id="teamsTile" hidden>
-      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
-      <div class="ico">
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-          <circle class="il" cx="12" cy="11" r="4.6"/>
-          <path class="ib line1" d="M4 26c0-4.8 3.8-7.8 8-7.8s8 3 8 7.8"/>
-          <circle class="il" cx="23" cy="10" r="3.4"/>
-          <path class="ib line2" d="M22 26c0-3.6 1.6-6.2 5-6.2"/>
-        </svg>
-      </div>
-      <div class="body">
-        <h2>Teams</h2>
-        <p>Add providers and staff</p>
-      </div>
-    </a>
-
-    <a class="tile t-p" href="payments.html">
-      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
-      <div class="ico">
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-          <rect class="ib" x="3" y="8" width="26" height="18" rx="3"/>
-          <path class="ib line1" d="M3 14h26"/>
-          <path class="il line2" d="M8 20h6"/>
-        </svg>
-      </div>
-      <div class="body">
-        <h2>Payments</h2>
-        <p>Remittances and collections</p>
-      </div>
-    </a>
-
-    <a class="tile t-v" href="credentialing.html">
-      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
-      <div class="ico">
-        <svg viewBox="0 0 32 32" aria-hidden="true">
-          <path class="il" d="M16 4l11 4.4v8.2c0 6.4-4.6 10.9-11 12.4-6.4-1.5-11-6-11-12.4V8.4z"/>
-          <path class="ifill pulseIdle" d="M11.4 16.4l3.2 3.2 6.2-7.2" fill="none"/>
-        </svg>
-      </div>
-      <div class="body">
-        <h2>Credentialing</h2>
-        <p>Payer enrolment and attestations</p>
-      </div>
-    </a>
 
     <a class="tile t-s" href="claims.html">
       <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
@@ -412,6 +309,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         <p>Submitted and status</p>
       </div>
     </a>
+
+
 
     <a class="tile t-b" href="../Patient/patient-dashboard.html">
       <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
@@ -430,6 +329,133 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       </div>
     </a>
 
+
+
+    <a class="tile t-b" href="payments.html">
+      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+      <div class="ico">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <rect class="ib" x="3" y="8" width="26" height="18" rx="3"/>
+          <path class="ib line1" d="M3 14h26"/>
+          <path class="il line2" d="M8 20h6"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h2>Payments</h2>
+        <p>Remittances and collections</p>
+      </div>
+    </a>
+
+
+
+    <a class="tile t-s" href="dashboard.html">
+      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+      <div class="ico">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <rect class="il" x="4" y="5" width="24" height="22" rx="4"/>
+          <rect class="ifill bar1" x="9" y="16" width="3.6" height="7" rx="1.8"/>
+          <rect class="ifill bar2" x="15" y="13" width="3.6" height="10" rx="1.8"/>
+          <rect class="ifill bar3" x="21" y="10" width="3.6" height="13" rx="1.8"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h2>Dashboard</h2>
+        <p>Collections, A/R and denial trends, live.</p>
+      </div>
+    </a>
+
+
+
+    <a class="tile t-s" href="credentialing.html">
+      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+      <div class="ico">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path class="il" d="M16 4l11 4.4v8.2c0 6.4-4.6 10.9-11 12.4-6.4-1.5-11-6-11-12.4V8.4z"/>
+          <path class="ifill pulseIdle" d="M11.4 16.4l3.2 3.2 6.2-7.2" fill="none"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h2>Credentialing</h2>
+        <p>Payer enrolment and attestations</p>
+      </div>
+    </a>
+
+
+
+    <a class="tile t-s" href="tasks.html">
+      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+      <div class="ico">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path class="il" d="M8 5h13l6 6v16a3 3 0 01-3 3H8a3 3 0 01-3-3V8a3 3 0 013-3z"/>
+          <path class="il" d="M20 5v7h7" opacity=".7"/>
+          <path class="ib line1" d="M11 18h11"/>
+          <path class="ib line2" d="M11 23h7"/>
+          <circle class="ifill pulseIdle" cx="24" cy="23" r="2.4"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h2>Tasks</h2>
+        <p>Documentation flags and sign-offs waiting on you.</p>
+        <div class="stat"><b>4</b><small>NEED SIGN-OFF</small></div>
+      </div>
+    </a>
+
+
+
+    <a class="tile t-s" href="message.html">
+      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+      <div class="ico">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path class="il" d="M28 20a3 3 0 01-3 3H11l-5 5V8a3 3 0 013-3h16a3 3 0 013 3z"/>
+          <path class="ib line1" d="M11 12h12"/>
+          <path class="ib line2" d="M11 17h7"/>
+          <circle class="ifill pulseIdle" cx="23" cy="17" r="2.2"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h2>Messages</h2>
+        <p>Chat and call</p>
+      </div>
+    </a>
+
+
+
+    <a class="tile t-s" href="teams.html" id="teamsTile" hidden>
+      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+      <div class="ico">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <circle class="il" cx="12" cy="11" r="4.6"/>
+          <path class="ib line1" d="M4 26c0-4.8 3.8-7.8 8-7.8s8 3 8 7.8"/>
+          <circle class="il" cx="23" cy="10" r="3.4"/>
+          <path class="ib line2" d="M22 26c0-3.6 1.6-6.2 5-6.2"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h2>Teams</h2>
+        <p>Add providers and staff</p>
+      </div>
+    </a>
+
+
+
+    <a class="tile t-s" href="attendance.html">
+      <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+      <div class="ico">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <circle class="il" cx="13" cy="11" r="5"/>
+          <path class="il" d="M4 26c0-5 4-8 9-8s9 3 9 8"/>
+          <path class="ib wave" d="M22 12l3 3 5-6"/>
+          <circle class="ifill pulseIdle" cx="26" cy="24" r="2.6"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h2>Attendance</h2>
+        <p>Team presence</p>
+      </div>
+    </a>
+
+
+
     <a class="tile t-b" href="settings.html">
       <span class="go"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
       <div class="ico">
@@ -445,7 +471,6 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         <p>Profile, notifications and access.</p>
       </div>
     </a>
-
   </div>
 </main>
 

@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="../_guard.js"></script>
+<script src="../_config.js"></script>
 <script src="../_store.js"></script>
 <script src="../_datepicker.js"></script>
 <script src="../_session.js"></script>
@@ -496,6 +497,71 @@ input,select,textarea{font:inherit}
   line-height:1.55;color:#25489E}
 .papernote svg{width:14px;height:14px;stroke:var(--blue);fill:none;stroke-width:2;flex:none;margin-top:1px}
 @media (max-width:640px){.sendpick{grid-template-columns:minmax(0,1fr)}}
+/* ── payments received ── */
+.pays{margin-top:16px;border:1px solid var(--line-2);border-radius:14px;overflow:hidden;background:#fff}
+.paysHead{display:flex;align-items:baseline;gap:10px;padding:11px 15px;
+  border-bottom:1px solid var(--line);background:var(--paper-2)}
+.paysHead b{font-family:'Sora',sans-serif;font-size:12.6px;font-weight:600;letter-spacing:-.02em}
+.paysHead span{margin-left:auto;font-family:var(--mono);font-size:10.6px;color:var(--muted)}
+.paysEmpty{padding:20px 15px;font-size:12px;color:var(--dim);text-align:center}
+.payLine{display:flex;align-items:center;gap:12px;padding:10px 15px;
+  border-bottom:1px solid var(--line);font-size:11.8px}
+.payLine:last-child{border-bottom:none}
+.payLine .k{padding:2px 8px;border-radius:5px;font-family:var(--mono);font-size:8.4px;
+  font-weight:700;flex:none}
+.payLine .k.patient{background:var(--green-s);color:var(--green-d)}
+.payLine .k.era{background:var(--blue-s);color:var(--blue)}
+.payLine .d{font-family:var(--mono);font-size:10.6px;color:var(--muted);flex:none}
+.payLine .m{flex:1;min-width:0;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.payLine .w{font-size:10.6px;color:var(--dim);flex:none}
+.payLine .a{font-family:var(--mono);font-weight:600;flex:none;color:var(--green-d)}
+
+.ib.pay svg{stroke:var(--green-d)}
+.ib.note{position:relative}
+.ib.note .dot{position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;
+  background:var(--coral);border:1.4px solid #fff}
+
+/* ── notes ── */
+.notes{display:grid;gap:9px;margin-bottom:16px;max-height:340px;overflow-y:auto}
+.noteCard{padding:12px 14px;border-radius:12px;background:var(--paper-2);
+  border:1px solid var(--line);animation:noteIn .3s var(--e)}
+@keyframes noteIn{from{opacity:0;transform:translateY(6px)}}
+.noteCard .top{display:flex;align-items:baseline;gap:9px;margin-bottom:6px}
+.noteCard .au{font-size:11.6px;font-weight:600;letter-spacing:-.01em}
+.noteCard .rl{padding:1px 7px;border-radius:5px;background:rgba(14,26,23,.06);
+  font-family:var(--mono);font-size:8.2px;font-weight:700;color:var(--muted)}
+.noteCard .wh{margin-left:auto;font-family:var(--mono);font-size:9.6px;color:var(--dim)}
+.noteCard p{font-size:12.4px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.notesEmpty{padding:26px 16px;text-align:center;color:var(--dim);font-size:12px;line-height:1.6}
+.noteAdd{border-top:1px solid var(--line);padding-top:14px}
+.noteAdd textarea{width:100%;padding:11px 13px;border-radius:12px;border:1px solid var(--line-2);
+  background:rgba(255,255,255,.8);font-family:inherit;font-size:12.8px;line-height:1.55;resize:vertical}
+.noteAdd textarea:focus{outline:none;background:#fff;border-color:var(--green);
+  box-shadow:0 0 0 3px rgba(14,157,115,.12)}
+.noteBar{display:flex;align-items:center;gap:10px;margin-top:9px}
+.noteBar .who{flex:1;min-width:0;font-size:10.8px;color:var(--dim)}
+
+.chk{display:flex;align-items:center;gap:9px;flex-direction:row!important}
+.chk input{width:auto!important}
+.chk span{font-size:12px;color:var(--muted)}
+.savedCard{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;
+  border:1px solid var(--line-2);background:#fff;margin-bottom:10px}
+.savedCard .brand{padding:4px 10px;border-radius:6px;background:var(--paper-2);
+  font-family:var(--mono);font-size:9.6px;font-weight:700;flex:none}
+.savedCard .num{font-family:var(--mono);font-size:12.6px;font-weight:600}
+.savedCard .exp{font-family:var(--mono);font-size:10.6px;color:var(--muted)}
+.savedCard button{margin-left:auto;background:none;border:none;font-size:11.4px;
+  font-weight:600;color:var(--green-d);cursor:pointer}
+.encpick{display:grid;gap:8px}
+.encopt{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;
+  border:1px solid var(--line-2);background:#fff;cursor:pointer;transition:all .24s var(--e)}
+.encopt:hover{border-color:var(--green)}
+.encopt.on{border-color:var(--green);background:var(--green-s)}
+.encopt input{position:absolute;opacity:0}
+.encopt .d{font-family:var(--mono);font-size:11.6px;flex:none}
+.encopt .c{flex:1;min-width:0;font-size:11.6px;color:var(--muted);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.encopt .b{font-family:var(--mono);font-size:12.4px;font-weight:600;color:var(--coral);flex:none}
 </style>
 <link rel="stylesheet" href="../_session.css">
 <link rel="stylesheet" href="../_claimform.css">
@@ -526,6 +592,8 @@ input,select,textarea{font:inherit}
       <div class="pmeta" id="pMeta"></div>
     </div>
     <div class="pcta">
+      <button class="btn sec" id="msgPt" title="Send a message to their portal">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/></svg>Message<span id="pmPip"></span></button>
       <button class="btn sec" id="editDemo"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg>Edit demographics</button>
       <button class="btn pri" id="upBtn"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg>Upload</button>
     </div>
@@ -644,6 +712,7 @@ input,select,textarea{font:inherit}
           <tfoot id="bilFoot"></tfoot>
         </table>
       </div>
+      <div class="pays" id="bilPays"></div>
       <div class="empty" id="bilEmpty" hidden>
         <svg viewBox="0 0 24 24" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg><br>
         <b>Nothing to bill yet</b>Lock an encounter in the Encounters tab and its charges appear here.
@@ -683,6 +752,103 @@ input,select,textarea{font:inherit}
     </div>
   </section>
 </main>
+
+
+<div class="modal" id="mCollect" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg></span>
+    <div><h3>Collect payment</h3><p id="colSub">—</p></div>
+    <button class="mclose" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody">
+    <div class="fg">
+      <label class="f"><span>Amount <u>*</u></span><input type="text" id="colAmt" inputmode="decimal"></label>
+      <label class="f"><span>Method</span>
+        <select id="colMethod">
+          <option value="Card">Card</option><option value="Cash">Cash</option>
+          <option value="Cheque">Cheque</option><option value="Bank transfer">Bank transfer</option>
+        </select></label>
+    </div>
+
+    <div id="colCard" hidden>
+      <div class="chd" style="margin-top:14px"><h4>Card</h4></div>
+      <div id="colSaved" hidden></div>
+      <div class="fg" id="colNewCard">
+        <label class="f s6"><span>Name on the card</span><input type="text" id="cc_name" autocomplete="cc-name"></label>
+        <label class="f s6"><span>Card number</span>
+          <input type="text" id="cc_num" inputmode="numeric" autocomplete="cc-number" placeholder="•••• •••• •••• ••••" maxlength="23">
+          <p class="fh" id="cc_brand"></p></label>
+        <label class="f s3"><span>Expires</span><input type="text" id="cc_exp" placeholder="MM/YY" maxlength="5" autocomplete="cc-exp"></label>
+        <label class="f s3"><span>Postcode</span><input type="text" id="cc_zip" maxlength="10" autocomplete="postal-code"></label>
+        <label class="f s12 chk">
+          <input type="checkbox" id="cc_keep"><span>Keep this card on file for future payments</span></label>
+      </div>
+      <p class="hint warn" style="margin-top:10px">
+        <svg viewBox="0 0 24 24" stroke-linecap="round"><rect x="4" y="10.5" width="16" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 018 0v3"/></svg>
+        <span><b>No card number is stored.</b> Only the last four digits, the brand
+        and the expiry are kept, so a returning patient can be charged on the same
+        card through your card terminal or processor. Card numbers must never be
+        held in this system.</span></p>
+    </div>
+
+    <label class="f full" style="margin-top:14px"><span>Reference</span>
+      <input type="text" id="colRef" placeholder="Receipt number, cheque number, last four digits"></label>
+
+    <div class="chd" style="margin-top:16px"><h4>Apply to</h4></div>
+    <div class="encpick" id="colEncs"></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn sec" data-close>Cancel</button>
+    <span class="sp"></span>
+    <button class="btn pri" id="colSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Collect and post</button>
+  </div>
+</div>
+
+<div class="modal" id="mNotes" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/></svg></span>
+    <div><h3>Notes</h3><p id="ntSub">—</p></div>
+    <button class="mclose" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody">
+    <div class="notes" id="ntList"></div>
+    <div class="noteAdd">
+      <textarea id="ntNew" rows="3" placeholder="What happened, what was agreed, what to chase…"></textarea>
+      <div class="noteBar">
+        <span class="who" id="ntWho">—</span>
+        <button class="btn pri sm" id="ntAdd">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add note</button>
+      </div>
+    </div>
+  </div>
+  <div class="mfoot"><button class="btn sec" data-close>Close</button></div>
+</div>
+
+<div class="modal" id="mPtMsg" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/></svg></span>
+    <div><h3>Message the patient</h3><p id="pmSub">Appears in their portal</p></div>
+    <button class="mclose" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody">
+    <label class="f full"><span>What is it about</span>
+      <select id="pmAbout">
+        <option value="general">General</option>
+        <option value="appointment">Appointment</option>
+        <option value="billing">Billing</option>
+        <option value="demographics">Their details</option>
+        <option value="insurance">Insurance</option>
+      </select></label>
+    <label class="f full" style="margin-top:14px"><span>Message</span>
+      <textarea id="pmBody" rows="4" placeholder="What do they need to know or do?"></textarea></label>
+    <div class="notes" id="pmList" style="margin-top:18px"></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn sec" data-close>Close</button>
+    <span class="sp"></span>
+    <button class="btn pri" id="pmSend"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg>Send</button>
+  </div>
+</div>
 
 <div class="scrim" id="scrim"></div>
 <div class="modal" id="mContact" role="dialog" aria-modal="true">
@@ -915,9 +1081,11 @@ input,select,textarea{font:inherit}
     $('toast').classList.toggle('bad',!!bad);$('toast').classList.add('on');
     clearTimeout(toast._t);toast._t=setTimeout(function(){$('toast').classList.remove('on');},3600);
   }
-  function dl(label,val,mono){
+  function dl(label,val,mono,raw){
     return '<div><dt>'+esc(label)+'</dt><dd'+(mono?' class="mono"':'')+'>'+
-      (val==null||val===''?'<span style="color:var(--dim);font-weight:400">—</span>':esc(val))+'</dd></div>';
+      (val==null||val===''
+        ? '<span style="color:var(--dim);font-weight:400">—</span>'
+        : (raw ? val : esc(val)))+'</dd></div>';
   }
 
   /* ── modal plumbing ── */
@@ -992,10 +1160,24 @@ input,select,textarea{font:inherit}
 
     if(!P){
       /* booked from the schedule but never registered — create the shell record */
+      /* The appointment already knows who the patient is seeing. Carrying it
+         onto the chart is what makes the rendering clinician appear — without
+         it a chart made from the schedule had no provider at all. */
+      var fromProv = QS.get('prov') || QS.get('provider') || '';
+      if(!fromProv && QS.get('appt')){
+        try{
+          var ap = await RFStore.appt(+QS.get('appt'));
+          if(ap && ap.provider_id != null) fromProv = ap.provider_id;
+        }catch(e){}
+      }
+      /* failing that, the person opening the chart, when they are a clinician */
+      if(!fromProv && SESS && SESS.provider_ref) fromProv = SESS.provider_ref;
+
       var r=await RFStore.savePatientRec({
         first_name:QS.get('first')||'',last_name:QS.get('last')||'New patient',
         dob:QS.get('dob')||'',member_id:QS.get('member')||'',
         relationship:'Self',insurances:[],
+        provider_ref: fromProv ? +fromProv : null,
         preferred_location:ORG?ORG.name:''
       });
       P=await RFStore.patient(r.id);
@@ -1003,6 +1185,7 @@ input,select,textarea{font:inherit}
     }
 
     await reload();
+    await loadPays();
     paintAll();
 
     /* arriving from Claims → Edit claim: open that claim straight away */
@@ -1178,7 +1361,9 @@ input,select,textarea{font:inherit}
 
     var prov=PROVS.filter(function(x){return String(x.id)===String(P.provider_ref);})[0];
     $('admGrid').innerHTML=
-      dl('Provider',(prov&&prov.full_name)||P.clinician)+
+      dl('Rendering clinician',
+        (prov&&prov.full_name) || P.clinician ||
+        '<span style="color:var(--amber)">Not set — choose one under Edit</span>', false, true)+
       dl('Preferred language',P.language)+
       dl('Referred by',P.referred_by)+
       dl('Demo created',P.created_at?fmtTS(P.created_at):'',true);
@@ -2089,6 +2274,14 @@ input,select,textarea{font:inherit}
               : '<button class="btn sec sm" data-write data-mkclaim="'+r.enc.id+'">'+
                 '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Create claim</button>'))+'</td>'+
         '<td class="r"><span class="acts">'+
+          (r.patBal>0
+            ? '<button class="ib pay" data-collect="'+r.enc.id+'" data-write '+
+              'title="Collect '+money(r.patBal)+' from the patient">'+
+              '<svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/>'+
+              '<path d="M2 10h20"/></svg></button>' : '')+
+          '<button class="ib note" data-note="'+r.enc.id+'" title="Notes on this charge">'+
+            '<svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/></svg>'+
+            (noteCount(r.enc)?'<i class="dot"></i>':'')+'</button>'+
           '<button class="ib edit" data-bedit="'+r.enc.id+'" title="Adjust fee and balances">'+
             '<svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg></button>'+
           (r.claim?'<button class="ib view" data-cview="'+r.claim.id+'" title="View claim">'+
@@ -2103,6 +2296,45 @@ input,select,textarea{font:inherit}
       '<td class="r money">'+money(T.wo)+'</td>'+
       '<td class="r money'+(T.out>0?' warn':' pos')+'">'+money(T.out)+'</td>'+
       '<td colspan="2"></td></tr>';
+
+    paintReceipts();
+  }
+
+  function noteCount(e){
+    return ((e.billing&&e.billing.notes)||[]).length;
+  }
+
+  /* ── what has been collected ──
+     A payment that vanishes into a balance is impossible to reconcile. Every
+     one is listed, with a receipt anyone can print for the patient. */
+  function paintReceipts(){
+    var box=$('bilPays');
+    if(!box)return;
+    var mine=(PAYS||[]).filter(function(p){
+      return String(p.patient_ref)===String(P.id); });
+    if(!mine.length){
+      box.innerHTML='<div class="paysEmpty">Nothing collected from this patient yet.</div>';
+      return;
+    }
+    var total=mine.reduce(function(x,p){return x+(+p.amount||0);},0);
+    box.innerHTML=
+      '<div class="paysHead"><b>Payments received</b>'+
+        '<span>'+mine.length+' payment'+(mine.length===1?'':'s')+' · '+money(total)+'</span></div>'+
+      mine.map(function(p){
+        return '<div class="payLine">'+
+          '<span class="k '+esc(p.kind||'patient')+'">'+
+            (p.kind==='era'?'INSURANCE':'PATIENT')+'</span>'+
+          '<span class="d">'+fmtTS(p.at)+'</span>'+
+          '<span class="m">'+esc(p.method||'')+
+            (p.reference?' · '+esc(p.reference):'')+
+            (p.payer?' · '+esc(p.payer):'')+'</span>'+
+          '<span class="w">'+esc(p.taken_by||'')+'</span>'+
+          '<span class="a">'+money(p.amount)+'</span>'+
+          '<button class="ib" data-receipt="'+esc(p.id)+'" title="Print a receipt">'+
+            '<svg viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 19H5a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2h-2"/>'+
+            '<path d="M7 15h10v6H7z"/></svg></button>'+
+        '</div>';
+      }).join('');
   }
 
   function claimPill(s){
@@ -2546,6 +2778,291 @@ input,select,textarea{font:inherit}
     }
   });
 
+
+
+  /* ══════════ PAYMENTS AND NOTES ══════════ */
+
+  var PAYS=[], COL=null, NOTE_ENC=null;
+
+  async function loadPays(){
+    try{ PAYS=await RFStore.payments({patient_ref:P.id}); }catch(e){ PAYS=[]; }
+  }
+
+  /* ── card details ──
+     Only the last four digits, the brand and the expiry are kept. A full card
+     number in a browser database would be a card-industry breach as well as a
+     patient-data one, and nothing here needs it. */
+  function cardBrand(n){
+    var d=String(n||'').replace(/\D/g,'');
+    if(/^4/.test(d))return 'VISA';
+    if(/^5[1-5]/.test(d)||/^2[2-7]/.test(d))return 'MASTERCARD';
+    if(/^3[47]/.test(d))return 'AMEX';
+    if(/^6(?:011|5)/.test(d))return 'DISCOVER';
+    return d?'CARD':'';
+  }
+  function savedCard(){ return (P.card && P.card.last4) ? P.card : null; }
+
+  function paintSavedCard(){
+    var box=$('colSaved'), fresh=$('colNewCard'), c=savedCard();
+    if(!c){ box.hidden=true; fresh.hidden=false; return; }
+    box.hidden=false; fresh.hidden=true;
+    box.innerHTML='<div class="savedCard">'+
+      '<span class="brand">'+esc(c.brand||'CARD')+'</span>'+
+      '<span class="num">•••• '+esc(c.last4)+'</span>'+
+      '<span class="exp">'+esc(c.exp||'')+'</span>'+
+      '<button type="button" id="useOther">Use a different card</button></div>';
+    $('useOther').addEventListener('click',function(){
+      box.hidden=true; fresh.hidden=false; $('cc_num').focus();
+    });
+  }
+
+  $('colMethod').addEventListener('change',function(){
+    var card=this.value==='Card';
+    $('colCard').hidden=!card;
+    if(card)paintSavedCard();
+  });
+
+  $('cc_num').addEventListener('input',function(){
+    var d=this.value.replace(/\D/g,'').slice(0,19);
+    this.value=d.replace(/(.{4})/g,'$1 ').trim();
+    $('cc_brand').textContent=cardBrand(d);
+  });
+  $('cc_exp').addEventListener('input',function(){
+    var d=this.value.replace(/\D/g,'').slice(0,4);
+    this.value=d.length>2?d.slice(0,2)+'/'+d.slice(2):d;
+  });
+
+  /* ── collect ── */
+  document.addEventListener('click',async function(ev){
+    var b=ev.target.closest('[data-collect]');
+    if(!b)return;
+
+    var bals=(await RFStore.patientBalances(P.id)).filter(function(x){return x.patBal>0;});
+    if(!bals.length){ toast('Nothing outstanding','This patient owes nothing',true); return; }
+
+    var only=bals.filter(function(x){return String(x.enc_id)===String(b.dataset.collect);})[0];
+    COL={ bals:bals, pick: only?only.enc_id:'oldest' };
+
+    var owed=bals.reduce(function(a,x){return a+x.patBal;},0);
+    $('colSub').textContent=fullName()+' · owes '+money(owed);
+    $('colAmt').value=(only?only.patBal:owed).toFixed(2);
+    $('colRef').value='';
+    $('colMethod').value='Card';
+    $('colCard').hidden=false;
+    paintSavedCard();
+    paintEncPick();
+    openM('mCollect');
+    setTimeout(function(){ $('colAmt').focus(); $('colAmt').select(); },120);
+  });
+
+  function paintEncPick(){
+    if(!COL)return;
+    $('colEncs').innerHTML=COL.bals.map(function(x){
+      var codes=(x.lines||[]).map(function(l){return l.cpt;}).filter(Boolean).join(', ');
+      return '<label class="encopt'+(String(COL.pick)===String(x.enc_id)?' on':'')+'">'+
+        '<input type="radio" name="colEnc" value="'+x.enc_id+'"'+
+          (String(COL.pick)===String(x.enc_id)?' checked':'')+'>'+
+        '<span class="d">'+fmtShort(x.dos)+'</span>'+
+        '<span class="c">'+esc(codes||'visit')+'</span>'+
+        '<span class="b">'+money(x.patBal)+'</span></label>';
+    }).join('')+
+    (COL.bals.length>1
+      ? '<label class="encopt'+(COL.pick==='oldest'?' on':'')+'">'+
+        '<input type="radio" name="colEnc" value="oldest"'+(COL.pick==='oldest'?' checked':'')+'>'+
+        '<span class="d">Oldest first</span>'+
+        '<span class="c">Spread across visits, starting with the oldest</span>'+
+        '<span class="b">'+money(COL.bals.reduce(function(a,x){return a+x.patBal;},0))+'</span></label>'
+      : '');
+  }
+  $('colEncs').addEventListener('change',function(e){
+    if(e.target.name!=='colEnc')return;
+    COL.pick=e.target.value==='oldest'?'oldest':+e.target.value;
+    paintEncPick();
+  });
+
+  $('colSave').addEventListener('click',async function(){
+    if(!COL)return;
+    var amt=num($('colAmt').value);
+    if(amt<=0){ toast('Enter an amount','',true); $('colAmt').focus(); return; }
+
+    var method=$('colMethod').value;
+    var ref=$('colRef').value.trim();
+
+    /* keep the harmless part of a card, never the number */
+    if(method==='Card' && !$('colNewCard').hidden){
+      var digits=$('cc_num').value.replace(/\D/g,'');
+      if(digits.length>=12){
+        var last4=digits.slice(-4), brand=cardBrand(digits);
+        if(!ref)ref=brand+' •••• '+last4;
+        if($('cc_keep').checked){
+          P.card={ brand:brand, last4:last4, exp:$('cc_exp').value,
+                   name:$('cc_name').value.trim(), zip:$('cc_zip').value.trim(),
+                   saved_at:new Date().toISOString() };
+          await RFStore.savePatientRec(P);
+        }
+      }
+    }else if(method==='Card' && savedCard() && !ref){
+      ref=savedCard().brand+' •••• '+savedCard().last4;
+    }
+
+    var owed=COL.bals.reduce(function(a,x){return a+x.patBal;},0);
+    if(amt>owed+0.004 &&
+       !confirm('That is more than the '+money(owed)+' outstanding.\n\nTake it anyway?'))return;
+
+    this.disabled=true;
+    var left=amt, applied=[];
+    var targets = COL.pick==='oldest'
+      ? COL.bals.slice().sort(function(a,b){return String(a.dos).localeCompare(String(b.dos));})
+      : COL.bals.filter(function(x){return String(x.enc_id)===String(COL.pick);});
+
+    for(var i=0;i<targets.length && left>0.004;i++){
+      var t=targets[i], take=Math.min(left,t.patBal);
+      if(take<=0)continue;
+      await RFStore.postToEncounter(t.enc_id,{pat_paid:take},
+        'Patient payment · '+method+(ref?' · '+ref:''));
+      await RFStore.savePayment({ kind:'patient', patient_ref:P.id, enc_id:t.enc_id,
+        amount:take, method:method, reference:ref, dos:t.dos });
+      applied.push({dos:t.dos,amount:take});
+      left-=take;
+    }
+    if(left>0.004){
+      await RFStore.savePayment({ kind:'patient', patient_ref:P.id, enc_id:null,
+        amount:left, method:method, reference:ref, note:'Credit on account' });
+    }
+    await RFStore.logHistory(P.id,'payment_collected',
+      money(amt)+' · '+method+(ref?' · '+ref:''));
+
+    this.disabled=false;
+    closeM();
+    await reload(); await loadPays();
+    paintBilling(); paintHistory();
+    toast('Collected '+money(amt),
+      applied.length>1?'Applied across '+applied.length+' visits':'Posted to the chart');
+    COL=null;
+  });
+
+  /* ── receipt ── */
+  document.addEventListener('click',function(ev){
+    var b=ev.target.closest('[data-receipt]');
+    if(!b)return;
+    var pay=(PAYS||[]).filter(function(p){return String(p.id)===String(b.dataset.receipt);})[0];
+    if(!pay)return;
+    var w=window.open('','_blank','width=560,height=680');
+    if(!w){ toast('Allow pop-ups','A receipt opens in a new window',true); return; }
+    w.document.write('<!DOCTYPE html><meta charset="utf-8"><title>Receipt</title>'+
+      '<style>body{font-family:system-ui,sans-serif;padding:40px;color:#111;line-height:1.6}'+
+      'h1{font-size:19px;margin-bottom:4px}.m{color:#666;font-size:13px}'+
+      'table{width:100%;border-collapse:collapse;margin-top:26px;font-size:14px}'+
+      'td{padding:9px 0;border-bottom:1px solid #eee}td.r{text-align:right;font-weight:600}'+
+      '.tot{font-size:21px;font-weight:700;padding-top:16px}</style>'+
+      '<h1>'+esc((ORG&&ORG.name)||'Receipt')+'</h1>'+
+      '<div class="m">'+esc((ORG&&ORG.address)||'')+'</div>'+
+      '<table>'+
+        '<tr><td>Received from</td><td class="r">'+esc(fullName())+'</td></tr>'+
+        '<tr><td>Date</td><td class="r">'+esc(fmtTS(pay.at))+'</td></tr>'+
+        '<tr><td>Method</td><td class="r">'+esc(pay.method||'')+'</td></tr>'+
+        (pay.reference?'<tr><td>Reference</td><td class="r">'+esc(pay.reference)+'</td></tr>':'')+
+        (pay.dos?'<tr><td>For the visit on</td><td class="r">'+esc(fmtShort(pay.dos))+'</td></tr>':'')+
+        '<tr><td>Received by</td><td class="r">'+esc(pay.taken_by||'')+'</td></tr>'+
+        '<tr><td class="tot">Amount</td><td class="r tot">'+money(pay.amount)+'</td></tr>'+
+      '</table>');
+    w.document.close();
+    setTimeout(function(){ w.print(); },250);
+  });
+
+  /* ── notes ──
+     Kept rather than edited. A note recording what a patient was told is a
+     record of what happened, and letting somebody rewrite it later would make
+     it worthless. */
+  document.addEventListener('click',async function(ev){
+    var b=ev.target.closest('[data-note]');
+    if(!b)return;
+    NOTE_ENC=+b.dataset.note;
+    var e=await RFStore.encounter(NOTE_ENC);
+    if(!e)return;
+    $('ntSub').textContent=fullName()+' · visit '+fmtShort(e.dos);
+    var me=RFStore.getSession();
+    $('ntWho').textContent='Signing as '+((me&&(me.name||me.username))||'—')+
+      ((me&&me.role)?' · '+me.role:'');
+    paintNotes(e);
+    $('ntNew').value='';
+    openM('mNotes');
+    setTimeout(function(){ $('ntNew').focus(); },120);
+  });
+
+  function paintNotes(e){
+    var list=((e.billing&&e.billing.notes)||[]).slice().reverse();
+    $('ntList').innerHTML=list.length
+      ? list.map(function(n){
+          return '<div class="noteCard">'+
+            '<div class="top"><span class="au">'+esc(n.by||'—')+'</span>'+
+            (n.role?'<span class="rl">'+esc(String(n.role).toUpperCase())+'</span>':'')+
+            '<span class="wh">'+esc(fmtTS(n.at))+'</span></div>'+
+            '<p>'+esc(n.note)+'</p></div>';
+        }).join('')
+      : '<div class="notesEmpty">No notes on this charge yet.<br>'+
+        'Anything added here is kept and shown to everyone.</div>';
+  }
+
+  $('ntAdd').addEventListener('click',async function(){
+    var txt=$('ntNew').value.trim();
+    if(!txt){ $('ntNew').focus(); return; }
+    this.disabled=true;
+    var me=RFStore.getSession();
+    var e=await RFStore.encounter(NOTE_ENC);
+    e.billing=e.billing||{};
+    e.billing.notes=e.billing.notes||[];
+    e.billing.notes.push({
+      at:new Date().toISOString(),
+      by:(me&&(me.name||me.username))||'—',
+      role:(me&&me.role)||'',
+      note:txt
+    });
+    await RFStore.saveEncounter(e);
+    await RFStore.logHistory(P.id,'billing_note','On the visit of '+fmtShort(e.dos));
+    this.disabled=false;
+    $('ntNew').value='';
+    paintNotes(e);
+    await reload(); paintBilling();
+    toast('Note added','Everyone working this account can see it');
+  });
+
+
+  /* ── message the patient ──
+     The same thread they see in their portal, so nobody is quoting a message
+     the other cannot find. */
+  async function openPtMsg(){
+    var list=await RFStore.patientMessages(P.id);
+    $('pmSub').textContent=fullName()+' · appears in their portal';
+    $('pmList').innerHTML=list.length
+      ? list.map(function(m){
+          return '<div class="noteCard"><div class="top">'+
+            '<span class="au">'+esc(m.from||'—')+'</span>'+
+            (m.about?'<span class="rl">'+esc(String(m.about).toUpperCase())+'</span>':'')+
+            '<span class="wh">'+esc(fmtTS(m.at))+'</span></div>'+
+            '<p>'+esc(m.body)+'</p></div>';
+        }).join('')
+      : '<div class="notesEmpty">No messages with this patient yet.</div>';
+    $('pmBody').value='';
+    openM('mPtMsg');
+    setTimeout(function(){ $('pmBody').focus(); },120);
+  }
+
+  $('msgPt').addEventListener('click', openPtMsg);
+
+  $('pmSend').addEventListener('click',async function(){
+    var body=$('pmBody').value.trim();
+    if(!body){ $('pmBody').focus(); return; }
+    this.disabled=true;
+    var r=await RFStore.saveMessage({
+      patient_ref:P.id, body:body, about:$('pmAbout').value });
+    this.disabled=false;
+    if(r.error){ toast('Could not send',r.error,true); return; }
+    await RFStore.logHistory(P.id,'message_sent','About '+$('pmAbout').value);
+    await openPtMsg();
+    paintHistory();
+    toast('Message sent','It is waiting in their portal');
+  });
 
   /* ══════════ FILES ══════════ */
   function saveFiles(){try{localStorage.setItem(FKEY+P.id,JSON.stringify(FILES));}catch(e){}}

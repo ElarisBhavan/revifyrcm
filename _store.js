@@ -22,22 +22,25 @@
                 browser and reaches a server.
 
      Nothing else needs editing. Every page reads this. */
-  const DRIVER = (typeof window !== 'undefined' && window.RF_DRIVER) || 'local';
+  /* Set in _config.js, which loads before this file. The fallback keeps the
+     application working if that file is ever missing. */
+  const DRIVER = (typeof window !== 'undefined' &&
+                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'local';
   /* ───────────────────────────────────────────────────────────── */
   /* Bumped on every release. Printed to the console and shown in the page
      footer, so which build is actually loaded is never in doubt. */
   const BUILD = '2026.08.20-local-a';
   window.RF_BUILD = BUILD;
 
-  const DB = 'reviflow', STORE = 'accounts', META = 'meta', VER = 10;
-  const ORGS = 'orgs', PROVIDERS = 'providers', PATIENTS = 'patients', APPTS = 'appts', TASKS = 'tasks', CLAIMS = 'claims', ENC = 'encounters', HIST = 'history', CRED = 'credentialing', PAYERS = 'payers', MASTER = 'master', PAYMENTS = 'payments';
+  const DB = 'reviflow', STORE = 'accounts', META = 'meta', VER = 11;
+  const ORGS = 'orgs', PROVIDERS = 'providers', PATIENTS = 'patients', APPTS = 'appts', TASKS = 'tasks', CLAIMS = 'claims', ENC = 'encounters', HIST = 'history', CRED = 'credentialing', PAYERS = 'payers', MASTER = 'master', PAYMENTS = 'payments', MESSAGES = 'messages';
 
   /* ── IndexedDB plumbing ── */
   /* Names every store the app relies on, so a database left incomplete by an
      earlier version can be detected and repaired rather than failing silently. */
   function requiredStores(){
     return [STORE, META, ORGS, PROVIDERS, PATIENTS, ENC, PAYERS, MASTER,
-            CRED, HIST, CLAIMS, TASKS, APPTS, PAYMENTS];
+            CRED, HIST, CLAIMS, TASKS, APPTS, PAYMENTS, MESSAGES];
   }
 
   let _dbCache = null;
@@ -56,7 +59,7 @@
         if(!d.objectStoreNames.contains(META))
           d.createObjectStore(META, { keyPath:'k' });
 
-        [ORGS, PROVIDERS, PATIENTS, ENC, PAYERS, CRED, HIST, CLAIMS, TASKS, PAYMENTS].forEach(name => {
+        [ORGS, PROVIDERS, PATIENTS, ENC, PAYERS, CRED, HIST, CLAIMS, TASKS, PAYMENTS, MESSAGES].forEach(name => {
           if(!d.objectStoreNames.contains(name))
             d.createObjectStore(name, { keyPath:'id', autoIncrement:true });
         });
@@ -1574,6 +1577,242 @@
       const list = await rows(PATIENTS);
       return list.find(p => String(p.id) === String(ref)) || null;
     },
+
+    /* ═══ PATIENT PORTAL ═══
+       A patient signs in with the identifier printed on their paperwork plus
+       their date of birth, then a code sent to their phone. The identifier
+       alone is far too weak — they are sequential and appear on letters — so
+       the date of birth and the code are what actually gate access. */
+
+    async portalStart({ internalId, dob }){
+      const id = String(internalId||'').trim().toUpperCase();
+      const d  = String(dob||'').trim();
+      if(!id || !d) return { error:'missing', message:'Enter both your ID and your date of birth.' };
+
+      /* Deliberately vague on failure. Saying "no such ID" would let anyone
+         test identifiers until one existed. */
+      const vague = { error:'nomatch',
+        message:'Those details do not match our records. Check them, or call the practice.' };
+
+      const list = DRIVER==='api' ? await dList('patient',{ q:id }) : await rows(PATIENTS);
+      const pt = list.find(p =>
+        String(p.internal_id||'').toUpperCase() === id && String(p.dob||'') === d);
+      if(!pt) return vague;
+
+      const phone = String(pt.mobile || pt.phone || '').replace(/\D/g,'');
+      if(!phone) return { error:'nophone',
+        message:'We have no mobile number on file for you. Please call the practice.' };
+
+      const code = String(Math.floor(100000 + Math.random()*900000));
+      const challenge = {
+        patient_ref: pt.id, code,
+        expires: Date.now() + 10*60*1000,
+        tries: 0,
+        sent_to: '•••• ' + phone.slice(-4)
+      };
+      try{ sessionStorage.setItem('rf_portal_challenge', JSON.stringify(challenge)); }catch(e){}
+
+      const sent = await this.sendPortalCode(phone, code);
+      return { ok:true, sentTo:challenge.sent_to,
+               delivered: sent.delivered,
+               /* shown on screen only while no messaging service is connected */
+               testCode: sent.delivered ? undefined : code,
+               note: sent.note };
+    },
+
+    /* Sending is a server job — a messaging key cannot live in a browser. The
+       function answers honestly when none is configured, so the interface can
+       say so rather than pretending a message went out. */
+    async sendPortalCode(phone, code){
+      try{
+        const r = await fetch('/api/portal-sms', {
+          method:'POST', credentials:'same-origin',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ phone, code })
+        });
+        if(r.ok){
+          const j = await r.json();
+          return { delivered: !!j.delivered, note: j.note };
+        }
+      }catch(e){}
+      return { delivered:false,
+        note:'No messaging service is connected yet, so the code is shown here instead.' };
+    },
+
+    async portalVerify(code){
+      let ch = null;
+      try{ ch = JSON.parse(sessionStorage.getItem('rf_portal_challenge')||'null'); }catch(e){}
+      if(!ch) return { error:'expired', message:'That took too long. Please start again.' };
+      if(Date.now() > ch.expires){
+        try{ sessionStorage.removeItem('rf_portal_challenge'); }catch(e){}
+        return { error:'expired', message:'That code has expired. Please start again.' };
+      }
+      ch.tries = (ch.tries||0) + 1;
+      if(ch.tries > 5){
+        try{ sessionStorage.removeItem('rf_portal_challenge'); }catch(e){}
+        return { error:'locked', message:'Too many attempts. Please start again.' };
+      }
+      try{ sessionStorage.setItem('rf_portal_challenge', JSON.stringify(ch)); }catch(e){}
+
+      if(String(code).trim() !== ch.code)
+        return { error:'code', message:'That code is not right. '+(6-ch.tries)+' attempts left.' };
+
+      try{ sessionStorage.removeItem('rf_portal_challenge'); }catch(e){}
+      const pt = await this.patient(ch.patient_ref);
+      if(!pt) return { error:'gone', message:'We could not open your record. Please call the practice.' };
+
+      const sess = { patient_ref: pt.id, name: [pt.first_name, pt.last_name].filter(Boolean).join(' '),
+                     internal_id: pt.internal_id, at: Date.now() };
+      try{ sessionStorage.setItem('rf_portal', JSON.stringify(sess)); }catch(e){}
+      return { ok:true, patient: pt };
+    },
+
+    portalSession(){
+      try{
+        const s = JSON.parse(sessionStorage.getItem('rf_portal')||'null');
+        if(!s) return null;
+        /* two hours, then they sign in again */
+        if(Date.now() - (s.at||0) > 2*60*60*1000){
+          sessionStorage.removeItem('rf_portal'); return null;
+        }
+        return s;
+      }catch(e){ return null; }
+    },
+
+    portalSignOut(){
+      try{
+        sessionStorage.removeItem('rf_portal');
+        sessionStorage.removeItem('rf_portal_challenge');
+      }catch(e){}
+    },
+
+    /* Everything the portal shows, in one call, and only for this patient. */
+    async portalData(ref){
+      const [pt, appts, bals, pays, hist, msgs, claims] = await Promise.all([
+        this.patient(ref),
+        this.apptsForPatient(ref),
+        this.patientBalances(ref),
+        this.payments({ patient_ref: ref }),
+        this.history(ref),
+        this.patientMessages(ref),
+        this.claims({ patient_ref: ref }).catch(() => [])
+      ]);
+      return { patient:pt, appts:appts||[], balances:bals||[],
+               payments:pays||[], history:hist||[],
+               messages:msgs||[], claims:claims||[] };
+    },
+
+
+    /* ── patient sign-in ──
+       The identifier from their paperwork, and their date of birth typed
+       however they like: 09/14/1987, 9-14-1987, 19870914 all reach the same
+       record. Nobody should fail to sign in over a punctuation mark. */
+    normaliseDob(v){
+      const raw = String(v||'').trim();
+
+      /* Separated parts first, so 9-14-1987 and 9/4/87 work as typed. Nobody
+         pads their own date of birth. */
+      const parts = raw.split(/[^0-9]+/).filter(Boolean);
+      if(parts.length === 3){
+        let [a,b,c] = parts;
+        if(a.length === 4){                        /* year first */
+          const iso = a+'-'+String(b).padStart(2,'0')+'-'+String(c).padStart(2,'0');
+          return (+b>=1 && +b<=12 && +c>=1 && +c<=31 && +a>=1900) ? iso : null;
+        }
+        let yr = c;
+        if(yr.length === 2){
+          /* a two digit year is this century only if it has already happened */
+          const n = +yr, thisYr = new Date().getFullYear() % 100;
+          yr = String(n <= thisYr ? 2000 + n : 1900 + n);
+        }
+        if(yr.length !== 4) return null;
+        const iso = yr+'-'+String(a).padStart(2,'0')+'-'+String(b).padStart(2,'0');
+        return (+a>=1 && +a<=12 && +b>=1 && +b<=31 && +yr>=1900) ? iso : null;
+      }
+
+      const digits = raw.replace(/\D/g,'');
+      if(digits.length !== 8) return null;
+
+      /* YYYYMMDD when it opens with a plausible year */
+      const asY = digits.slice(0,4);
+      if(+asY >= 1900 && +asY <= 2100){
+        const iso = asY+'-'+digits.slice(4,6)+'-'+digits.slice(6,8);
+        if(+digits.slice(4,6) <= 12 && +digits.slice(6,8) <= 31) return iso;
+      }
+      /* otherwise MMDDYYYY, which is what people here type */
+      const mm = digits.slice(0,2), dd = digits.slice(2,4), yy = digits.slice(4,8);
+      if(+mm >= 1 && +mm <= 12 && +dd >= 1 && +dd <= 31 && +yy >= 1900)
+        return yy+'-'+mm+'-'+dd;
+      return null;
+    },
+
+    /* Does this look like a patient identifier rather than a staff username?
+       Ours are three letters, three letters, two digits — ABCDEF12. */
+    looksLikePatientId(v){
+      return /^[A-Za-z]{4,8}\d{2,4}$/.test(String(v||'').trim());
+    },
+
+    async patientSignIn(identifier, dobRaw){
+      const id = String(identifier||'').trim().toUpperCase();
+      const dob = this.normaliseDob(dobRaw);
+      const vague = { error:'nomatch',
+        message:'Those details do not match our records. Check them, or call the practice.' };
+      if(!id) return vague;
+      if(!dob) return { error:'dob',
+        message:'Enter your date of birth as month, day and year — 09/14/1987.' };
+
+      const list = DRIVER==='api' ? await dList('patient',{ q:id }) : await rows(PATIENTS);
+      const pt = list.find(p =>
+        String(p.internal_id||'').toUpperCase() === id && String(p.dob||'') === dob);
+      if(!pt) return vague;
+      if(String(pt.status||'active') === 'inactive')
+        return { error:'inactive',
+          message:'This record is not active. Please call the practice.' };
+
+      const sess = { patient_ref: pt.id,
+                     name: [pt.first_name, pt.last_name].filter(Boolean).join(' '),
+                     internal_id: pt.internal_id, at: Date.now() };
+      try{ sessionStorage.setItem('rf_portal', JSON.stringify(sess)); }catch(e){}
+      return { ok:true, patient: pt };
+    },
+
+    /* ── messages between the practice and a patient ── */
+    async patientMessages(ref){
+      const all = DRIVER==='api'
+        ? await dList('message', { patient_ref: ref })
+        : (await rows(MESSAGES)).filter(m => String(m.patient_ref) === String(ref));
+      return all.sort((a,b) => String(b.at||'').localeCompare(String(a.at||'')));
+    },
+
+    async saveMessage(m){
+      try{
+        if(m.id === undefined || m.id === null || m.id === '') delete m.id;
+        if(!m.body || !String(m.body).trim()) return { error:'Write something first' };
+        if(!m.id){
+          m.at = new Date().toISOString();
+          const me = getSession();
+          if(!m.from) m.from = me ? (me.name || me.username) : 'The practice';
+          if(!m.from_role) m.from_role = me ? me.role : 'patient';
+        }
+        m.about = m.about || 'general';
+        if(DRIVER==='api'){
+          const j = await dSave('message', m);
+          return { ok:true, id:j.id };
+        }
+        const id = await save_(MESSAGES, m);
+        return { ok:true, id: m.id || id };
+      }catch(err){ return { error:'Could not send: '+(err && err.message || err) }; }
+    },
+
+    async markMessageRead(id){
+      const list = await rows(MESSAGES);
+      const m = list.find(x => String(x.id) === String(id));
+      if(!m) return { ok:false };
+      m.read_at = new Date().toISOString();
+      if(DRIVER==='api') await dSave('message', m); else await save_(MESSAGES, m);
+      return { ok:true };
+    },
+
     async findPatient({ ref, memberId, last, first }){
       const list = await rows(PATIENTS);
       if(ref){ const a = list.find(p => String(p.id) === String(ref)); if(a) return a; }
@@ -1816,17 +2055,27 @@
     /* ═══ MASTER DATA ═══
        set: cpt | hcpcs | icd10 | pos | modifier | servicetype | fee */
     async master(set){
+      if(DRIVER==='api'){
+        const list = await dList('master', set ? { set } : {});
+        return list.sort((a,b) => String(a.code||'').localeCompare(String(b.code||'')));
+      }
       const list = await rows(MASTER);
       const out = set ? list.filter(m => m.set === set) : list;
       return out.sort((a,b) => String(a.code||'').localeCompare(String(b.code||'')));
     },
-    async masterItem(id){ return (await rows(MASTER)).find(m => m.id === id) || null; },
+    async masterItem(id){
+      if(DRIVER==='api')
+        return dapi('master','get',null,id).then(j => j.record).catch(() => null);
+      return (await rows(MASTER)).find(m => m.id === id) || null;
+    },
     async saveMaster(m){
       try{
         if(m.id === undefined || m.id === null || m.id === '') delete m.id;
         if(!m.set)  return { error:'A code set is required' };
         if(!m.code) return { error:'A code is required' };
-        const list = await rows(MASTER);
+        /* read the same way we write, so the duplicate check looks at the
+           shared list rather than this browser's copy */
+        const list = DRIVER==='api' ? await this.master(m.set) : await rows(MASTER);
         const clash = list.find(x => x.id !== m.id && x.set === m.set &&
           String(x.code).toLowerCase() === String(m.code).toLowerCase());
         if(clash) return { error:`${m.code} already exists in this code set` };
@@ -1837,14 +2086,26 @@
           m.status = m.status || 'active';
         }
         m.updated_at = new Date().toISOString();
+        if(DRIVER==='api'){
+          try{ const j = await dSave('master', m); return { ok:true, id:j.id }; }
+          catch(e){ return { error:String(e.message||e) }; }
+        }
         const id = await save_(MASTER, m);
         return { ok:true, id: m.id || id };
       }catch(err){ return { error:'Save failed: '+(err && err.message || err) }; }
     },
-    async removeMaster(id){ await kill(MASTER, id); return { ok:true }; },
+    async removeMaster(id){
+      if(DRIVER==='api'){
+        try{ await dDel('master', id); return { ok:true }; }
+        catch(e){ return { error:String(e.message||e) }; }
+      }
+      await kill(MASTER, id); return { ok:true };
+    },
     async importMaster(set, list){
       let added = 0, updated = 0, failed = [];
-      const existing = (await rows(MASTER)).filter(m => m.set === set);
+      /* Read through the driver. Checking this browser's copy while writing to
+         the server means every import adds the whole spreadsheet again. */
+      const existing = await this.master(set);
       for(const raw of list){
         if(!raw.code){ failed.push({ row:raw._row, why:'No code' }); continue; }
         const match = existing.find(x =>
@@ -1859,6 +2120,16 @@
     },
     /* the fee for a CPT, from the fee schedule if one exists */
     async feeFor(code){
+      /* A fee schedule loaded by an administrator has to reach every user, or
+         charges differ from one computer to the next. */
+      if(DRIVER==='api'){
+        const fees = await this.master('fee');
+        const f = fees.find(m => String(m.code) === String(code));
+        if(f && f.fee != null) return Number(f.fee);
+        const cpts = await this.master('cpt');
+        const c = cpts.find(m => String(m.code) === String(code));
+        return c && c.fee != null ? Number(c.fee) : 0;
+      }
       const list = await rows(MASTER);
       const fee = list.find(m => m.set === 'fee' && String(m.code) === String(code));
       if(fee && fee.fee != null) return Number(fee.fee);

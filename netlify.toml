@@ -66,6 +66,18 @@
   force = true
 
 [[redirects]]
+  from = "/api/era-cron"
+  to   = "/.netlify/functions/era-cron"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/portal-sms"
+  to   = "/.netlify/functions/portal-sms"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/era"
   to   = "/.netlify/functions/era"
   status = 200
@@ -108,4 +120,9 @@
 # CLAIMS_CRON_HOUR. Hourly rather than once a day so daylight saving never
 # shifts the run time.
 [functions."claims-cron"]
+  schedule = "0 * * * *"
+
+
+# Collects remittances an hour after the claims run, so the two never overlap.
+[functions."era-cron"]
   schedule = "0 * * * *"

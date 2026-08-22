@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="_guard.js"></script>
+<script src="_config.js"></script>
 <script src="_store.js"></script>
 <script src="_session.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -263,6 +264,9 @@ a{color:inherit;text-decoration:none}
       <span class="kick"><i></i>Secure sign in</span>
       <h1>Welcome <em>back</em></h1>
       <p>One sign in for everyone. You will land on your own workspace.</p>
+      <p style="font-size:12.6px;color:var(--dim);margin-top:-18px;margin-bottom:26px;line-height:1.55">
+        <b style="color:var(--muted)">Patients:</b> use the ID from your
+        appointment letter, and your date of birth as your password.</p>
 
 
       <!-- shown only when an account needs one of these -->
@@ -335,7 +339,8 @@ a{color:inherit;text-decoration:none}
         <label class="f">
           <span>Password</span>
           <span class="inw">
-            <input type="password" id="p" autocomplete="current-password" placeholder="Your password" required>
+            <input type="password" id="p" autocomplete="current-password"
+                   placeholder="Password, or date of birth" required>
             <svg viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 018 0v3"/></svg>
             <button type="button" class="peek" id="peek" aria-label="Show password">
               <svg viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></svg>
@@ -725,6 +730,27 @@ a{color:inherit;text-decoration:none}
     btn.classList.add('busy'); btn.disabled=true;
 
     try{
+      /* A patient identifier is shaped differently from a staff username, so
+         the same two boxes serve both without anyone choosing a role. */
+      if(RFStore.looksLikePatientId(u.value.trim())){
+        var pr=await RFStore.patientSignIn(u.value.trim(), p.value);
+        if(pr.ok){
+          if($('remember').checked) localStorage.setItem('rf_last_user', u.value.trim());
+          else localStorage.removeItem('rf_last_user');
+          window.location.href='Patient/portal.html';
+          return;
+        }
+        btn.classList.remove('busy'); btn.disabled=false;
+        if(pr.error==='dob'){
+          p.classList.add('bad'); pe.textContent=pr.message;
+          pe.classList.add('show'); p.select(); p.focus();
+        }else{
+          u.classList.add('bad'); ue.textContent=pr.message||'Those details were not recognised.';
+          ue.classList.add('show'); u.focus();
+        }
+        return;
+      }
+
       /* A stale session must not pick up the redirect meant for this sign in. */
       var live=RFStore.getSession();
       if(live && live.username!==u.value.trim()) RFStore.clearSession();
