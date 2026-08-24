@@ -734,7 +734,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         </div>
         <div class="chqTally" id="mpTally">
           <div><dt>Cheque</dt><dd id="tChq">$0.00</dd></div>
-          <div><dt>Applied</dt><dd id="tApp">$0.00</dd></div>
+          <div><dt>Applied to payer balance</dt><dd id="tApp">$0.00</dd></div>
           <div class="left"><dt>Left to apply</dt><dd id="tLeft">$0.00</dd></div>
         </div>
       </div>
@@ -1101,13 +1101,28 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   }
 
   function mpAmt(){ return num($('mpAmt').value); }
+  /* Only the payer's money should draw down the cheque. Patient payments and
+     write-offs are separate bookkeeping entries riding along on the same
+     post — they never came out of this cheque, so counting them here made
+     "Left to apply" go negative the moment either was typed in. */
   function mpApplied(){
-    /* Write-offs are allocation, not money: they account for part of a charge
-       without any cash arriving, so they close a balance and belong here. */
-    return MP.lines.reduce(function(a,l){
-      return a + num(l.paid) + num(l.patPay) + num(l.wo); }, 0);
+    return MP.lines.reduce(function(a,l){ return a + num(l.paid); }, 0);
   }
   function mpLeft(){ return Math.round((mpAmt() - mpApplied()) * 100) / 100; }
+
+  /* The contractual write-off is derived, not typed: once the payer's amount
+     is entered, whatever is left on the payer's side of the visit is written
+     off automatically. Editing "Written off" by hand takes a line out of
+     auto mode so a deliberate override always sticks. */
+  function autoWriteoff(l, idx){
+    if(l.woAuto === false) return;
+    var wo = Math.max(0, Math.round((l.insBal - num(l.paid)) * 100) / 100);
+    l.wo = wo;
+    if(idx != null){
+      var woInput = document.querySelector('.mpin[data-f="wo"][data-i="'+idx+'"]');
+      if(woInput){ woInput.value = wo.toFixed(2); woInput.classList.toggle('filled', wo > 0); }
+    }
+  }
 
   function paintManual(){
     var payers = (window.RFCodes && RFCodes.payers) ? RFCodes.payers() : [];
@@ -1188,7 +1203,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         name: [pt.last_name, pt.first_name].filter(Boolean).join(', '),
         dos: x.dos, fee: x.fee,
         patResp: x.patResp, patBal: x.patBal, insBal: x.insBal,
-        paid: 0, patPay: 0, wo: 0
+        paid: 0, patPay: 0, wo: 0, woAuto: true
       });
     });
 
@@ -1271,8 +1286,15 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     if(!el) return;
     var l = MP.lines[+el.dataset.i];
     if(!l) return;
-    l[el.dataset.f] = num(el.value);
+    var field = el.dataset.f;
+    l[field] = num(el.value);
     el.classList.toggle('filled', num(el.value) > 0);
+    if(field === 'wo'){
+      /* a hand-typed write-off takes this line out of auto mode */
+      l.woAuto = false;
+    } else if(field === 'paid'){
+      autoWriteoff(l, +el.dataset.i);
+    }
     paintTally();
   });
 
@@ -1306,6 +1328,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         var take = Math.min(l.insBal, Math.max(0, left));
         l.paid = Math.round(take * 100) / 100;
         left = Math.round((left - take) * 100) / 100;
+        autoWriteoff(l, null);
       });
       paintLines(); paintTally();
       if(left > 0.005)
@@ -1540,11 +1563,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       'rest left with the patient.'))return;
 
     b.disabled=true;
-    var n=0;
+    var n=0, creditNames=[];
     for(var i=0;i<matched.length;i++){
       var c=matched[i].c, m=matched[i].m;
       if(m.enc_id==null)continue;
-      await RFStore.postToEncounter(m.enc_id,{
+      var res=await RFStore.postToEncounter(m.enc_id,{
         ins_paid:c.paid,
         writeoff:c.contractual,
         pat_resp:c.patient_responsibility
@@ -1555,6 +1578,28 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         claim_no:m.claim.claim_no, payer_claim_no:c.payer_claim_number,
         writeoff:c.contractual, patient_responsibility:c.patient_responsibility
       });
+
+      /* The remittance can set patient responsibility to less than what was
+         already collected up front (or to nothing at all). That excess is
+         not lost — it becomes a credit on the account, the same way a
+         manually posted cheque handles an overpayment. */
+      var encAfter = res && res.encounter;
+      if(encAfter){
+        var eb = encAfter.billing || {};
+        var patPaidNow = +eb.pat_paid || 0, patRespNow = +eb.pat_resp || 0;
+        if(patPaidNow > patRespNow + 0.004){
+          var over = Math.round((patPaidNow - patRespNow) * 100) / 100;
+          await RFStore.savePayment({
+            kind:'patient', patient_ref:m.patient_ref, enc_id:null, amount:over,
+            reference:era.reference, method:era.payment_method||'EFT', credit:true,
+            note:'Credit on account — paid more than the balance after remittance'
+          });
+          await RFStore.logHistory(m.patient_ref,'credit_added',
+            money(over)+' held as a credit · remittance '+(era.reference||''));
+          creditNames.push(m.name+' · '+money(over));
+        }
+      }
+
       if(m.claim && m.claim.id){
         await RFStore.setClaimStatus(m.claim.id, c.paid>0?'paid':'denied',
           'Remittance '+(era.reference||'')+' · '+money(c.paid));
@@ -1567,7 +1612,10 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     b.disabled=false;
     await refresh();
     toast(n+' payment'+(n===1?'':'s')+' posted',
-      'Balances and charts are updated');
+      creditNames.length
+        ? 'Balances and charts are updated · '+creditNames.length+' credit'+
+          (creditNames.length===1?'':'s')+' held: '+creditNames.join(', ')
+        : 'Balances and charts are updated');
   });
 
   /* ── tabs ── */

@@ -281,6 +281,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 </style>
 <link rel="stylesheet" href="../_session.css">
 <script src="../_guard.js"></script>
+<script src="../_config.js"></script>
 <script src="../_store.js"></script>
 <script src="../_session.js"></script>
 </head>
@@ -398,28 +399,66 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   var $=function(i){return document.getElementById(i);};
   var MKEY='rf_messages';
 
-  var ME={name:'Dr. Dana Whitfield',initials:'DW',role:'provider',id:'me'};
+  var ME={name:'',initials:'',role:'provider',id:'me'};
   /* ask the session module, so this reads the tab's own account */
   try{var r=(window.RFSession&&RFSession.get())
         ? JSON.stringify(RFSession.get())
         : sessionStorage.getItem('rf_session');
     if(r){var s=JSON.parse(r);
-    ME={name:s.name||ME.name,initials:s.initials||ME.initials,role:s.role||'provider',id:'me'};}}catch(e){}
+    ME={name:s.name||s.username||'',initials:s.initials||initialsOf(s.name||s.username),
+        role:s.role||'provider',id:'me'};}}catch(e){}
 
   /* ── directory: providers, supervisors, schedulers only ── */
-  var PEOPLE=[
-    {id:'AR',name:'Dr. Alan Reyes',role:'provider',title:'Internal Medicine',st:'online',c:'linear-gradient(140deg,#3B6FF5,#8B9FFA)'},
-    {id:'NO',name:'Dr. Ngozi Okafor',role:'provider',title:'Endocrinology',st:'busy',c:'linear-gradient(140deg,#1F93AE,#5FC0D6)'},
-    {id:'SL',name:'Sara Lindqvist, NP',role:'provider',title:'Primary Care',st:'online',c:'linear-gradient(140deg,#8B5CF6,#B692FA)'},
-    {id:'MB',name:'Marcus Bello, PA',role:'provider',title:'Urgent Care',st:'away',c:'linear-gradient(140deg,#C98A18,#E5B658)'},
-    {id:'EP',name:'Dr. Elena Petrova',role:'provider',title:'Pediatrics',st:'off',c:'linear-gradient(140deg,#D0603F,#E89275)'},
-    {id:'LO',name:'Lena Okoro',role:'supervisor',title:'Practice Manager',st:'online',c:'linear-gradient(140deg,#0E9D73,#3ECFA0)'},
-    {id:'RV',name:'Rebecca Vaughn',role:'supervisor',title:'Front Office Supervisor',st:'online',c:'linear-gradient(140deg,#0A5C46,#2FBF93)'},
-    {id:'OD',name:'Owen Delgado',role:'scheduler',title:'Scheduling Coordinator',st:'online',c:'linear-gradient(140deg,#5D6B67,#93A19D)'},
-    {id:'PR',name:'Priya Raman',role:'scheduler',title:'Patient Access',st:'away',c:'linear-gradient(140deg,#7A8783,#B0BAB7)'}
-  ];
+  var ROLEL={provider:'PROVIDER',supervisor:'SUPERVISOR',scheduler:'SCHEDULER',
+             employee:'EMPLOYEE',billing:'BILLING',admin:'ADMIN',frontoffice:'FRONT OFFICE'};
+
+  /* ── the real roster ──
+     Nine invented colleagues used to live here. A practice that opened this
+     page saw people who do not work there and could not reach the ones who do. */
+  var PEOPLE=[];
+
+  var TINTS=['linear-gradient(140deg,#3B6FF5,#8B9FFA)','linear-gradient(140deg,#1F93AE,#5FC0D6)',
+             'linear-gradient(140deg,#8B5CF6,#B692FA)','linear-gradient(140deg,#C98A18,#E5B658)',
+             'linear-gradient(140deg,#D0603F,#E89275)','linear-gradient(140deg,#0E9D73,#3ECFA0)',
+             'linear-gradient(140deg,#0A5C46,#2FBF93)','linear-gradient(140deg,#5D6B67,#93A19D)'];
+
+  function initialsOf(n){
+    return String(n||'').split(/[\s,]+/).filter(Boolean).slice(0,2)
+      .map(function(w){return w[0];}).join('').toUpperCase()||'??';
+  }
+
+  async function loadPeople(){
+    var accts=[], provs=[], me=null;
+    try{ me=(window.RFSession?RFSession.get():RFStore.getSession()); }catch(e){}
+    try{ accts=await RFStore.list(); }catch(e){ accts=[]; }
+    try{ provs=await RFStore.providers(); }catch(e){ provs=[]; }
+
+    /* everyone with a login, since a message needs somewhere to arrive */
+    var myOrg = me && (me.org_id!=null ? String(me.org_id) : null);
+    var list=accts.filter(function(a){
+      if(String(a.status||'active')==='inactive')return false;
+      if(me && a.username===me.username)return false;      /* not yourself */
+      if(myOrg && a.org_id!=null && String(a.org_id)!==myOrg)return false;
+      return true;
+    });
+
+    PEOPLE=list.map(function(a,i){
+      var prov=provs.filter(function(p){
+        return String(p.id)===String(a.provider_ref); })[0];
+      return {
+        id: String(a.id||a.username),
+        name: a.full_name || a.username,
+        role: a.role || 'employee',
+        title: a.title || (prov && prov.title) || ROLEL[a.role] || '',
+        st: 'off',                 /* presence is not tracked, so nobody is shown as online */
+        c: TINTS[i % TINTS.length]
+      };
+    }).sort(function(x,y){ return String(x.name).localeCompare(String(y.name)); });
+
+    return PEOPLE;
+  }
+
   var byId=function(id){return PEOPLE.filter(function(p){return p.id===id;})[0];};
-  var ROLEL={provider:'PROVIDER',supervisor:'SUPERVISOR',scheduler:'SCHEDULER'};
 
   function seed(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
   function rng(s){return function(){s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
@@ -441,49 +480,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     clearTimeout(toast._t);toast._t=setTimeout(function(){$('toast').classList.remove('on');},2600);}
 
   /* ── conversations ── */
-  function seedConvos(){
-    return [
-      {id:'c1',type:'direct',with:['LO'],msgs:[
-        {f:'LO',t:'Morning — the August leave request came through. I have cover from Reyes on the 18th to 20th.',at:ago(184)},
-        {f:'me',t:'Perfect, thank you. Anything I need to sign off before then?',at:ago(179)},
-        {f:'LO',t:'Just the superbill batch for the 28th. It is sitting in your task queue.',at:ago(176)},
-        {f:'LO',t:'Also — we are seeing more CO-197 denials on the behavioural health side. Worth a quick huddle this week?',at:ago(41)}
-      ]},
-      {id:'c2',type:'direct',with:['AR'],msgs:[
-        {f:'me',t:'Alan, are you able to take my Thursday afternoon follow-ups while I am at the conference?',at:ago(1520)},
-        {f:'AR',t:'Yes, no problem. Send them across and I will absorb them into my 2pm block.',at:ago(1502)},
-        {f:'AR',t:'Scheduling already moved four of them. Looks manageable.',at:ago(1490)},
-        {f:'me',t:'Appreciate it.',at:ago(1486)}
-      ]},
-      {id:'c3',type:'direct',with:['OD'],msgs:[
-        {f:'OD',t:'Two patients want to move to telehealth for next week. Both established, both on BCBS. Fine to switch?',at:ago(96)},
-        {f:'me',t:'Fine by me as long as neither needs vitals taken.',at:ago(92)},
-        {f:'OD',t:'Neither does. Moving them now.',at:ago(90)},
-        {f:'sys',kind:'call',t:'Voice call · 4 min 12 sec',at:ago(64)}
-      ]},
-      {id:'c4',type:'group',name:'Primary care pod',with:['AR','SL','LO'],msgs:[
-        {f:'LO',t:'Reminder — the payer policy update takes effect Monday. Timely filing drops to 90 days for two of our top five.',at:ago(300)},
-        {f:'SL',t:'Which two?',at:ago(296)},
-        {f:'LO',t:'UnitedHealthcare and Cigna. I will post the summary in Resources.',at:ago(292)},
-        {f:'AR',t:'That will bite on the older A/R. Worth a sweep of anything past 60 days this week.',at:ago(288)},
-        {f:'sys',kind:'call',t:'Group call · 18 min 40 sec · 4 participants',at:ago(280)},
-        {f:'SL',t:'Good call. I will start on mine tomorrow morning.',at:ago(22)}
-      ]},
-      {id:'c5',type:'direct',with:['NO'],msgs:[
-        {f:'NO',t:'Do you have a moment to look at a shared patient? Endocrine follow-up but the primary diagnosis sequencing looks off.',at:ago(2900)},
-        {f:'sys',kind:'miss',t:'Missed call',at:ago(2880)},
-        {f:'me',t:'Sorry, was in clinic. Send me the MRN and I will look this afternoon.',at:ago(2820)}
-      ]},
-      {id:'c6',type:'group',name:'Schedulers + providers',with:['OD','PR','RV','AR'],msgs:[
-        {f:'RV',t:'Waitlist backfill is live for everyone as of this morning. Cancellations should refill on their own now.',at:ago(690)},
-        {f:'PR',t:'Already caught three today. Average refill under four minutes.',at:ago(684)},
-        {f:'me',t:'That is a real difference. Thanks both.',at:ago(120)}
-      ]}
-    ];
-  }
   var CONVOS=[];
   try{CONVOS=JSON.parse(localStorage.getItem(MKEY)||'null');}catch(e){}
-  if(!CONVOS||!CONVOS.length){CONVOS=seedConvos();save();}
+  /* Conversations used to be invented on first open, so a new practice found
+     threads it had never had with people who do not work there. */
+  if(!CONVOS)CONVOS=[];
   function save(){try{localStorage.setItem(MKEY,JSON.stringify(CONVOS));}catch(e){}}
 
   var active=null,filter='all',query='';
@@ -497,7 +498,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     var p=byId(c.with[0]);return {i:p?p.id:'??',c:p?p.c:'#999',grp:false,st:p?p.st:'off'};
   }
   function lastMsg(c){return c.msgs[c.msgs.length-1];}
-  function unread(c){var r=rng(seed(c.id));return (c.id==='c1'||c.id==='c4')?(1+Math.floor(r()*3)):0;}
+  /* count what has genuinely not been read, rather than inventing a number */
+  function unread(c){
+    return (c.msgs||[]).filter(function(m){
+      return m.from!=='me' && !m.read; }).length;
+  }
 
   /* ── sidebar ── */
   function renderList(){
@@ -626,16 +631,30 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeM();endCall();}});
 
   $('newBtn').addEventListener('click',function(){
-    var groups={supervisor:'SUPERVISORS',provider:'PROVIDERS',scheduler:'SCHEDULERS'};
+    if(!PEOPLE.length){
+      $('pickBox').innerHTML='<div class="grp">NOBODY TO MESSAGE</div>'+
+        '<p style="padding:14px 16px;font-size:12.4px;color:var(--muted);line-height:1.6">'+
+        'Colleagues appear here once they have a login. Add them under '+
+        '<b>Teams</b>, or ask an administrator to.</p>';
+      scrim.classList.add('on');$('mNew').classList.add('on');
+      return;
+    }
+    /* group by whatever roles this practice actually has */
+    var order=['supervisor','provider','scheduler','billing','frontoffice','employee','admin'];
+    var present=order.filter(function(r){
+      return PEOPLE.some(function(p){return p.role===r;}); });
+    PEOPLE.forEach(function(p){
+      if(present.indexOf(p.role)<0)present.push(p.role); });
+
     var html='';
-    ['supervisor','provider','scheduler'].forEach(function(role){
-      html+='<div class="grp">'+groups[role]+'</div>';
+    present.forEach(function(role){
+      html+='<div class="grp">'+((ROLEL[role]||String(role).toUpperCase())+'S').replace('SS','S')+'</div>';
       PEOPLE.filter(function(p){return p.role===role;}).forEach(function(p){
         html+='<label class="pick"><input type="checkbox" value="'+p.id+'"><span class="bx">'+
           '<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>'+
           '<span class="avw"><span class="av" style="background:'+p.c+';width:30px;height:30px;font-size:10px">'+p.id+'</span>'+
           '<span class="dot '+p.st+'"></span></span>'+
-          '<span><b>'+p.name+'</b><small>'+p.title.toUpperCase()+'</small></span></label>';
+          '<span><b>'+p.name+'</b><small>'+String(p.title||'').toUpperCase()+'</small></span></label>';
       });
     });
     $('pickBox').innerHTML=html;
@@ -702,7 +721,18 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   $('ccVid').addEventListener('click',function(){toast('Camera toggled');});
   $('ccAdd').addEventListener('click',function(){toast('Invite sent to the pod');});
 
-  active='c1';renderList();renderChat();
+  /* Load the real people before painting anything, then open the most recent
+     conversation if there is one. A fixed 'c1' only worked while the threads
+     were invented. */
+  (async function(){
+    try{ await RFStore.ready(); }catch(e){}
+    await loadPeople();
+    active = CONVOS.length
+      ? CONVOS.slice().sort(function(a,b){
+          return new Date(lastMsg(b).at)-new Date(lastMsg(a).at); })[0].id
+      : null;
+    renderList(); renderChat();
+  })();
 })();
 </script>
 

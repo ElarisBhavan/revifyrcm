@@ -363,6 +363,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 <script src="../_notify.js"></script>
 <link rel="stylesheet" href="../_session.css">
 <script src="../_guard.js"></script>
+<script src="../_config.js"></script>
 <script src="../_store.js"></script>
 <script src="../_datepicker.js"></script>
 <script src="../_session.js"></script>
@@ -652,7 +653,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     return { date:ds, appt:0, arrived:0, completed:0, noshow:0, cancelled:0,
              elig:0, inactive:0, copay:0, copayDue:0,
              filed:0, rejected:0, denied:0, paid_ct:0,
-             billed:0, allowed:0, paid:0, deniedAmt:0, outstanding:0, arDays:0 };
+             billed:0, allowed:0, paid:0, deniedAmt:0, outstanding:0, arDays:0,
+             /* what is actually owed, read from the billing on each encounter —
+                the only place a posted payment lands */
+             insBal:0, patBal:0, insPaid:0, patPaid:0, wroteOff:0,
+             insOpen:0, patOpen:0 };
   }
 
   /* An older claim may predate provider_id being stored on it; fall back to
@@ -695,12 +700,33 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     for(var i=0;i<patients.length;i++){
       var encs=[];
       try{ encs=await RFStore.encounters(patients[i].id); }catch(e){}
+      var pt=patients[i];
+      var ins=((pt&&pt.insurances)||[]).filter(function(x){return x.rank==='1';})[0];
+
       encs.forEach(function(e){
         if(e.clinician_id!=null)ENC_PROV[String(e.id)]=e.clinician_id;
         if(!e.dos||e.dos<from||e.dos>to)return;
         if(!mine(e.clinician_id))return;
         var d=DAYS[e.dos]=DAYS[e.dos]||blankDay(e.dos);
         if(e.status==='locked')d.completed=Math.max(d.completed,1);
+        if(e.status!=='locked')return;
+
+        /* the same arithmetic the chart and the payments screen use, so the
+           three can never disagree about what a patient owes */
+        var fee=(e.lines||[]).reduce(function(x,l){
+          return x+(+l.fee||0)*(+l.units||1); },0);
+        var b=e.billing||{};
+        var resp=b.resp||(ins?'ins':'self');
+        var copay=ins?(+ins.copay||0):0;
+        var patResp=b.pat_resp!=null?+b.pat_resp:(resp==='self'?fee:copay);
+        var wo=+b.writeoff||0, patPaid=+b.pat_paid||0, insPaid=+b.ins_paid||0;
+        var insResp=Math.max(0,fee-patResp-wo);
+
+        var pb=Math.max(0,patResp-patPaid), ib=Math.max(0,insResp-insPaid);
+        d.patBal+=pb; d.insBal+=ib;
+        d.patPaid+=patPaid; d.insPaid+=insPaid; d.wroteOff+=wo;
+        if(pb>0.004)d.patOpen++;
+        if(ib>0.004)d.insOpen++;
       });
     }
 
@@ -1149,12 +1175,19 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       $('fg2').style.width=(billed?collected/billed*100:0)+'%';
     },140);
 
-    /* outstanding */
-    var oi=allowed-paid+denAmt*.62,op=copayDue-copay+paid*.041,tt=oi+op;
+    /* ── outstanding ──
+       These were estimates: the payer figure was derived from denials and the
+       patient figure from a fraction of what had been paid, so neither moved
+       when a payment was posted and one of them sat at zero. Both are now the
+       real balances, read from the billing on each encounter. */
+    var oi=sum(rows,'insBal'), op=sum(rows,'patBal'), tt=oi+op;
+    var insOpen=sum(rows,'insOpen'), patOpen=sum(rows,'patOpen');
     count($('os-ins'),oi,function(v){return money2(v);});
     count($('os-pat'),op,function(v){return money2(v);});
-    $('os-ins-n').textContent=Math.round(filed*.17).toLocaleString()+' open claims with payers';
-    $('os-pat-n').textContent=Math.round(appt*.21).toLocaleString()+' patient statements outstanding';
+    $('os-ins-n').textContent=insOpen.toLocaleString()+
+      ' visit'+(insOpen===1?'':'s')+' awaiting a payer';
+    $('os-pat-n').textContent=patOpen.toLocaleString()+
+      ' patient balance'+(patOpen===1?'':'s')+' outstanding';
     $('os-sub').textContent=money(tt)+' TOTAL';
 
     var CD=2*Math.PI*28;

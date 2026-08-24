@@ -106,6 +106,20 @@ input,select,textarea{font:inherit}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
 .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
 
+/* Overview labels and values had no styling of their own, so both rendered at
+   the same weight and size — the eye had nothing to catch on and every card
+   read as one grey block. The label is now small and quiet; the value carries
+   the weight. */
+.grid3 > div,.grid2 > div{min-width:0}
+.grid3 dt,.grid2 dt{font-size:9px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--dim);margin-bottom:4px;line-height:1.3}
+.grid3 dd,.grid2 dd{font-size:13.6px;font-weight:600;letter-spacing:-.014em;
+  color:var(--ink);line-height:1.45;word-break:break-word}
+.grid3 dd.mono,.grid2 dd.mono{font-family:var(--mono);font-size:12.4px;
+  font-weight:500;letter-spacing:-.01em}
+/* a value nobody has filled in should read as absent, not as content */
+.grid3 dd:empty::after,.grid2 dd:empty::after{content:'—';color:var(--dim);font-weight:400}
+
 /* ── fields ── */
 .f{display:block;min-width:0}
 .f>span{display:flex;align-items:center;gap:5px;font-size:10.6px;font-weight:600;color:var(--muted);margin-bottom:5px;letter-spacing:.02em}
@@ -148,7 +162,7 @@ input,select,textarea{font:inherit}
 .tbl tfoot td{padding:12px 14px;border-top:1.5px solid var(--line-2);font-weight:600;background:var(--paper)}
 .mono{font-family:var(--mono);font-size:11.4px}
 .money{font-family:var(--mono);font-weight:600;white-space:nowrap}
-.money.pos{color:var(--green-d)}.money.warn{color:var(--coral)}.money.zero{color:var(--dim);font-weight:400}
+.money.pos{color:var(--green-d)}.money.warn{color:var(--coral)}.money.zero{color:var(--dim);font-weight:400}.money.credit{color:var(--violet)}
 
 /* ── pills ── */
 .pill{display:inline-flex;align-items:center;gap:5px;padding:3.5px 9px;border-radius:6px;font-size:9.8px;font-weight:700;letter-spacing:.03em;white-space:nowrap}
@@ -562,6 +576,13 @@ input,select,textarea{font:inherit}
 .encopt .c{flex:1;min-width:0;font-size:11.6px;color:var(--muted);overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
 .encopt .b{font-family:var(--mono);font-size:12.4px;font-weight:600;color:var(--coral);flex:none}
+.hmore{display:block;width:100%;margin-top:10px;padding:11px;border-radius:11px;
+  border:1px dashed var(--line-2);background:none;cursor:pointer;
+  font-family:'Manrope',system-ui,sans-serif;font-size:12.2px;font-weight:600;
+  color:var(--muted);transition:all .24s var(--e)}
+.hmore:hover{border-style:solid;border-color:var(--green);color:var(--green-d);
+  background:var(--green-s)}
+.ib.rcpt svg{stroke:var(--green-d)}
 </style>
 <link rel="stylesheet" href="../_session.css">
 <link rel="stylesheet" href="../_claimform.css">
@@ -712,7 +733,6 @@ input,select,textarea{font:inherit}
           <tfoot id="bilFoot"></tfoot>
         </table>
       </div>
-      <div class="pays" id="bilPays"></div>
       <div class="empty" id="bilEmpty" hidden>
         <svg viewBox="0 0 24 24" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg><br>
         <b>Nothing to bill yet</b>Lock an encounter in the Encounters tab and its charges appear here.
@@ -1010,12 +1030,11 @@ input,select,textarea{font:inherit}
     <div class="grid2">
       <label class="f"><span>Responsibility</span>
         <select id="b_resp"><option value="ins">Insurance</option><option value="self">Self pay</option></select></label>
-      <label class="f"><span>Place of service</span><select id="b_pos"></select></label>
-      <label class="f"><span>Fee</span><input type="text" id="b_fee" inputmode="decimal"></label>
+      <label class="f"><span>Fee</span><input type="text" id="b_fee" inputmode="decimal" readonly></label>
       <label class="f"><span>Patient responsibility</span><input type="text" id="b_pat" inputmode="decimal"></label>
-      <label class="f"><span>Patient paid</span><input type="text" id="b_paid" inputmode="decimal"></label>
       <label class="f"><span>Write-off</span><input type="text" id="b_wo" inputmode="decimal"></label>
-      <label class="f"><span>Insurance paid</span><input type="text" id="b_inspaid" inputmode="decimal"></label>
+      <label class="f"><span>Patient paid</span><input type="text" id="b_paid" inputmode="decimal" readonly></label>
+      <label class="f"><span>Insurance paid</span><input type="text" id="b_inspaid" inputmode="decimal" readonly></label>
     </div>
     <div class="hint" id="b_preview" style="margin-top:15px">
       <svg viewBox="0 0 24 24" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
@@ -1058,8 +1077,9 @@ input,select,textarea{font:inherit}
   /* ── helpers ── */
   function esc(v){return String(v==null?'':v).replace(/[&<>"]/g,function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
-  function money(n){return '$'+(Math.round((+n||0)*100)/100).toFixed(2);}
+  function money(n){var v=Math.round((+n||0)*100)/100;return (v<0?'-$':'$')+Math.abs(v).toFixed(2);}
   function num(v){return Math.round((parseFloat(v)||0)*100)/100;}
+  function round2(v){return Math.round((+v||0)*100)/100;}
   function today(){var d=new Date();
     return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
   function fmtD(d){return d?new Date(d+'T12:00:00').toLocaleDateString(undefined,
@@ -2205,15 +2225,25 @@ input,select,textarea{font:inherit}
       var patPaid=num(b.pat_paid);
       var insPaid=num(b.ins_paid);
       var insResp=Math.max(0,fee-patResp-wo);
-      var insBal=Math.max(0,insResp-insPaid);
-      var patBal=Math.max(0,patResp-patPaid);
+
+      /* Signed: paying more than owed goes negative rather than clamping
+         at zero, so an overpayment surfaces as a credit instead of quietly
+         disappearing. patBal/insBal stay clamped at zero for anything that
+         still gates "can we collect more" (the Collect button, etc.) —
+         *Signed versions carry the true, possibly-negative figure through
+         to display. */
+      var patBalSigned=round2(patResp-patPaid);
+      var insBalSigned=round2(insResp-insPaid);
+      var patBal=Math.max(0,patBalSigned);
+      var insBal=Math.max(0,insBalSigned);
+      var outSigned=round2(patBalSigned+insBalSigned);
 
       return {
         enc:e, dos:e.dos, pos:e.pos||'11', resp:resp,
         lines:e.lines||[], fee:fee,
-        patResp:patResp, patPaid:patPaid, patBal:patBal,
-        insResp:insResp, insPaid:insPaid, insBal:insBal,
-        wo:wo, out:patBal+insBal,
+        patResp:patResp, patPaid:patPaid, patBal:patBal, patBalSigned:patBalSigned,
+        insResp:insResp, insPaid:insPaid, insBal:insBal, insBalSigned:insBalSigned,
+        wo:wo, out:patBal+insBal, outSigned:outSigned,
         claim:CLAIMS.filter(function(c){return String(c.enc_id)===String(e.id);})[0]||null
       };
     }).sort(function(a,b){return (b.dos||'').localeCompare(a.dos||'');});
@@ -2243,9 +2273,31 @@ input,select,textarea{font:inherit}
 
     if(!rows.length){$('bilRows').innerHTML='';$('bilFoot').innerHTML='';return;}
 
+    /* Patient/Insurance columns lead with what was actually collected (big,
+       color-coded green when it fully covers the responsibility and red
+       when it doesn't), with the balance — or, once paid past what was
+       owed, the credit — underneath. */
+    function payCell(paid,resp,balSigned,selfPayTag){
+      var full = balSigned <= 0.004;
+      var big = '<span class="money" style="font-size:14.6px;font-weight:700;color:'+
+        (full?'var(--green-d)':'var(--coral)')+'">'+money(paid)+'</span>';
+      var sub = '';
+      if(selfPayTag){
+        sub = '<div style="font-size:9.6px;margin-top:2px;font-family:var(--mono);color:var(--dim)">SELF PAY</div>';
+      }else if(balSigned < -0.004){
+        sub = '<div class="money credit" style="font-size:9.6px;margin-top:2px;font-family:var(--mono)">'+
+          money(-balSigned)+' credit</div>';
+      }else if(resp>0){
+        sub = '<div style="font-size:9.6px;margin-top:2px;font-family:var(--mono);color:'+
+          (full?'var(--green-d)':'var(--coral)')+'">'+
+          money(balSigned)+' '+(full?'paid':(paid>0?'part paid':'unpaid'))+'</div>';
+      }
+      return big+sub;
+    }
+
     var T={fee:0,pat:0,ins:0,wo:0,out:0};
     $('bilRows').innerHTML=rows.map(function(r,i){
-      T.fee+=r.fee;T.pat+=r.patBal;T.ins+=r.insBal;T.wo+=r.wo;T.out+=r.out;
+      T.fee+=r.fee;T.pat+=r.patBalSigned;T.ins+=r.insBalSigned;T.wo+=r.wo;T.out+=r.outSigned;
       var codes=r.lines.map(function(l){return l.cpt;}).join(', ');
       var dxs=[].concat.apply([],r.lines.map(function(l){return l.dx?[l.dx]:[];}))
         .filter(function(v,k,a){return a.indexOf(v)===k;}).join(', ');
@@ -2257,14 +2309,13 @@ input,select,textarea{font:inherit}
           (dxs?'<div class="mono" style="font-size:10.6px;color:var(--muted);margin-top:2px">'+esc(dxs)+'</div>':'')+'</td>'+
         '<td>'+esc(POSL[r.pos]||r.pos)+'</td>'+
         '<td class="r money">'+money(r.fee)+'</td>'+
-        '<td class="r"><span class="money'+(r.patBal>0?' warn':' zero')+'">'+money(r.patBal)+'</span>'+
-          (r.patResp>0?'<div style="font-size:9.6px;margin-top:2px;font-family:var(--mono);color:'+
-            (r.patPaid>=r.patResp?'var(--green-d)':'var(--coral)')+'">'+
-            money(r.patResp)+' '+(r.patPaid>=r.patResp?'paid':(r.patPaid>0?'part paid':'unpaid'))+'</div>':'')+'</td>'+
-        '<td class="r"><span class="money'+(r.insBal>0?'':' zero')+'">'+money(r.insBal)+'</span>'+
-          (r.resp==='self'?'<div style="font-size:9.6px;margin-top:2px;font-family:var(--mono);color:var(--dim)">SELF PAY</div>':'')+'</td>'+
+        '<td class="r">'+payCell(r.patPaid,r.patResp,r.patBalSigned,false)+'</td>'+
+        '<td class="r">'+payCell(r.insPaid,r.insResp,r.insBalSigned,r.resp==='self')+'</td>'+
         '<td class="r money'+(r.wo?'':' zero')+'">'+money(r.wo)+'</td>'+
-        '<td class="r money'+(r.out>0?' warn':' pos')+'">'+money(r.out)+'</td>'+
+        '<td class="r money'+(r.outSigned<-0.004?' credit':r.outSigned>0.004?' warn':' pos')+'">'+
+          money(r.outSigned)+
+          (r.outSigned<-0.004?'<div style="font-size:9.2px;margin-top:2px;font-family:var(--mono);color:var(--violet)">CREDIT</div>':'')+
+          '</td>'+
         '<td>'+(r.claim
           ? '<span class="pill '+claimPill(r.claim.status)+'">'+esc(r.claim.claim_no)+'</span>'+
             '<div style="font-size:9.6px;margin-top:3px;font-family:var(--mono);color:var(--muted)">'+
@@ -2274,6 +2325,11 @@ input,select,textarea{font:inherit}
               : '<button class="btn sec sm" data-write data-mkclaim="'+r.enc.id+'">'+
                 '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Create claim</button>'))+'</td>'+
         '<td class="r"><span class="acts">'+
+          (receiptFor(r.enc)
+            ? '<button class="ib rcpt" data-receipt="'+receiptFor(r.enc).id+'" '+
+              'title="Receipt for '+money(receiptFor(r.enc).amount)+'">'+
+              '<svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/>'+
+              '<path d="M9 13h6M9 17h4"/></svg></button>' : '')+
           (r.patBal>0
             ? '<button class="ib pay" data-collect="'+r.enc.id+'" data-write '+
               'title="Collect '+money(r.patBal)+' from the patient">'+
@@ -2282,7 +2338,7 @@ input,select,textarea{font:inherit}
           '<button class="ib note" data-note="'+r.enc.id+'" title="Notes on this charge">'+
             '<svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/></svg>'+
             (noteCount(r.enc)?'<i class="dot"></i>':'')+'</button>'+
-          '<button class="ib edit" data-bedit="'+r.enc.id+'" title="Adjust fee and balances">'+
+          '<button class="ib edit" data-bedit="'+r.enc.id+'" title="Adjust charge">'+
             '<svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg></button>'+
           (r.claim?'<button class="ib view" data-cview="'+r.claim.id+'" title="View claim">'+
             '<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>':'')+
@@ -2294,10 +2350,17 @@ input,select,textarea{font:inherit}
       '<td class="r money">'+money(T.pat)+'</td>'+
       '<td class="r money">'+money(T.ins)+'</td>'+
       '<td class="r money">'+money(T.wo)+'</td>'+
-      '<td class="r money'+(T.out>0?' warn':' pos')+'">'+money(T.out)+'</td>'+
+      '<td class="r money'+(T.out<-0.004?' credit':T.out>0.004?' warn':' pos')+'">'+money(T.out)+'</td>'+
       '<td colspan="2"></td></tr>';
 
-    paintReceipts();
+  }
+
+  /* the patient's payment against this visit, if there is one */
+  function receiptFor(e){
+    return (PAYS||[]).filter(function(p){
+      return p.kind==='patient' && !p.credit &&
+        (String(p.enc_id)===String(e.id) || String(p.dos||'')===String(e.dos||''));
+    })[0]||null;
   }
 
   function noteCount(e){
@@ -2307,35 +2370,7 @@ input,select,textarea{font:inherit}
   /* ── what has been collected ──
      A payment that vanishes into a balance is impossible to reconcile. Every
      one is listed, with a receipt anyone can print for the patient. */
-  function paintReceipts(){
-    var box=$('bilPays');
-    if(!box)return;
-    var mine=(PAYS||[]).filter(function(p){
-      return String(p.patient_ref)===String(P.id); });
-    if(!mine.length){
-      box.innerHTML='<div class="paysEmpty">Nothing collected from this patient yet.</div>';
-      return;
-    }
-    var total=mine.reduce(function(x,p){return x+(+p.amount||0);},0);
-    box.innerHTML=
-      '<div class="paysHead"><b>Payments received</b>'+
-        '<span>'+mine.length+' payment'+(mine.length===1?'':'s')+' · '+money(total)+'</span></div>'+
-      mine.map(function(p){
-        return '<div class="payLine">'+
-          '<span class="k '+esc(p.kind||'patient')+'">'+
-            (p.kind==='era'?'INSURANCE':'PATIENT')+'</span>'+
-          '<span class="d">'+fmtTS(p.at)+'</span>'+
-          '<span class="m">'+esc(p.method||'')+
-            (p.reference?' · '+esc(p.reference):'')+
-            (p.payer?' · '+esc(p.payer):'')+'</span>'+
-          '<span class="w">'+esc(p.taken_by||'')+'</span>'+
-          '<span class="a">'+money(p.amount)+'</span>'+
-          '<button class="ib" data-receipt="'+esc(p.id)+'" title="Print a receipt">'+
-            '<svg viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 19H5a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2h-2"/>'+
-            '<path d="M7 15h10v6H7z"/></svg></button>'+
-        '</div>';
-      }).join('');
-  }
+
 
   function claimPill(s){
     return {submitted:'info',pending:'warn',accepted:'info',received:'info',
@@ -2351,8 +2386,6 @@ input,select,textarea{font:inherit}
     if(!r)return;
     $('bilSubT').textContent=fmtD(r.dos)+' · '+r.lines.map(function(l){return l.cpt;}).join(', ');
     $('b_resp').value=r.resp;
-    $('b_pos').innerHTML=RFCodes.pos.map(function(p){
-      return '<option value="'+p.code+'"'+(r.pos===p.code?' selected':'')+'>'+p.code+' — '+p.desc+'</option>';}).join('');
     $('b_fee').value=r.fee.toFixed(2);
     $('b_pat').value=r.patResp.toFixed(2);
     $('b_paid').value=r.patPaid.toFixed(2);
@@ -2363,16 +2396,24 @@ input,select,textarea{font:inherit}
   });
 
   function previewBill(){
+    /* Fee, patient paid and insurance paid are fixed facts of what was
+       charged and what actually arrived — only responsibility and
+       write-off are adjustable here, and both flow straight through into
+       the outstanding figure, credit included. */
     var fee=num($('b_fee').value),pat=num($('b_pat').value),
         paid=num($('b_paid').value),wo=num($('b_wo').value),ip=num($('b_inspaid').value);
     if($('b_resp').value==='self'){pat=fee-wo;$('b_pat').value=pat.toFixed(2);}
     var insResp=Math.max(0,fee-pat-wo);
-    var out=Math.max(0,pat-paid)+Math.max(0,insResp-ip);
-    $('b_prevText').innerHTML='Fee <b>'+money(fee)+'</b> · patient <b>'+money(Math.max(0,pat-paid))+
-      '</b> · insurance <b>'+money(Math.max(0,insResp-ip))+'</b> · write-off <b>'+money(wo)+
-      '</b> · outstanding <b>'+money(out)+'</b>';
+    var patSigned=round2(pat-paid), insSigned=round2(insResp-ip);
+    var out=round2(patSigned+insSigned);
+    $('b_prevText').innerHTML='Fee <b>'+money(fee)+'</b> · patient <b>'+
+      (patSigned<0?money(-patSigned)+' credit':money(patSigned))+
+      '</b> · insurance <b>'+(insSigned<0?money(-insSigned)+' credit':money(insSigned))+
+      '</b> · write-off <b>'+money(wo)+'</b> · '+
+      (out<0?'credit balance <b style="color:var(--violet)">'+money(-out)+'</b>'
+            :'outstanding <b>'+money(out)+'</b>');
   }
-  ['b_resp','b_fee','b_pat','b_paid','b_wo','b_inspaid'].forEach(function(id){
+  ['b_resp','b_pat','b_wo'].forEach(function(id){
     var el=$(id);if(el)el.addEventListener('input',previewBill);
     if(el)el.addEventListener('change',previewBill);
   });
@@ -2381,7 +2422,6 @@ input,select,textarea{font:inherit}
     if(!EDIT_BILL)return;
     var e=await RFStore.encounter(EDIT_BILL);if(!e)return;
     var before=(e.billing||{});
-    e.pos=$('b_pos').value;
     e.billing={
       resp:$('b_resp').value,
       pat_resp:num($('b_pat').value),
@@ -2389,18 +2429,10 @@ input,select,textarea{font:inherit}
       writeoff:num($('b_wo').value),
       ins_paid:num($('b_inspaid').value)
     };
-    /* changing the fee rewrites the first line so the claim stays truthful */
-    var newFee=num($('b_fee').value);
-    var curFee=(e.lines||[]).reduce(function(x,l){return x+(l.fee||0)*(l.units||1);},0);
-    if(Math.abs(newFee-curFee)>0.004 && e.lines.length){
-      var diff=newFee-curFee;
-      e.lines[0].fee=Math.max(0,num(e.lines[0].fee)+diff/(e.lines[0].units||1));
-    }
     await RFStore.saveEncounter(e);
     var bits=[];
     if(before.resp!==e.billing.resp)bits.push('responsibility → '+(e.billing.resp==='self'?'self pay':'insurance'));
-    if(Math.abs(newFee-curFee)>0.004)bits.push('fee '+money(curFee)+' → '+money(newFee));
-    if(num(before.pat_paid)!==e.billing.pat_paid)bits.push('patient paid '+money(e.billing.pat_paid));
+    if(num(before.pat_resp)!==e.billing.pat_resp)bits.push('patient responsibility '+money(e.billing.pat_resp));
     if(num(before.writeoff)!==e.billing.writeoff)bits.push('write-off '+money(e.billing.writeoff));
     await RFStore.logHistory(P.id,'fee_edited',
       fmtShort(e.dos)+' · '+(bits.length?bits.join(' · '):'balances adjusted'));
@@ -3166,15 +3198,34 @@ input,select,textarea{font:inherit}
         '<b>Nothing recorded yet</b>Edits to this chart are logged here with who made them.</div>';
       return;
     }
-    $('hisList').innerHTML=HIST.map(function(h,i){
+    /* A chart worked for a year holds hundreds of entries. Showing them all
+       makes the page scroll for a minute and buries the recent ones, which are
+       the only reason anyone opens it. */
+    var shown = HIST.slice(0, HIST_SHOWN);
+    var more  = HIST.length - shown.length;
+
+    $('hisList').innerHTML=shown.map(function(h,i){
       var ic=HICO[h.what]||['b','<circle cx="12" cy="12" r="9"/>'];
       return '<div class="hrow" style="animation-delay:'+Math.min(.4,i*.03)+'s">'+
         '<span class="hdot '+ic[0]+'"><svg viewBox="0 0 24 24">'+ic[1]+'</svg></span>'+
         '<span class="hbody2"><b>'+esc(String(h.what||'').replace(/_/g,' '))+'</b>'+
           (h.detail?'<p>'+esc(h.detail)+'</p>':'')+
           '<small>'+fmtTS(h.at)+' · '+esc(h.by||'')+'</small></span></div>';
-    }).join('');
+    }).join('')+
+    (more>0
+      ? '<button class="hmore" id="hisMore">Show '+Math.min(more,HIST_STEP)+
+        ' more · '+more+' older entr'+(more===1?'y':'ies')+'</button>'
+      : (HIST_SHOWN>HIST_STEP
+          ? '<button class="hmore" id="hisLess">Show fewer</button>' : ''));
   }
+
+  var HIST_STEP=15, HIST_SHOWN=15;
+
+  document.addEventListener('click',function(e){
+    if(e.target.closest('#hisMore')){ HIST_SHOWN+=HIST_STEP; paintHistory(); return; }
+    if(e.target.closest('#hisLess')){ HIST_SHOWN=HIST_STEP; paintHistory();
+      $('hisList').scrollIntoView({behavior:'smooth',block:'start'}); }
+  });
 
 
   /* ══════════ INSURANCE ══════════ */

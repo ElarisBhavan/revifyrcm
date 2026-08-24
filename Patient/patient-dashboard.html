@@ -262,6 +262,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 <link rel="stylesheet" href="../_session.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="../_guard.js"></script>
+<script src="../_config.js"></script>
 <script src="../_store.js"></script>
 <script src="../_datepicker.js"></script>
 <script src="../_import.js"></script>
@@ -361,10 +362,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         <label class="f"><span>Rendering clinician <u>*</u></span>
           <select id="n_clin">
             <option value="">Select clinician</option>
-            <option>Dr. Dana Whitfield</option><option>Dr. Alan Reyes</option>
-            <option>Dr. Ngozi Okafor</option><option>Sara Lindqvist, NP</option>
-            <option>Marcus Bello, PA</option><option>Dr. Elena Petrova</option>
-          </select></label>
+          </select>
+          <p class="fh" id="clinHint" style="color:var(--amber)"></p></label>
         <label class="f"><span>Member ID <span style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--dim)">AUTO</span></span>
           <input type="text" id="n_mid" placeholder="Generated from name" readonly></label>
         <label class="f full"><span>Address</span><input type="text" id="n_addr" placeholder="1101 Alderwood Dr, Justin, TX 76247-1581"></label>
@@ -499,7 +498,12 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   var $=function(i){return document.getElementById(i);};
   var KEY='rf_patients';
 
-  var CLIN=['Dr. Dana Whitfield','Dr. Alan Reyes','Dr. Ngozi Okafor','Sara Lindqvist, NP','Marcus Bello, PA','Dr. Elena Petrova'];
+  /* the real clinicians, loaded from the provider records */
+  var CLIN=[], PROVS=[];
+  function clinName(v){
+    var p=PROVS.filter(function(x){return String(x.id)===String(v);})[0];
+    return p?p.full_name:String(v||'');
+  }
   var PAYERS=['Blue Cross Blue Shield of Texas (84980)','UnitedHealthcare (87726)','Medicare (CMS)','Aetna (60054)',
     'Cigna (62308)','UMR Wausau (39026)','Texas Medicaid (MCDTX)','Humana (SX155)'];
   var FIRST=['Colton','Nathan','Teyler','Maria','Priya','Walter','Elena','Marcus','Aisha','Tomas','Grace','Owen','Leila','Hugo','Nina','Caleb','Rosa','Ivan','Freya','Desmond','Talia','Miles','Anya','Rafael','Clara','Jonah','Iris','Felix','Jack','Sofia'];
@@ -619,6 +623,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   async function loadFromStore(){
     if(typeof RFStore==='undefined') return null;
     await RFStore.ready();
+    await loadClinicians();
     var rows = await RFStore.patients();
 
     /* one-time migration of the old localStorage roster */
@@ -640,10 +645,42 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
   var DATA=load(),filt={q:'',status:'all',clin:'all',sort:'last'};
 
-  /* clinician filter options */
-  CLIN.forEach(function(c){
-    var o=document.createElement('option');o.value=c;o.textContent=c;$('fClin').appendChild(o);
-  });
+  /* ── clinicians, from the provider records ──
+     The list was hard coded with six invented names, so a real practice saw
+     people who do not work there and could not pick the ones who do. */
+  async function loadClinicians(){
+    try{ PROVS=await RFStore.providers(); }catch(e){ PROVS=[]; }
+
+    /* only people who actually see patients */
+    var seeing=PROVS.filter(function(p){
+      return String(p.status||'active')!=='inactive' &&
+             (p.npi || /provider|clinician|therapist|counselor|psych|physician|nurse/i
+                .test(String(p.role||p.title||'')));
+    });
+    if(!seeing.length) seeing=PROVS.filter(function(p){
+      return String(p.status||'active')!=='inactive'; });
+
+    CLIN=seeing.map(function(p){ return p.full_name; }).filter(Boolean);
+
+    var filter=$('fClin');
+    filter.innerHTML='<option value="all">All clinicians</option>'+
+      CLIN.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join('');
+
+    var pick=$('n_clin');
+    if(pick){
+      pick.innerHTML = seeing.length
+        ? '<option value="">Select clinician</option>'+
+          seeing.map(function(p){
+            return '<option value="'+p.id+'">'+esc(p.full_name)+
+              (p.title?', '+esc(p.title):'')+'</option>'; }).join('')
+        : '<option value="">No clinicians set up yet</option>';
+      pick.disabled = !seeing.length;
+    }
+
+    var hint=$('clinHint');
+    if(hint) hint.textContent = seeing.length
+      ? '' : 'Add providers under Admin → Providers before registering a patient.';
+  }
 
   function view(){
     var q=filt.q.toLowerCase().trim();
@@ -995,7 +1032,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       id:'PT'+(2000+DATA.length),
       first:f,last:l,dob:$('n_dob').value,sex:$('n_sex').value,
       mid:$('n_mid').value||mid(f,l,DATA.length+3),
-      status:'active',clinician:$('n_clin').value,
+      status:'active',provider_ref:+$('n_clin').value||null,clinician:clinName($('n_clin').value),
       payer:$('n_pay1').value,memberId:$('n_mem1').value,groupId:$('n_grp1').value,
       copay:parseFloat(($('n_cop1').value||'0').replace(/[^0-9.]/g,''))||0,
       payer2:$('n_pay2').value||'',memberId2:$('n_mem2').value||'',
