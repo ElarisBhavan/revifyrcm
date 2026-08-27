@@ -15,7 +15,7 @@ const initialsOf = n => String(n||'').replace(/^Dr\.?\s+/i,'')
   .split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
 
 exports.handler = async (event) => {
-  const me = L.session(event);
+  const me = await L.session(event);
   if(!me) return L.J(401, { error:'Not signed in' });
   if(me.role !== 'admin') return L.J(403, { error:'Administrator access required' });
 
