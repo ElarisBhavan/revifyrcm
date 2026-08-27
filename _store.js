@@ -25,7 +25,7 @@
   /* Set in _config.js, which loads before this file. The fallback keeps the
      application working if that file is ever missing. */
   const DRIVER = (typeof window !== 'undefined' &&
-                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'api';
+                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'local';
   /* ───────────────────────────────────────────────────────────── */
   /* Bumped on every release. Printed to the console and shown in the page
      footer, so which build is actually loaded is never in doubt. */
@@ -457,6 +457,10 @@
 
     /* forced password change, then MFA enrolment */
     async changePassword(id, newPassword){
+      if(DRIVER==='api'){
+        const r = await apiCall('/api/auth','first-password',{ challenge:id, password:newPassword });
+        return r.body;
+      }
       const a = (await all()).find(x => x.id === id);
       if(!a) return { error:'unknown' };
       if(String(newPassword).length < 10) return { error:'weak', message:'Use at least 10 characters.' };
