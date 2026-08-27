@@ -57,7 +57,7 @@ input,select,textarea{font:inherit}
 .hbtn.out:hover{border-color:var(--coral);background:var(--coral-s);color:#9B3F24}
 .hbtn.out:hover svg{stroke:var(--coral)}
 
-.wrap{position:relative;z-index:2;max-width:1320px;margin:0 auto;padding:clamp(16px,2.4vw,28px) clamp(14px,2.6vw,34px) clamp(40px,5vw,70px)}
+.wrap{position:relative;z-index:2;max-width:1620px;margin:0 auto;padding:clamp(16px,2.4vw,28px) clamp(14px,2.6vw,34px) clamp(40px,5vw,70px)}
 
 /* ── patient banner ── */
 .pbar{display:flex;align-items:flex-start;gap:15px;flex-wrap:wrap;padding:clamp(15px,2vw,20px) clamp(16px,2.2vw,24px);background:#fff;border:1px solid var(--line-2);border-radius:18px;box-shadow:0 16px 40px -34px rgba(11,61,49,.42);margin-bottom:14px;opacity:0;transform:translateY(14px);animation:up .7s var(--e) .05s forwards}
@@ -203,14 +203,49 @@ input,select,textarea{font:inherit}
 .insbody dd.mono{font-family:var(--mono);font-size:11.4px;font-weight:500}
 
 /* ── encounter lines ── */
-.encbox{border:1px solid var(--line-2);border-radius:14px;margin-bottom:11px;overflow:hidden;background:#fff}
-.enchead{display:flex;align-items:center;gap:12px;padding:12px 15px;border-bottom:1px solid var(--line);background:var(--paper)}
-.enchead .d{text-align:center;flex:none;min-width:42px}
-.enchead .d b{display:block;font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.08em}
-.enchead .d span{font-family:'Sora',sans-serif;font-size:19px;font-weight:600;letter-spacing:-.04em;line-height:1}
+.encbox{border:1px solid var(--line-2);border-left:3px solid var(--line-2);border-radius:12px;
+  margin-bottom:14px;overflow:hidden;background:#fff;
+  box-shadow:0 1px 2px rgba(13,26,22,.04);
+  transition:box-shadow .2s var(--e),border-color .2s var(--e)}
+.encbox.st-locked{border-left-color:var(--green-d)}
+.encbox.st-open{border-left-color:var(--amber)}
+.encbox:hover{box-shadow:0 6px 16px -10px rgba(13,26,22,.2)}
+/* the card you have open should be unmistakable at a glance, not just
+   distinguishable by a chevron pointing the other way */
+.encbox.open{box-shadow:0 10px 24px -12px rgba(13,26,22,.24);border-color:var(--line-2)}
+.encbox.open .enchead{background:var(--paper-2)}
+.encbox.st-locked.open{border-left-width:3px}
+.enchead{display:flex;align-items:center;gap:14px;padding:13px 16px;background:#fff;cursor:pointer;
+  user-select:none;transition:background .18s var(--e)}
+.enchead:hover{background:var(--paper-2)}
+.enchead .d{text-align:center;flex:none;min-width:50px;padding:6px 4px;border-radius:9px;background:var(--paper);
+  border:1px solid var(--line-2);transition:border-color .2s var(--e),background .2s var(--e)}
+.enchead .d b{display:block;font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.09em}
+.enchead .d span{font-family:'Sora',sans-serif;font-size:20px;font-weight:700;letter-spacing:-.03em;line-height:1.15;color:var(--ink)}
+.encbox.st-locked .enchead .d{border-color:rgba(10,92,70,.35)}
+.encbox.st-open .enchead .d{border-color:rgba(192,134,22,.4)}
+.encbox.open .enchead .d{background:var(--green-d);border-color:var(--green-d)}
+.encbox.open .enchead .d b,.encbox.open .enchead .d span{color:#fff}
 .enchead .who{min-width:0;flex:1}
-.enchead .who b{display:block;font-size:13px;font-weight:600;letter-spacing:-.018em}
-.enchead .who small{display:block;font-family:var(--mono);font-size:9.6px;color:var(--dim);margin-top:2px}
+.enchead .who b{display:block;font-size:13.6px;font-weight:700;letter-spacing:-.015em;color:var(--ink)}
+.enchead .who small{display:block;font-family:var(--mono);font-size:9.4px;color:var(--dim);margin-top:2px;letter-spacing:.02em}
+.enchead .quick{flex:none;text-align:right;font-family:var(--mono);font-size:11px;color:var(--muted);
+  padding-right:4px}
+.enchead .quick b{display:block;font-size:13.2px;color:var(--ink);font-weight:700;font-family:'Sora',sans-serif;letter-spacing:-.01em}
+.enchead .chev{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  border:1px solid var(--line-2);background:#fff;color:var(--muted);transition:transform .25s var(--e),background .2s var(--e),border-color .2s var(--e)}
+.enchead .chev svg{width:12px;height:12px;stroke:var(--muted);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.enchead:hover .chev{border-color:var(--green-d);background:var(--green-s)}
+.enchead:hover .chev svg{stroke:var(--green-d)}
+.encbox.open .enchead .chev{transform:rotate(180deg);border-color:var(--green-d);background:var(--green-s)}
+.encbox.open .enchead .chev svg{stroke:var(--green-d)}
+.encbody{display:none;border-top:1px solid var(--line)}
+.encbox.open .encbody{display:block}
+/* repeats the date inside the opened body, so scrolling a long line list
+   never leaves you wondering whose visit you're looking at */
+.encctx{display:flex;align-items:center;gap:8px;
+  padding:8px 14px;background:var(--green-s);border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:10.2px;color:var(--green-d);font-weight:700;letter-spacing:.02em}
 .linetbl{width:100%;border-collapse:collapse;font-size:12.2px}
 .linetbl th{text-align:left;padding:8px 14px;font-size:8.8px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-weight:700;border-bottom:1px solid var(--line)}
 .linetbl td{padding:10px 14px;border-bottom:1px solid var(--line)}
@@ -534,6 +569,17 @@ input,select,textarea{font:inherit}
 .ib.note{position:relative}
 .ib.note .dot{position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;
   background:var(--coral);border:1.4px solid #fff}
+
+/* ── professional encounter editor ── */
+.encsection{margin:0 14px 12px;border:1px solid var(--line-2);border-radius:13px;background:#fff;overflow:hidden}
+.secthead{display:flex;align-items:center;gap:12px;padding:12px 13px;border-bottom:1px solid var(--line);background:var(--paper-2)}
+.secthead>div:first-child{flex:1;min-width:0}.secthead b{display:block;font-size:12.5px;font-weight:700}.secthead small{display:block;margin-top:2px;color:var(--muted);font-size:10.5px;line-height:1.45}
+.noteStatus,.countpill{font-family:var(--mono);font-size:8.4px;font-weight:700;letter-spacing:.05em;padding:4px 7px;border-radius:6px;flex:none}.noteStatus.signed{background:var(--green-s);color:var(--green-d)}.noteStatus.draft{background:rgba(210,154,42,.12);color:#8b6415}.countpill{background:rgba(14,26,23,.055);color:var(--muted)}
+.notegrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:13px}.notegrid textarea{min-height:78px}.notegrid .f span{font-size:9.7px;text-transform:uppercase;letter-spacing:.045em}
+.sectionbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 13px;border-top:1px solid var(--line);background:var(--paper)}.sectionbar .muted{flex:1;min-width:180px;font-size:10.4px;color:var(--dim)}
+.signedline{padding:10px 13px;border-top:1px solid var(--line);font-size:10.5px;color:var(--muted)}
+.dxlist{padding:11px 13px}.dxrow{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line)}.dxrow:last-child{border-bottom:0}.dxptr{width:24px;height:24px;border-radius:7px;background:var(--green-s);color:var(--green-d);display:grid;place-items:center;font-family:var(--mono);font-size:10px;font-weight:700;flex:none}.dxedit{flex:1;min-width:0}.dxedit input{width:170px;max-width:100%;padding:7px 9px;border:1px solid var(--line-2);border-radius:8px;background:#fff;font-size:11.5px}.dxdesc{margin-left:8px;font-size:10.5px;color:var(--muted)}.dxpri{font-family:var(--mono);font-size:8px;color:var(--dim);flex:none}.dxempty,.tableempty{padding:16px;text-align:center;color:var(--dim);font-size:11px}.serviceadd{padding:13px;border-top:1px solid var(--line);background:var(--paper)}.feeLine{padding:7px 1px 10px;font-family:var(--mono);font-size:10px;color:var(--dim)}.dxchoose{padding:10px 11px;border:1px solid var(--line-2);border-radius:10px;background:#fff}.dxchoose>b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.045em;margin-bottom:8px}.dxchecks{display:flex;gap:7px;flex-wrap:wrap}.dxpick{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:7px;background:var(--paper-2);font-size:10.5px;color:var(--muted);cursor:pointer}.dxpick input{width:auto}.dxpick b{font-family:var(--mono);color:var(--green-d)}.dxchips{display:flex;gap:4px;flex-wrap:wrap}.dxchip{display:inline-block;padding:3px 6px;border-radius:5px;background:var(--green-s);color:var(--green-d);font-family:var(--mono);font-size:8.5px}.subline{font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.4}.modpill{display:inline-block;margin-top:4px;padding:2px 5px;border-radius:4px;background:rgba(59,111,245,.08);color:var(--blue);font-family:var(--mono);font-size:8px}.dim{color:var(--dim);font-size:10px}.pending{margin-top:9px}.pendhint{padding:7px 9px;background:var(--green-s);color:var(--green-d);font-family:var(--mono);font-size:8.5px;font-weight:700}.pendrow{display:flex;align-items:center;gap:8px;padding:8px 9px;border:1px solid var(--line);border-top:0;background:#fff;font-size:10.5px}.pendrow>b{font-family:var(--mono);flex:none}.pendrow>span{flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pendrow>em{font-family:var(--mono);font-style:normal;color:var(--green-d);flex:none}.pendrow>button{border:0;background:none;color:var(--coral);cursor:pointer;font-size:16px;line-height:1}.ib.del{color:var(--coral);font-size:16px}
+@media(max-width:720px){.notegrid{grid-template-columns:1fr}.dxdesc{display:block;margin:3px 0 0}.dxpri{display:none}.encsection{margin-left:9px;margin-right:9px}}
 
 /* ── notes ── */
 .notes{display:grid;gap:9px;margin-bottom:16px;max-height:340px;overflow-y:auto}
@@ -1063,6 +1109,29 @@ input,select,textarea{font:inherit}
   </div>
 </div>
 
+<!-- PROGRESS SUMMARY -->
+<div class="modal" id="mProgress" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/></svg></span>
+    <div><h3>Progress summary <span class="noteStatus draft" id="pnStatus">DRAFT</span></h3><p id="pnSub">—</p></div>
+    <button class="mx" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody">
+    <div class="notegrid">
+      <label class="f"><span>Subjective</span><textarea id="pn_subjective" rows="4"></textarea></label>
+      <label class="f"><span>Objective</span><textarea id="pn_objective" rows="4"></textarea></label>
+      <label class="f"><span>Assessment · clinical impression</span><textarea id="pn_assessment" rows="4"></textarea></label>
+      <label class="f"><span>Plan</span><textarea id="pn_plan" rows="4"></textarea></label>
+    </div>
+    <div class="signedline" id="pnSignedLine" hidden></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn sec" data-close>Close</button>
+    <span class="sp"></span>
+    <button class="btn pri" id="pnSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Save note</button>
+  </div>
+</div>
+
 
 <script>
 (function(){
@@ -1071,6 +1140,7 @@ input,select,textarea{font:inherit}
   var P=null, APPTS=[], ENCS=[], CLAIMS=[], PROVS=[], ORGS=[], ORG=null, HIST=[], FILES=[];
   var SESS=null, EDIT_INS=null, EDIT_BILL=null, CLAIM_CTX=null;
   var PENDING={};        /* encounter id → service lines typed but not yet saved */
+  var ENC_OPEN={};       /* encounter id → whether its card is expanded */
   var VERIFY=[];         /* eligibility checks run against this chart */
   var FKEY='rf_files_';
 
@@ -1117,6 +1187,35 @@ input,select,textarea{font:inherit}
   scrim.addEventListener('click',closeM);
   document.addEventListener('click',function(e){if(e.target.closest('[data-close]'))closeM();});
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeM();});
+
+  /* ── progress summary modal ── */
+  var NOTE_ENC=null;
+  function openProgressNote(eid){
+    var raw=ENCS.find(function(x){return x.id===eid;});
+    if(!raw)return;
+    var e=normalizeEncounter(raw), note=encounterNote(e), locked=e.status==='locked';
+    NOTE_ENC=eid;
+    $('pnSub').textContent=fmtD(e.dos)+' · '+(e.clinician||'—');
+    var st=$('pnStatus');
+    st.className='noteStatus '+(note.status==='signed'?'signed':'draft');
+    st.textContent=note.status==='signed'?'SIGNED':'DRAFT';
+    ['subjective','objective','assessment','plan'].forEach(function(k){
+      var el=$('pn_'+k); if(!el)return; el.value=note[k]; el.readOnly=locked;
+    });
+    var sl=$('pnSignedLine');
+    if(locked){
+      sl.hidden=false;
+      sl.textContent=note.signed_by?'Signed by '+note.signed_by+' · '+fmtTS(note.signed_at):'Signed clinical documentation';
+    }else{
+      sl.hidden=true; sl.textContent='';
+    }
+    $('pnSave').style.display=locked?'none':'';
+    openM('mProgress');
+  }
+  document.addEventListener('click',function(e){
+    var op=e.target.closest('[data-noteopen]');
+    if(op)openProgressNote(+op.dataset.noteopen);
+  });
 
   /* ── tabs ── */
   $('tabs').addEventListener('click',function(e){
@@ -1266,7 +1365,8 @@ input,select,textarea{font:inherit}
           clinician:(prov&&prov.full_name)||'—',
           clinician_id:a.provider_id||null,
           pos:a.kind==='video'?'10':'11',
-          status:'open',lines:[]
+          status:'open',lines:[],diagnoses:[],
+          progress_note:{subjective:'',objective:'',assessment:'',plan:'',status:'draft'}
         });
       }
     }
@@ -1966,243 +2066,261 @@ input,select,textarea{font:inherit}
   }
 
   /* ══════════ ENCOUNTERS ══════════ */
+  /*
+     Clinical/billing model used by the encounter editor:
+       one encounter -> one clinical note -> many diagnoses -> many service lines.
+     A diagnosis never carries a charge. Each CPT/HCPCS service line carries the
+     charge and points back to one or more encounter diagnoses with dxptrs.
+  */
+  var ENC_OPEN={};
+
+  function dxDesc(code){
+    return (window.RFCodes && RFCodes.icdDesc) ? (RFCodes.icdDesc(code)||'') : '';
+  }
+  function cptDesc(code){
+    return (window.RFCodes && RFCodes.cptDesc) ? (RFCodes.cptDesc(code)||'') : '';
+  }
+  function normalizeEncounter(e){
+    e=e||{};
+    e.lines=Array.isArray(e.lines)?e.lines:[];
+    e.diagnoses=Array.isArray(e.diagnoses)?e.diagnoses:[];
+
+    /* Upgrade old records that stored one dx directly on each CPT line. */
+    e.lines.forEach(function(l){
+      if(!Array.isArray(l.dxptrs)){
+        var code=String(l.dx||'').trim().toUpperCase();
+        if(code){
+          var found=e.diagnoses.find(function(d){return String(d.code||'').toUpperCase()===code;});
+          if(!found){
+            var ptr=String.fromCharCode(65+Math.min(e.diagnoses.length,11));
+            found={pointer:ptr,code:code,description:l.dx_desc||dxDesc(code),priority:e.diagnoses.length+1};
+            e.diagnoses.push(found);
+          }
+          l.dxptrs=[found.pointer];
+        }else l.dxptrs=[];
+      }
+      l.cpt_desc=l.cpt_desc||cptDesc(l.cpt);
+      l.units=parseInt(l.units,10)||1;
+      l.fee=Number(l.fee)||0;
+    });
+    e.diagnoses=e.diagnoses.slice(0,12).map(function(d,i){
+      return {pointer:d.pointer||String.fromCharCode(65+i),code:String(d.code||'').toUpperCase(),
+              description:d.description||dxDesc(d.code),priority:d.priority||i+1};
+    });
+    return e;
+  }
+  function encounterNote(e){
+    var n=e.progress_note||e.clinical_note||{};
+    return {
+      subjective:String(n.subjective||''), objective:String(n.objective||''),
+      assessment:String(n.assessment||''), plan:String(n.plan||''),
+      status:n.status||'draft', signed_at:n.signed_at||'', signed_by:n.signed_by||''
+    };
+  }
+  function encounterTotal(e){
+    return (e.lines||[]).reduce(function(x,l){return x+(Number(l.fee)||0)*(Number(l.units)||1);},0);
+  }
+  function dxMap(e){
+    var m={};(e.diagnoses||[]).forEach(function(d){m[String(d.pointer)]=d;});return m;
+  }
+  function dxLabel(e,ptr){
+    var d=dxMap(e)[String(ptr)];
+    return d ? String(ptr)+'. '+d.code+' — '+(d.description||dxDesc(d.code)) : String(ptr);
+  }
+
   function paintEncounters(){
     $('nEnc').textContent=ENCS.length;
     var open=ENCS.filter(function(e){return e.status==='open';}).length;
     $('encSub').textContent=ENCS.length
-      ? (ENCS.length+' ENCOUNTER'+(ENCS.length===1?'':'S')+(open?' · '+open+' OPEN':''))
-      : '';
-
+      ? (ENCS.length+' ENCOUNTER'+(ENCS.length===1?'':'S')+(open?' · '+open+' OPEN':'')) : '';
     if(!ENCS.length){
-      $('encWrap').innerHTML='<div class="empty">'+
-        '<svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M7 4h10l3 3v13a1 1 0 01-1 1H5a1 1 0 01-1-1V7z"/></svg><br>'+
-        '<b>No encounters yet</b>An encounter is created automatically for every appointment. '+
-        'Book one in the schedule and it appears here.</div>';
+      $('encWrap').innerHTML='<div class="empty"><b>No encounters yet</b>An encounter is created automatically for every appointment. Book one in the schedule and it appears here.</div>';
       return;
     }
 
+    ENCS=ENCS.map(normalizeEncounter);
     $('encWrap').innerHTML=ENCS.map(function(e){
-      var d=new Date(e.dos+'T12:00:00');
-      var locked=e.status==='locked';
-      var lines=e.lines||[];
-      return '<div class="encbox" data-enc="'+e.id+'">'+
-        '<div class="enchead">'+
-          '<span class="d"><b>'+d.toLocaleDateString(undefined,{month:'short'}).toUpperCase()+'</b>'+
-            '<span>'+d.getDate()+'</span></span>'+
-          '<span class="who"><b>'+fmtD(e.dos)+'</b>'+
-            '<small>'+esc(e.clinician||'—').toUpperCase()+
-              ' · POS '+esc(e.pos||'11')+'</small></span>'+
-          '<span class="pill '+(locked?'ok':'warn')+'">'+(locked?'LOCKED':'OPEN')+'</span>'+
-          (e.orphaned_at?'<span class="pill bad" title="'+esc(e.orphan_reason||'')+
-            '"><i></i>NO APPOINTMENT</span>':'')+
-        '</div>'+
-        '<table class="linetbl"><thead><tr>'+
-          '<th style="width:32%">Description · procedure</th>'+
-          '<th style="width:32%">Dx · description</th>'+
-          '<th style="width:11%">Units</th><th style="width:14%">Fee</th>'+
-          '<th style="width:11%"></th></tr></thead><tbody>'+
-        (lines.length?lines.map(function(l,li){
-          return '<tr>'+
-            '<td><b class="mono">'+esc(l.cpt)+'</b><div style="font-size:11.4px;color:var(--muted);margin-top:2px">'+
-              esc(l.cpt_desc||RFCodes.cptDesc(l.cpt))+'</div></td>'+
-            '<td><b class="mono">'+esc(l.dx||'—')+'</b><div style="font-size:11.4px;color:var(--muted);margin-top:2px">'+
-              esc(l.dx_desc||RFCodes.icdDesc(l.dx)||'—')+'</div></td>'+
-            '<td class="mono">'+(l.units||1)+'</td>'+
-            '<td class="money">'+money((l.fee||0)*(l.units||1))+'</td>'+
-            '<td class="r">'+(locked?'':
-              '<button class="ib del" data-lrm="'+e.id+':'+li+'" title="Remove line">'+
-              '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>')+'</td></tr>';
-        }).join(''):'<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--dim);font-size:12px">'+
-          'No procedures added yet.</td></tr>')+
-        '</tbody></table>'+
-        (locked?'':
-        '<div style="padding:12px 14px;border-top:1px solid var(--line);background:var(--paper)">'+
-          '<div class="grid3" style="gap:9px">'+
-            '<label class="f ta"><span>Description · CPT</span>'+
-              '<input type="text" class="lcpt" data-e="'+e.id+'" placeholder="Type a code or description" autocomplete="off"></label>'+
-            '<label class="f ta"><span>Dx · description</span>'+
-              '<input type="text" class="ldx" data-e="'+e.id+'" placeholder="Type a code or description" autocomplete="off"></label>'+
-            '<label class="f"><span>Units</span>'+
-              '<input type="number" class="lun" data-e="'+e.id+'" min="1" value="1"></label>'+
-          '</div>'+
-          '<div class="pending" id="pend'+e.id+'"></div>'+
-          '<div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">'+
-            '<span class="mono" style="font-size:10.6px;color:var(--dim)" id="fee'+e.id+'">Fee will fill from the CPT</span>'+
-            '<span style="flex:1"></span>'+
-            '<button class="btn sec sm" data-ladd="'+e.id+'">'+
-              '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add another line</button>'+
-            '<button class="btn pri sm" data-lsave="'+e.id+'">'+
-              '<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Save lines</button>'+
-          '</div>'+
-        '</div>')+
-        '<div class="encfoot">'+
-          '<span class="mono" style="font-size:10.6px;color:var(--muted)">'+
-            lines.length+' line'+(lines.length===1?'':'s')+' · '+
-            money(lines.reduce(function(x,l){return x+(l.fee||0)*(l.units||1);},0))+'</span>'+
-          '<span class="sp"></span>'+
-          (locked
-            ? '<button class="btn sec sm" data-unlock="'+e.id+'">'+
-              '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8 11V8a4 4 0 018 0"/></svg>Unlock</button>'
-            : '<button class="btn pri sm" data-lock="'+e.id+'"'+(lines.length?'':' disabled')+'>'+
-              '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>Lock encounter</button>')+
-        '</div></div>';
+      var d=new Date(e.dos+'T12:00:00'), locked=e.status==='locked';
+      var lines=e.lines||[], diagnoses=e.diagnoses||[], note=encounterNote(e);
+      var total=encounterTotal(e), isOpen=ENC_OPEN[e.id]!=null?ENC_OPEN[e.id]:!locked;
+      var noteComplete=['subjective','objective','assessment','plan'].every(function(k){return note[k].trim();});
+      var dxHtml=diagnoses.length ? diagnoses.map(function(dx,i){
+        return '<div class="dxrow"><span class="dxptr">'+esc(dx.pointer||String.fromCharCode(65+i))+'</span>'+
+          '<div class="dxedit"><input class="edxcode mono" data-e="'+e.id+'" data-i="'+i+'" value="'+esc(dx.code||'')+'" placeholder="ICD-10 code" autocomplete="off">'+
+          '<span class="dxdesc" id="dxdesc'+e.id+'_'+i+'">'+esc(dx.description||dxDesc(dx.code)||'')+'</span></div>'+
+          '<span class="dxpri">'+(i===0?'PRIMARY':'SECONDARY')+'</span>'+ 
+          (locked?'':'<button type="button" class="ib del" data-dxrm="'+e.id+':'+i+'" title="Remove diagnosis">×</button>')+''+
+          '</div>';
+      }).join('') : '<div class="dxempty">No diagnoses added. Add the diagnoses documented for this encounter before selecting services.</div>';
+      var serviceDx=diagnoses.map(function(dx){
+        return '<label class="dxpick"><input type="checkbox" class="service-dx" value="'+esc(dx.pointer)+'"><span><b>'+esc(dx.pointer)+'</b> '+esc(dx.code)+' — '+esc(dx.description||dxDesc(dx.code)||'')+'</span></label>';
+      }).join('');
+      var lineHtml=lines.length?lines.map(function(l,li){
+        var ptrs=Array.isArray(l.dxptrs)?l.dxptrs:(l.dx?[l.dx]:[]);
+        return '<tr><td><b class="mono">'+esc(l.cpt)+'</b><div class="subline">'+esc(l.cpt_desc||cptDesc(l.cpt))+'</div>'+ 
+          (l.mod?'<span class="modpill">'+esc(l.mod)+'</span>':'')+'</td>'+ 
+          '<td><div class="dxchips">'+(ptrs.length?ptrs.map(function(p){return '<span class="dxchip">'+esc(dxLabel(e,p))+'</span>';}).join(''):'<span class="dim">No diagnosis linked</span>')+'</div></td>'+ 
+          '<td class="mono">'+(l.units||1)+'</td><td class="money">'+money((l.fee||0)*(l.units||1))+'</td>'+ 
+          '<td class="r">'+(locked?'':'<button class="ib del" data-lrm="'+e.id+':'+li+'" title="Remove service">×</button>')+'</td></tr>';
+      }).join(''):'<tr><td colspan="5" class="tableempty">No services added yet.</td></tr>';
+
+      return '<div class="encbox st-'+(locked?'locked':'open')+(isOpen?' open':'')+'" data-enc="'+e.id+'">'+
+        '<div class="enchead" data-enctoggle="'+e.id+'"><span class="d"><b>'+d.toLocaleDateString(undefined,{month:'short'}).toUpperCase()+'</b><span>'+d.getDate()+'</span></span>'+ 
+        '<span class="who"><b>'+fmtD(e.dos)+'</b><small>'+esc(e.clinician||'—').toUpperCase()+' · POS '+esc(e.pos||'11')+'</small></span>'+ 
+        '<span class="pill '+(locked?'ok':'warn')+'">'+(locked?'LOCKED':'OPEN')+'</span>'+ 
+        '<span class="quick">'+money(total)+'<b>'+lines.length+' service'+(lines.length===1?'':'s')+'</b></span><span class="chev"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></div>'+ 
+        '<div class="encbody"><div class="encctx">'+fmtD(e.dos)+' · '+esc(e.clinician||'—')+' · POS '+esc(e.pos||'11')+'</div>'+ 
+        '<section class="encsection"><div class="secthead"><div><b>Progress summary</b><small>Documentation supporting the services performed during this encounter.</small></div>'+
+          '<span class="noteStatus '+(note.status==='signed'?'signed':'draft')+'">'+(note.status==='signed'?'SIGNED':'DRAFT')+'</span></div>'+
+          '<div class="sectionbar"><span class="muted">'+(locked?(note.signed_by?'Signed by '+esc(note.signed_by)+' · '+esc(fmtTS(note.signed_at)):'Signed clinical documentation'):(noteComplete?'Subjective, Objective, Assessment and Plan are complete.':'Complete Subjective, Objective, Assessment and Plan before signing.'))+'</span><button type="button" class="btn sec sm" data-noteopen="'+e.id+'">'+(locked?'View progress summary':'Open progress summary')+'</button></div>'+
+        '</section>'+
+        '<section class="encsection"><div class="secthead"><div><b>Diagnoses</b><small>Enter each diagnosis once for the encounter. Diagnoses do not create charges.</small></div><span class="countpill">'+diagnoses.length+' / 12</span></div>'+ 
+          '<div class="dxlist">'+dxHtml+'</div>'+(!locked?'<div class="sectionbar"><button class="btn sec sm" data-dxadd="'+e.id+'">+ Add diagnosis</button><button class="btn sec sm" data-dxsave="'+e.id+'">Save diagnoses</button><span class="muted">Diagnosis pointers are reused by service lines.</span></div>':'')+ 
+        '</section>'+ 
+        '<section class="encsection"><div class="secthead"><div><b>Services / CPT &amp; HCPCS</b><small>Each billable service is one charge line. Select which encounter diagnoses support that service.</small></div><span class="countpill">'+lines.length+' line'+(lines.length===1?'':'s')+'</span></div>'+ 
+          '<table class="linetbl"><thead><tr><th style="width:27%">CPT / HCPCS</th><th style="width:39%">Diagnosis linkage</th><th style="width:10%">Units</th><th style="width:14%">Charge</th><th style="width:10%"></th></tr></thead><tbody>'+lineHtml+'</tbody></table>'+ 
+          (!locked?'<div class="serviceadd"><div class="grid3"><label class="f ta"><span>CPT / HCPCS</span><input type="text" class="lcpt" data-e="'+e.id+'" placeholder="Search code or description" autocomplete="off"></label><label class="f"><span>Units</span><input type="number" class="lun" data-e="'+e.id+'" min="1" value="1"></label><label class="f"><span>Modifier</span><input type="text" class="lmod" data-e="'+e.id+'" maxlength="5" placeholder="Optional"></label></div>'+ 
+            '<div class="feeLine"><span id="fee'+e.id+'">Fee will fill from the CPT</span></div>'+
+            '<div class="pending" id="pend'+e.id+'"></div>'+
+            '<div class="dxchoose"><b>Diagnosis pointers for this service</b><div class="dxchecks">'+(serviceDx||'<span class="muted">Add at least one diagnosis first.</span>')+'</div></div>'+ 
+            '<div class="sectionbar"><button class="btn sec sm" data-ladd="'+e.id+'">Add service</button><button class="btn pri sm" data-lsave="'+e.id+'">Save services</button><span class="muted">No charge is created for a diagnosis.</span></div></div>':'')+ 
+        '</section>'+ 
+        '<div class="encfoot"><span class="mono">'+lines.length+' service'+(lines.length===1?'':'s')+' · '+diagnoses.length+' diagnosis'+(diagnoses.length===1?'':'es')+' · '+money(total)+'</span><span class="sp"></span>'+ 
+          (locked?'<button class="btn sec sm" data-unlock="'+e.id+'">Unlock</button>':'<button class="btn pri sm" data-lock="'+e.id+'"'+((lines.length&&diagnoses.length&&noteComplete)?'':' disabled')+'>Sign &amp; lock encounter</button>')+ 
+        '</div></div></div>';
     }).join('');
 
-    Object.keys(PENDING).forEach(function(k){ paintPending(+k); });
+    Object.keys(PENDING).forEach(function(k){paintPending(+k);});
+    wireEncounterTypeaheads();
+  }
 
-    /* wire the typeaheads for every open encounter */
+  function wireEncounterTypeaheads(){
     document.querySelectorAll('.lcpt').forEach(function(el){
-      if(el._ta)return;   /* typeahead sets the flag itself */
-      typeahead(el,'cpt',function(c){
-        el.value=c.code+' — '+c.desc;
-        el.dataset.code=c.code;el.dataset.fee=c.fee;el.dataset.desc=c.desc;
-        var lab=$('fee'+el.dataset.e);
-        if(lab)lab.textContent=c.fee
-          ? 'Fee '+money(c.fee)+' from the fee schedule'
-          : 'No fee on file for '+c.code+' — set one in Admin → Master data';
+      if(el._ta)return;
+      typeahead(el,'cpt',function(c){el.value=c.code+' — '+c.desc;el.dataset.code=c.code;el.dataset.fee=c.fee||'';el.dataset.desc=c.desc||'';
+        var lab=$('fee'+el.dataset.e);if(lab)lab.textContent=c.fee?'Fee '+money(c.fee)+' from fee schedule':'No fee on file for '+c.code;
       });
     });
-    document.querySelectorAll('.ldx').forEach(function(el){
+    document.querySelectorAll('.edxcode').forEach(function(el){
       if(el._ta)return;
-      typeahead(el,'icd',function(c){
-        el.value=c.code+' — '+c.desc;el.dataset.code=c.code;el.dataset.desc=c.desc;
-      });
+      typeahead(el,'icd',function(c){el.value=c.code;el.dataset.code=c.code;el.dataset.desc=c.desc||'';var d=$('dxdesc'+el.dataset.e+'_'+el.dataset.i);if(d)d.textContent=c.desc||'';});
     });
   }
 
-  document.addEventListener('click',async function(ev){
-    var add=ev.target.closest('[data-ladd]'),
-        rm=ev.target.closest('[data-lrm]'),
-        lk=ev.target.closest('[data-lock]'),
-        ul=ev.target.closest('[data-unlock]');
-
-    if(add){
-      stageLine(+add.dataset.ladd, add.closest('.encbox'));
-      return;
-    }
-
-    if(ev.target.closest('[data-lsave]')){
-      var sid=+ev.target.closest('[data-lsave]').dataset.lsave;
-      var sbox=ev.target.closest('.encbox');
-      /* anything still typed in the fields counts as a line too */
-      stageLine(sid, sbox, true);
-      var queue=PENDING[sid]||[];
-      if(!queue.length){
-        toast('Nothing to save','Add a procedure first',true);return;
-      }
-      var enc=await RFStore.encounter(sid);
-      if(!enc)return;
-      enc.lines=(enc.lines||[]).concat(queue);
-      var r=await RFStore.saveEncounter(enc);
-      if(!r.ok){toast('Could not save',r.error||'',true);return;}
-      await RFStore.logHistory(P.id,'encounter_line_added',
-        fmtShort(enc.dos)+' · '+queue.length+' line'+(queue.length===1?'':'s')+' · '+
-        queue.map(function(l){return l.cpt;}).join(', '));
-      delete PENDING[sid];
-      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);
-      paintEncounters();paintHistory();
-      toast(queue.length+' line'+(queue.length===1?'':'s')+' saved',
-        money(queue.reduce(function(x,l){return x+(l.fee||0)*(l.units||1);},0))+' added to this encounter');
-      return;
-    }
-
-    var prm=ev.target.closest('[data-prm]');
-    if(prm){
-      var parts2=prm.dataset.prm.split(':');
-      (PENDING[+parts2[0]]||[]).splice(+parts2[1],1);
-      paintPending(+parts2[0]);
-      return;
-    }
-
-    if(rm){
-      var parts=rm.dataset.lrm.split(':');
-      var e2=await RFStore.encounter(+parts[0]);if(!e2)return;
-      var gone=e2.lines.splice(+parts[1],1)[0];
-      await RFStore.saveEncounter(e2);
-      await RFStore.logHistory(P.id,'encounter_line_removed',
-        fmtShort(e2.dos)+' · '+(gone?gone.cpt:'line')+' removed');
-      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);
-      paintEncounters();paintHistory();
-      return;
-    }
-
-    if(lk){
-      var lid=+lk.dataset.lock;
-      if((PENDING[lid]||[]).length){
-        toast('Unsaved lines','Select Save lines before locking this encounter',true);return;
-      }
-      var e3=await RFStore.encounter(lid);if(!e3)return;
-      if(!(e3.lines||[]).length){toast('Nothing to lock','Add at least one procedure',true);return;}
-      e3.status='locked';e3.locked_at=new Date().toISOString();
-      e3.locked_by=SESS?(SESS.name||SESS.username):'system';
-      await RFStore.saveEncounter(e3);
-      await RFStore.logHistory(P.id,'encounter_locked',
-        fmtShort(e3.dos)+' · '+e3.lines.length+' line(s) · '+
-        money(e3.lines.reduce(function(x,l){return x+(l.fee||0)*(l.units||1);},0)));
-      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);
-      paintEncounters();paintBilling();paintHistory();
-      toast('Encounter locked','Charges are now in Billing');
-      return;
-    }
-
-    if(ul){
-      var e4=await RFStore.encounter(+ul.dataset.unlock);if(!e4)return;
-      var claimed=CLAIMS.filter(function(c){return String(c.enc_id)===String(e4.id);})[0];
-      if(claimed){toast('Cannot unlock','Delete claim '+claimed.claim_no+' first',true);return;}
-      e4.status='open';
-      await RFStore.saveEncounter(e4);
-      await RFStore.logHistory(P.id,'encounter_unlocked',fmtShort(e4.dos));
-      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);
-      paintEncounters();paintBilling();paintHistory();
-      toast('Encounter unlocked','Removed from Billing');
-      return;
+  document.addEventListener('click',function(ev){
+    var tg=ev.target.closest('[data-enctoggle]'); if(!tg)return;
+    var id=+tg.dataset.enctoggle,box=tg.closest('.encbox'),open=!box.classList.contains('open');
+    box.classList.toggle('open',open);ENC_OPEN[id]=open;
+    if(open && box.classList.contains('st-locked')){
+      document.querySelectorAll('.encbox.st-locked.open').forEach(function(other){if(other!==box){other.classList.remove('open');ENC_OPEN[+other.dataset.enc]=false;}});
     }
   });
 
+  document.addEventListener('click',async function(ev){
+    var add=ev.target.closest('[data-ladd]'),rm=ev.target.closest('[data-lrm]'),lk=ev.target.closest('[data-lock]'),ul=ev.target.closest('[data-unlock]');
+    if(add){stageService(+add.dataset.ladd,add.closest('.encbox'));return;}
 
-  /* stage a line without writing it yet; quiet when called from Save */
-  function stageLine(eid, box, quiet){
-    if(!box)return false;
-    var cpt=box.querySelector('.lcpt'), dx=box.querySelector('.ldx'), un=box.querySelector('.lun');
-    if(!cpt)return false;
-    var code=(cpt.dataset.code||cpt.value.trim().split(' ')[0]||'').toUpperCase();
-    if(!code){
-      if(!quiet){toast('Choose a procedure','Pick a CPT from the list',true);cpt.focus();}
-      return false;
+    var ns=ev.target.closest('#pnSave');
+    if(ns){
+      var eid=NOTE_ENC;if(eid==null)return;
+      var e=normalizeEncounter(await RFStore.encounter(eid));if(!e)return;
+      e.progress_note=e.progress_note||{};
+      ['subjective','objective','assessment','plan'].forEach(function(k){var el=$('pn_'+k);e.progress_note[k]=el?el.value.trim():(e.progress_note[k]||'');});
+      e.progress_note.status='draft';e.progress_note.updated_at=new Date().toISOString();
+      var r=await RFStore.saveEncounter(e);if(!r.ok){toast('Could not save note',r.error||'',true);return;}
+      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);paintEncounters();paintHistory();closeM();toast('Progress summary saved','The note remains editable until the encounter is signed');return;
     }
-    var dxCode=(dx.dataset.code||dx.value.trim().split(' ')[0]||'').toUpperCase();
-    PENDING[eid]=PENDING[eid]||[];
-    PENDING[eid].push({
-      cpt:code,
-      cpt_desc:cpt.dataset.desc||RFCodes.cptDesc(code)||cpt.value.split(' — ')[1]||'',
-      dx:dxCode,
-      dx_desc:dx.dataset.desc||RFCodes.icdDesc(dxCode)||dx.value.split(' — ')[1]||'',
-      units:parseInt(un.value,10)||1,
-      fee:parseFloat(cpt.dataset.fee)||RFCodes.cptFee(code)||0
-    });
-    cpt.value='';delete cpt.dataset.code;delete cpt.dataset.fee;delete cpt.dataset.desc;
-    dx.value='';delete dx.dataset.code;delete dx.dataset.desc;
-    un.value='1';
-    var lab=$('fee'+eid); if(lab)lab.textContent='Fee will fill from the CPT';
-    paintPending(eid);
-    cpt.focus();
-    return true;
+
+    var da=ev.target.closest('[data-dxadd]');
+    if(da){
+      var box=da.closest('.encbox'),eid2=+da.dataset.dxadd, list=box.querySelector('.dxlist'), count=list.querySelectorAll('.dxrow').length;
+      if(count>=12){toast('Diagnosis limit reached','A professional claim supports up to 12 diagnosis pointers',true);return;}
+      var i=count;
+      list.insertAdjacentHTML('beforeend','<div class="dxrow"><span class="dxptr">'+String.fromCharCode(65+i)+'</span><div class="dxedit"><input class="edxcode mono" data-e="'+eid2+'" data-i="'+i+'" value="" placeholder="ICD-10 code" autocomplete="off"><span class="dxdesc" id="dxdesc'+eid2+'_'+i+'"></span></div><span class="dxpri">'+(i===0?'PRIMARY':'SECONDARY')+'</span><button type="button" class="ib del" data-dxrm="'+eid2+':'+i+'" title="Remove diagnosis">×</button></div>');
+      wireEncounterTypeaheads();box.querySelector('.edxcode[data-i="'+i+'"]').focus();return;
+    }
+
+    var dr=ev.target.closest('[data-dxrm]');
+    if(dr){
+      var pp=dr.dataset.dxrm.split(':'),dbox=dr.closest('.encbox');var row=dr.closest('.dxrow');if(row)row.remove();
+      /* Re-numbering happens on save; repainting after save keeps pointers stable. */
+      return;
+    }
+
+    var ds=ev.target.closest('[data-dxsave]');
+    if(ds){
+      var eid3=+ds.dataset.dxsave,eb=ds.closest('.encbox'),enc=normalizeEncounter(await RFStore.encounter(eid3));if(!enc)return;
+      var rows=Array.from(eb.querySelectorAll('.dxrow')), out=[];
+      rows.forEach(function(row,idx){var inp=row.querySelector('.edxcode');var code=(inp&&((inp.dataset.code||inp.value)||'').trim()).toUpperCase();if(code)out.push({pointer:String.fromCharCode(65+out.length),code:code,description:(inp&&inp.dataset.desc)||dxDesc(code),priority:out.length+1});});
+      if(!out.length){toast('Diagnosis required','Add at least one ICD-10 diagnosis before saving services',true);return;}
+      var oldDx=(enc.diagnoses||[]).slice();
+      enc.diagnoses=out;
+      /* Re-map existing service pointers by diagnosis code, not by row number. */
+      enc.lines=(enc.lines||[]).map(function(l){
+        var codes=[];
+        if(Array.isArray(l.dxptrs)) l.dxptrs.forEach(function(ptr){
+          var old=oldDx.find(function(d){return String(d.pointer)===String(ptr);});
+          if(old){var hit=out.find(function(d){return String(d.code).toUpperCase()===String(old.code).toUpperCase();});if(hit)codes.push(hit.pointer);}
+        });
+        if(!codes.length&&l.dx){var hit2=out.find(function(d){return d.code===String(l.dx).toUpperCase();});if(hit2)codes=[hit2.pointer];}
+        return Object.assign({},l,{dxptrs:codes});
+      });
+      var r2=await RFStore.saveEncounter(enc);if(!r2.ok){toast('Could not save diagnoses',r2.error||'',true);return;}
+      await RFStore.logHistory(P.id,'encounter_diagnoses_saved',fmtShort(enc.dos)+' · '+out.map(function(d){return d.pointer+' '+d.code;}).join(', '));
+      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);paintEncounters();paintHistory();toast('Diagnoses saved','Diagnosis codes do not create charges');return;
+    }
+
+    if(ev.target.closest('[data-lsave]')){
+      var sid=+ev.target.closest('[data-lsave]').dataset.lsave,sbox=ev.target.closest('.encbox');stageService(sid,sbox,true);
+      var queue=PENDING[sid]||[];if(!queue.length){toast('Nothing to save','Add a service first',true);return;}
+      var enc2=normalizeEncounter(await RFStore.encounter(sid));if(!enc2)return;
+      enc2.lines=(enc2.lines||[]).concat(queue);
+      var r3=await RFStore.saveEncounter(enc2);if(!r3.ok){toast('Could not save services',r3.error||'',true);return;}
+      await RFStore.logHistory(P.id,'encounter_service_added',fmtShort(enc2.dos)+' · '+queue.map(function(l){return l.cpt;}).join(', '));delete PENDING[sid];
+      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);paintEncounters();paintHistory();toast(queue.length+' service'+(queue.length===1?'':'s')+' saved','Only CPT/HCPCS service lines contribute charges');return;
+    }
+
+    var prm=ev.target.closest('[data-prm]');if(prm){var p2=prm.dataset.prm.split(':');(PENDING[+p2[0]]||[]).splice(+p2[1],1);paintPending(+p2[0]);return;}
+
+    if(rm){
+      var parts=rm.dataset.lrm.split(':'),e2=normalizeEncounter(await RFStore.encounter(+parts[0]));if(!e2)return;var gone=e2.lines.splice(+parts[1],1)[0];await RFStore.saveEncounter(e2);await RFStore.logHistory(P.id,'encounter_service_removed',fmtShort(e2.dos)+' · '+(gone?gone.cpt:'service')+' removed');ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);paintEncounters();paintHistory();return;
+    }
+
+    if(lk){
+      var lid=+lk.dataset.lock;if((PENDING[lid]||[]).length){toast('Unsaved services','Select Save services before signing',true);return;}
+      var e3=normalizeEncounter(await RFStore.encounter(lid));if(!e3)return;
+      var n3=encounterNote(e3),noteOK=['subjective','objective','assessment','plan'].every(function(k){return n3[k].trim();});
+      if(!e3.diagnoses.length){toast('Diagnosis required','Add and save at least one diagnosis',true);return;}
+      if(!e3.lines.length){toast('Service required','Add at least one CPT/HCPCS service',true);return;}
+      if(!noteOK){toast('Clinical note incomplete','Complete and save Subjective, Objective, Assessment and Plan before signing',true);return;}
+      var badLine=(e3.lines||[]).find(function(l){return !Array.isArray(l.dxptrs)||!l.dxptrs.length;});
+      if(badLine){toast('Diagnosis linkage required',badLine.cpt+' has no diagnosis pointer',true);return;}
+      e3.progress_note=e3.progress_note||{};e3.progress_note.status='signed';e3.progress_note.signed_at=new Date().toISOString();e3.progress_note.signed_by=SESS?(SESS.name||SESS.username):'system';
+      e3.status='locked';e3.locked_at=new Date().toISOString();e3.locked_by=SESS?(SESS.name||SESS.username):'system';
+      var r4=await RFStore.saveEncounter(e3);if(!r4.ok){toast('Could not sign encounter',r4.error||'',true);return;}
+      await RFStore.logHistory(P.id,'encounter_locked',fmtShort(e3.dos)+' · '+e3.lines.length+' service(s) · '+money(encounterTotal(e3)));
+      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);paintEncounters();paintBilling();paintHistory();toast('Encounter signed and locked','Services are now available for billing');return;
+    }
+
+    if(ul){
+      var e4=normalizeEncounter(await RFStore.encounter(+ul.dataset.unlock));if(!e4)return;var claimed=CLAIMS.filter(function(c){return String(c.enc_id)===String(e4.id);})[0];if(claimed){toast('Cannot unlock','Delete claim '+claimed.claim_no+' first',true);return;}
+      e4.status='open';if(e4.progress_note)e4.progress_note.status='draft';await RFStore.saveEncounter(e4);await RFStore.logHistory(P.id,'encounter_unlocked',fmtShort(e4.dos));ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);paintEncounters();paintBilling();paintHistory();toast('Encounter unlocked','It is editable again and removed from billing');return;
+    }
+  });
+
+  function stageService(eid,box,quiet){
+    if(!box)return false;
+    var cpt=box.querySelector('.lcpt'),un=box.querySelector('.lun'),mod=box.querySelector('.lmod');if(!cpt)return false;
+    var code=(cpt.dataset.code||cpt.value.trim().split(' ')[0]||'').toUpperCase();if(!code){if(!quiet){toast('Choose a CPT/HCPCS','Pick a procedure from the list',true);cpt.focus();}return false;}
+    var ptrs=Array.from(box.querySelectorAll('.service-dx:checked')).map(function(x){return x.value;});
+    if(!ptrs.length){if(!quiet)toast('Link a diagnosis','Select at least one diagnosis pointer for this service',true);return false;}
+    PENDING[eid]=PENDING[eid]||[];PENDING[eid].push({cpt:code,cpt_desc:cpt.dataset.desc||cptDesc(code)||cpt.value.split(' — ')[1]||'',mod:(mod&&mod.value.trim().toUpperCase())||'',dxptrs:ptrs,units:parseInt(un.value,10)||1,fee:parseFloat(cpt.dataset.fee)||RFCodes.cptFee(code)||0});
+    cpt.value='';delete cpt.dataset.code;delete cpt.dataset.fee;delete cpt.dataset.desc;if(mod)mod.value='';un.value='1';box.querySelectorAll('.service-dx').forEach(function(x){x.checked=false;});var lab=$('fee'+eid);if(lab)lab.textContent='Fee will fill from the CPT';paintPending(eid);cpt.focus();return true;
   }
 
   function paintPending(eid){
-    var box=$('pend'+eid);
-    if(!box)return;
-    var q=PENDING[eid]||[];
-    if(!q.length){box.innerHTML='';return;}
-    box.innerHTML='<div class="pendhint">'+q.length+' LINE'+(q.length===1?'':'S')+
-        ' READY — SELECT SAVE LINES TO COMMIT</div>'+
-      q.map(function(l,i){
-        return '<div class="pendrow"><b>'+esc(l.cpt)+'</b>'+
-          '<span>'+esc(l.cpt_desc||'')+(l.dx?' · '+esc(l.dx):'')+'</span>'+
-          '<em>'+(l.units>1?l.units+' × ':'')+money(l.fee)+'</em>'+
-          '<button type="button" data-prm="'+eid+':'+i+'" aria-label="Remove">'+
-          '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
-      }).join('');
+    var box=document.getElementById('pend'+eid);if(!box)return;var q=PENDING[eid]||[];if(!q.length){box.innerHTML='';return;}
+    box.innerHTML='<div class="pendhint">'+q.length+' SERVICE'+(q.length===1?'':'S')+' READY — SELECT SAVE SERVICES TO COMMIT</div>'+q.map(function(l,i){return '<div class="pendrow"><b>'+esc(l.cpt)+'</b><span>'+esc(l.cpt_desc||'')+' · '+esc((l.dxptrs||[]).join(', '))+'</span><em>'+(l.units>1?l.units+' × ':'')+money(l.fee)+'</em><button type="button" data-prm="'+eid+':'+i+'" aria-label="Remove">×</button></div>';}).join('');
   }
 
   /* ══════════ BILLING ══════════ */
@@ -2511,6 +2629,18 @@ input,select,textarea{font:inherit}
     if(/workers/.test(t+n))return 'WC';
     return 'CI';
   }
+  /* box 1 of the claim form: Medicare, Medicaid, TRICARE, CHAMPVA, workers
+     comp/FECA/black lung, or Other — set from the payer the claim is going
+     to, so the biller does not have to pick it by hand every time */
+  function instypeOf(ins){
+    var t=String((ins&&ins.plan_type)||'').toLowerCase();
+    if(/medicare/.test(t))return 'MB';
+    if(/medicaid/.test(t))return 'MC';
+    if(/champva/.test(t))return 'CH2';
+    if(/tricare/.test(t))return 'CH';
+    if(/workers/.test(t))return 'WC';
+    return 'OT';
+  }
   function sexChar(v){
     var x=String(v||'').trim().toUpperCase();
     return x.indexOf('F')===0?'F':x.indexOf('M')===0?'M':'';
@@ -2557,7 +2687,8 @@ input,select,textarea{font:inherit}
     var pa=splitAddr(P.address);
     var sa=rel==='18'?pa:splitAddr((sub&&sub.address)||P.address);
 
-    var dx=[];
+    var dx=(e.diagnoses||[]).map(function(d){return d.code||'';}).filter(Boolean);
+    /* Backward compatibility for encounters created by older builds. */
     (e.lines||[]).forEach(function(l){ if(l.dx&&dx.indexOf(l.dx)<0)dx.push(l.dx); });
 
     return {
@@ -2566,7 +2697,7 @@ input,select,textarea{font:inherit}
       send_method:'electronic',
       payer:ins.name||'', payer_id:ins.payer_id||'',
       payer_address:ins.address||payerAddressFor(ins)||'',
-      filing:insuranceKind(ins), responsibility:'P',
+      filing:insuranceKind(ins), insurance_type:instypeOf(ins), responsibility:'P',
       /* billing provider */
       org_id:org.id||null, org_name:org.name||'', org_npi:org.npi||'',
       tax_id:org.tax_id||'', tax_type:'EI', taxonomy:org.taxonomy||prov.taxonomy||'',
@@ -2604,7 +2735,12 @@ input,select,textarea{font:inherit}
       lines:(e.lines||[]).map(function(l){
         return { cpt:l.cpt||'', mod:l.mod||'', mod2:'', desc:l.cpt_desc||'',
                  charge:+l.fee||0, units:+l.units||1, unit_type:'UN',
-                 dxptrs:l.dx?[Math.max(1,dx.indexOf(l.dx)+1)]:[1],
+                 dxptrs:(Array.isArray(l.dxptrs)&&l.dxptrs.length
+                   ? l.dxptrs.map(function(ptr){
+                       var hit=(e.diagnoses||[]).find(function(d){return String(d.pointer)===String(ptr);});
+                       return hit ? Math.max(1,dx.indexOf(hit.code)+1) : 1;
+                     })
+                   : (l.dx?[Math.max(1,dx.indexOf(l.dx)+1)]:[1])),
                  from:e.dos, to:e.dos, pos:e.pos||'11', emg:'N' };
       }),
       total:r?r.fee:0

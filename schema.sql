@@ -178,6 +178,10 @@ CREATE TABLE IF NOT EXISTS encounters (
   created_by TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS enc_patient_idx ON encounters (patient_ref, dos DESC);
+-- Professional encounter documentation: one clinical note per encounter.
+-- Service lines carry charges; diagnoses are stored once and referenced by pointer.
+ALTER TABLE encounters ADD COLUMN IF NOT EXISTS diagnoses JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE encounters ADD COLUMN IF NOT EXISTS progress_note JSONB DEFAULT '{}'::jsonb;
 
 CREATE TABLE IF NOT EXISTS claims (
   id BIGSERIAL PRIMARY KEY,

@@ -12,11 +12,23 @@ const KINDS = {
   claim:         { write:['admin','supervisor','employee','provider'] },
   org:           { write:['admin'] },
   provider:      { write:['admin','supervisor'] },
-  payer:         { write:['admin'] },
-  master:        { write:['admin'] },
+  payer:         { write:['admin','supervisor','employee','frontoffice','billing'] },
+  /* Reference data is practice administration, not clinical work. Whoever runs
+     the practice maintains it — which in most setups is a front-office or
+     supervisor account, not one whose role literally reads 'admin'. Locking
+     this to 'admin' meant an uploaded code list was refused with a 403 that
+     nothing surfaced. */
+  master:        { write:['admin','supervisor','employee','frontoffice','billing'] },
   task:          { write:['admin','supervisor','scheduler','provider','employee'] },
   credentialing: { write:['admin','supervisor'] },
-  history:       { write:['admin','supervisor','scheduler','provider','employee'] }
+  history:       { write:['admin','supervisor','scheduler','provider','employee'] },
+  /* Practice documents — fee schedules, contracts, correspondence. Who may
+     *read* one is decided by the record itself, not by role, so the write list
+     is simply everyone who works here. */
+  document:      { write:['admin','supervisor','scheduler','provider','employee',
+                          'frontoffice','billing'] },
+  /* Payer enrolments — ERA, EFT, eligibility. Practice level, not per clinician. */
+  payerenrolment:{ write:['admin','supervisor','employee','frontoffice','billing'] }
 };
 
 /* PHI, and therefore logged in full. The rest is reference data. */
@@ -56,6 +68,13 @@ function columns(kind, r){
   }else if(kind === 'master'){
     c.status = r.set || null;                    /* the code set, for filtering */
     c.search = [r.code, r.description].filter(Boolean).map(low).join(' ');
+  }else if(kind === 'payerenrolment'){
+    c.status = r.stage || 'Not started';
+    c.search = [r.payer, r.kind, r.submission_id].filter(Boolean).map(low).join(' ');
+  }else if(kind === 'document'){
+    c.status = r.category || 'other';
+    c.search = [r.name, r.ref, r.note, r.tags].filter(Boolean)
+                 .map(low).join(' ').slice(0, 400);
   }else if(kind === 'org'){
     c.search = low(r.name);
   }else if(kind === 'task'){
@@ -150,7 +169,8 @@ exports.handler = async (event) => {
     if(action === 'save'){
       const allowed = KINDS[kind].write;
       if(allowed.indexOf(me.role) < 0)
-        return L.J(403, { error:'Your role may not change ' + kind + ' records' });
+        return L.J(403, { error:'Your role (' + me.role + ') may not change ' +
+          kind + ' records. Allowed: ' + allowed.join(', ') + '.' });
 
       const rec = body.record;
       if(!rec) return L.J(400, { error:'No record supplied' });

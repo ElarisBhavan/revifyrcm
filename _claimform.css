@@ -11,7 +11,7 @@
 
 .cf{position:fixed;z-index:2147482100;inset:auto;
   left:50%;top:50%;transform:translate(-50%,-48%) scale(.985);
-  width:min(1120px,calc(100vw - 40px));height:min(880px,calc(100vh - 48px));
+  width:min(1440px,calc(100vw - 40px));height:min(880px,calc(100vh - 48px));
   display:flex;flex-direction:column;overflow:hidden;
   border-radius:22px;
   background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(252,251,248,.94));
@@ -252,3 +252,188 @@
 }
 @media print{.cf-scrim,.cf-nav,.cf-foot,.cf-head .cf-x{display:none!important}
   .cf{position:static;transform:none;width:auto;height:auto;box-shadow:none;border:none}}
+
+/* ── a claim the payer already holds ── */
+.cf-lock{display:flex;gap:12px;margin:0 0 18px;padding:14px 16px;border-radius:13px;
+  background:var(--amber-s,#FBF2DC);border:1px solid rgba(192,134,22,.26)}
+.cf-lock[hidden]{display:none}
+.cf-lock svg{width:17px;height:17px;stroke:#C08616;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;flex:none;margin-top:1px}
+.cf-lock span{font-size:12.6px;line-height:1.6;color:#7A5507}
+.cf-lock b{display:block;font-family:'Sora',sans-serif;font-size:13.4px;margin-bottom:3px}
+.cf-lock.open{background:var(--green-s,#DFF5EC);border-color:rgba(14,157,115,.24)}
+.cf-lock.open svg{stroke:#0A5C46}
+.cf-lock.open span{color:#0A5C46}
+
+/* read-only fields should look settled rather than broken */
+.cf-locked input[readonly],
+.cf-locked textarea[readonly],
+.cf-locked select:disabled{
+  background:rgba(14,26,23,.035);color:var(--muted,#5C6A66);
+  border-color:rgba(14,26,23,.09);cursor:default}
+.cf-locked input[readonly]:focus,
+.cf-locked textarea[readonly]:focus{box-shadow:none;border-color:rgba(14,26,23,.09)}
+.cf-locked button:disabled{opacity:.4;cursor:not-allowed}
+/* the submission type stays live, and should look it */
+.cf-locked #cf_freq,.cf-locked #cf_orig{
+  background:#fff;color:var(--ink,#0E1A17);border-color:rgba(192,134,22,.5);
+  box-shadow:0 0 0 3px rgba(192,134,22,.12);cursor:pointer}
+
+/* ══════════════════════════════════════════════════════════════
+   CMS-1500 layout
+
+   The boxes are numbered and placed as they are on the paper form, so a
+   biller checking a claim against a printout or a payer's rejection —
+   which cite box numbers — can find the field being complained about
+   without translating anything.
+   ══════════════════════════════════════════════════════════════ */
+
+.cf-1500{--b:rgba(14,26,23,.13);--bs:rgba(14,26,23,.07)}
+.cf-1500 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1px;background:var(--b);border:1px solid var(--b);border-radius:12px;overflow:hidden}
+
+.bx{background:#fff;padding:13px 15px;min-width:0;display:flex;flex-direction:column}
+.bx.span2{grid-column:span 2}
+.bx.span3{grid-column:span 3}
+.bx.muted{background:var(--paper-2,#F4F2EC)}
+.bx.muted .bxh{opacity:.7}
+
+.bxh{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.bxn{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 5px;
+  border-radius:5px;background:var(--ink,#0E1A17);color:#fff;flex:none;
+  font-family:var(--mono,ui-monospace);font-size:9.6px;font-weight:700;line-height:1}
+.bxn.sub{background:var(--muted,#5C6A66)}
+.bxh h4{font-size:12.4px;font-weight:600;letter-spacing:-.012em;line-height:1.3}
+.bxh .req{color:#CE5F3E;font-weight:700}
+.bxh .why{margin-left:auto;width:16px;height:16px;border-radius:50%;flex:none;
+  border:1px solid var(--b);background:none;cursor:help;
+  font-family:var(--mono,ui-monospace);font-size:9px;color:var(--dim,#8A9A97);
+  display:grid;place-items:center;padding:0}
+.bxh .why:hover{border-color:var(--green,#0E9D73);color:var(--green-d,#0A5C46)}
+
+.bxr{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:9px}
+.bxr:last-child{margin-bottom:0}
+.bxf{display:flex;flex-direction:column;min-width:0;flex:1 1 96px}
+.bxf.w2{flex:2 1 150px}
+.bxf.w3{flex:3 1 220px}
+.bxf.sm{flex:0 0 74px}
+.bxf.full{flex:1 1 100%}
+.bxf > label{font-size:10.4px;color:var(--muted,#5C6A66);margin-bottom:4px;
+  display:flex;align-items:center;gap:4px}
+.bxf > label .req{color:#CE5F3E;font-weight:700}
+.bxf input,.bxf select,.bxf textarea{width:100%;padding:9px 11px;border-radius:9px;
+  border:1px solid var(--b);background:var(--paper-2,#F4F2EC);font-size:12.8px;
+  transition:border-color .2s,box-shadow .2s,background .2s}
+.bxf input:hover:not([readonly]),.bxf select:hover:not(:disabled){background:#fff}
+.bxf input:focus,.bxf select:focus,.bxf textarea:focus{outline:none;background:#fff;
+  border-color:var(--green,#0E9D73);box-shadow:0 0 0 3px rgba(14,157,115,.13)}
+.bxf input.mono{font-family:var(--mono,ui-monospace);font-size:12.2px}
+.bxf .fh{font-size:10px;color:var(--dim,#8A9A97);margin-top:4px;line-height:1.4}
+.bxf .fh.bad{color:#CE5F3E}
+.bxf input.err,.bxf select.err{border-color:#CE5F3E;background:#FBEAE4}
+
+/* the yes/no and radio rows the paper form uses everywhere */
+.opts{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.opt{display:inline-flex;align-items:center;gap:7px;font-size:12.4px;cursor:pointer}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt i{width:15px;height:15px;border-radius:50%;border:1.6px solid var(--b);
+  background:#fff;flex:none;display:grid;place-items:center;transition:all .2s}
+.opt i::after{content:'';width:7px;height:7px;border-radius:50%;background:#fff;
+  transform:scale(0);transition:transform .2s cubic-bezier(.34,1.4,.64,1)}
+.opt input:checked + i{border-color:var(--green-d,#0A5C46);background:var(--green-d,#0A5C46)}
+.opt input:checked + i::after{transform:scale(1)}
+.opt input:disabled + i{opacity:.45}
+
+/* box 21, the diagnosis pointers A–L */
+.dxgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.dxc{display:flex;flex-direction:column}
+.dxc > label{font-size:10.4px;color:var(--muted,#5C6A66);margin-bottom:4px}
+.dxc input{font-family:var(--mono,ui-monospace);text-transform:uppercase}
+.dxc .desc{font-size:9.6px;color:var(--dim,#8A9A97);margin-top:3px;line-height:1.35;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:700px){.dxgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* box 24, the service lines */
+.svc{border:1px solid var(--b);border-radius:11px;overflow:hidden}
+.svch,.svcr{display:grid;
+  grid-template-columns:34px 1.5fr .8fr .5fr 1.4fr 1.2fr .9fr .7fr .5fr 1.1fr 36px;
+  gap:8px;align-items:center;padding:8px 11px}
+.svch{background:var(--paper-2,#F4F2EC);border-bottom:1px solid var(--b);
+  font-family:var(--mono,ui-monospace);font-size:8.2px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--dim,#8A9A97)}
+.svcr{border-bottom:1px solid var(--bs)}
+.svcr:last-child{border-bottom:none}
+.svcn{display:grid;place-items:center;width:22px;height:22px;border-radius:6px;
+  background:var(--paper-2,#F4F2EC);font-family:var(--mono,ui-monospace);
+  font-size:9.6px;font-weight:700;color:var(--muted,#5C6A66)}
+.svcr input,.svcr select{width:100%;padding:7px 8px;border-radius:7px;border:1px solid var(--b);
+  background:#fff;font-size:11.8px;font-family:var(--mono,ui-monospace)}
+.svcr input:focus,.svcr select:focus{outline:none;border-color:var(--green,#0E9D73);
+  box-shadow:0 0 0 2px rgba(14,157,115,.13)}
+.svcr .chg{text-align:right;font-weight:600}
+.svcadd{display:flex;align-items:center;gap:9px;padding:10px 11px;
+  border-top:1px solid var(--b);background:var(--paper-2,#F4F2EC)}
+.svctot{margin-left:auto;font-family:'Sora',sans-serif;font-size:14.5px;font-weight:600;
+  letter-spacing:-.03em}
+@media (max-width:960px){
+  .svch{display:none}
+  .svcr{grid-template-columns:34px 1fr 1fr;gap:7px;padding:11px}
+  .svcr .wide{grid-column:2/-1}
+  .svcr [data-l]::before{content:attr(data-l);display:block;
+    font-family:var(--mono,ui-monospace);font-size:8px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--dim,#8A9A97);margin-bottom:3px}
+}
+
+/* narrow: one column, as the paper form reads top to bottom anyway */
+@media (max-width:900px){
+  .cf-1500 .grid{grid-template-columns:1fr}
+  .bx.span2,.bx.span3{grid-column:span 1}
+}
+
+/* independent checkboxes — the claim identifier, 11d, and any other
+   yes/no or multi-select that is not a mutually exclusive radio group */
+.chk{display:inline-flex;align-items:center;gap:7px;font-size:12.4px;cursor:pointer}
+.chk input{position:absolute;opacity:0;pointer-events:none}
+.chk i{width:15px;height:15px;border-radius:4px;border:1.6px solid var(--b);
+  background:#fff;flex:none;display:grid;place-items:center;transition:all .2s}
+.chk i::after{content:'';width:8px;height:5px;border-left:2px solid #fff;
+  border-bottom:2px solid #fff;transform:rotate(-45deg) scale(0);margin-top:-2px;transition:transform .2s}
+.chk input:checked + i{border-color:var(--green-d,#0A5C46);background:var(--green-d,#0A5C46)}
+.chk input:checked + i::after{transform:rotate(-45deg) scale(1)}
+.chk input:disabled + i{opacity:.45}
+
+/* box 9, live only when 11d says there is another health benefit plan */
+.bx.dim-off{opacity:.5}
+.bx.dim-off .bxf input{background:var(--paper-2,#F4F2EC);cursor:not-allowed}
+
+/* box 21 — a code field that offers matches as you focus or type */
+.dxc{position:relative}
+.dxlist-drop{position:absolute;z-index:40;left:0;right:0;top:calc(100% + 4px);
+  max-height:220px;overflow:auto;background:#fff;border:1px solid var(--b);
+  border-radius:10px;box-shadow:0 18px 40px -16px rgba(14,26,23,.3);
+  opacity:0;visibility:hidden;transform:translateY(-4px);
+  transition:opacity .16s,transform .16s,visibility .16s}
+.dxlist-drop.on{opacity:1;visibility:visible;transform:translateY(0)}
+.dxlist-drop .dxi{display:block;width:100%;text-align:left;padding:7px 10px;
+  border-bottom:1px solid var(--bs);font-size:11.6px;cursor:pointer;background:none}
+.dxlist-drop .dxi:last-child{border-bottom:none}
+.dxlist-drop .dxi:hover,.dxlist-drop .dxi.hi{background:var(--paper-2,#F4F2EC)}
+.dxlist-drop .dxi b{font-family:var(--mono,ui-monospace);margin-right:6px}
+.dxlist-drop .dxi span{color:var(--muted,#5C6A66)}
+.dxlist-drop .dxnone{padding:9px 10px;font-size:11px;color:var(--dim,#8A9A97)}
+
+/* box 24 — diagnosis pointers as an actual A–L checkbox grid, 4 columns
+   of up to 3 rows, rather than a typed string of letters */
+.ptrgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:3px 6px}
+.ptrchk{display:inline-flex;align-items:center;gap:3px;font-family:var(--mono,ui-monospace);
+  font-size:10px;cursor:pointer;white-space:nowrap}
+.ptrchk input{position:absolute;opacity:0;pointer-events:none}
+.ptrchk i{width:13px;height:13px;border-radius:4px;border:1.4px solid var(--b);
+  background:#fff;flex:none;display:grid;place-items:center;transition:all .16s}
+.ptrchk i::after{content:'';width:6px;height:4px;border-left:1.6px solid #fff;
+  border-bottom:1.6px solid #fff;transform:rotate(-45deg) scale(0);margin-top:-1px;transition:transform .16s}
+.ptrchk input:checked + i{border-color:var(--green-d,#0A5C46);background:var(--green-d,#0A5C46)}
+.ptrchk input:checked + i::after{transform:rotate(-45deg) scale(1)}
+.ptrchk input:disabled:not(:checked) + i{opacity:.35}
+.ptrchk input:disabled:not(:checked) ~ b{opacity:.35}
+@media (max-width:960px){.ptrgrid{grid-template-columns:repeat(6,1fr)}}

@@ -40,23 +40,16 @@ input,select{font:inherit}
 @keyframes flow{to{stroke-dashoffset:-160}}
 
 /* ── header ── */
-.hdr{position:relative;z-index:3;display:flex;align-items:center;gap:14px;padding:clamp(14px,2vw,22px) clamp(16px,3.2vw,42px);border-bottom:1px solid var(--line);background:rgba(251,250,246,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.brand{display:flex;align-items:center;gap:9px}
 .brand svg{width:24px;height:24px}
-.brand span{font-family:'Sora',sans-serif;font-size:15.5px;font-weight:600;letter-spacing:-.035em}
 .brand em{font-style:normal;color:var(--accent);font-weight:400;font-size:.9em;margin-left:4px}
-.crumb{margin-left:14px;padding-left:14px;border-left:1px solid var(--line-2);font-size:13px;color:var(--muted)}
 .crumb b{color:var(--ink);font-weight:600}
 .hactions{margin-left:auto;display:flex;gap:9px}
-.hbtn{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:99px;border:1px solid var(--line-2);background:rgba(255,255,255,.66);font-size:13px;font-weight:600;transition:all .35s var(--ease)}
 .hbtn svg{width:15px;height:15px;stroke:var(--accent);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .35s var(--ease)}
 .hbtn:hover{border-color:var(--accent);background:#fff;transform:translateX(-2px)}
 .hbtn:hover svg{transform:translateX(-3px)}
-.hbtn.out:hover{border-color:var(--danger);background:rgba(196,87,59,.07);color:#9E4029;transform:none}
-.hbtn.out:hover svg{stroke:var(--danger);transform:translateX(3px)}
 
 /* ── page ── */
-.wrap{position:relative;z-index:2;flex:1;width:100%;max-width:1080px;margin:0 auto;padding:clamp(20px,3vw,38px) clamp(16px,3.2vw,42px) clamp(34px,4vw,58px)}
+.wrap{position:relative;z-index:2;flex:1;width:100%;max-width:1360px;margin:0 auto;padding:clamp(20px,3vw,38px) clamp(16px,3.2vw,42px) clamp(34px,4vw,58px)}
 .ptop{margin-bottom:clamp(20px,2.6vw,32px);opacity:0;transform:translateY(16px);animation:up .8s var(--ease) .08s forwards}
 @keyframes up{to{opacity:1;transform:none}}
 .kick{display:inline-flex;align-items:center;gap:8px;padding:5px 13px;border-radius:99px;border:1px solid var(--line-2);background:rgba(255,255,255,.7);font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:13px}
@@ -211,6 +204,62 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 .hint.setup{color:var(--amber,#C08616);margin-top:6px;line-height:1.5}
 .hint.setup b{color:inherit}
 select:disabled{opacity:.6;cursor:not-allowed}
+
+/* ══ page header ══
+   One definition, identical on every provider page. Several pages were missing
+   .hin, .hact or .rf-who and fell back to whatever else happened to apply,
+   which is why the buttons sat differently from screen to screen. */
+.hdr{position:sticky;top:0;z-index:60;border-bottom:1px solid var(--line,rgba(13,26,22,.08));
+  background:rgba(250,248,243,.86);backdrop-filter:blur(20px) saturate(170%);
+  -webkit-backdrop-filter:blur(20px) saturate(170%)}
+.hin{max-width:1600px;margin:0 auto;padding:11px clamp(14px,2.4vw,30px);
+  display:flex;align-items:center;gap:11px;min-height:58px}
+.hdr .brand{display:flex;align-items:center;gap:10px;flex:none}
+.hdr .brand .mk{width:28px;height:28px;border-radius:9px;display:block}
+.hdr .brand span{font-family:'Sora',sans-serif;font-size:15px;font-weight:600;
+  letter-spacing:-.036em;white-space:nowrap;line-height:1}
+.hdr .brand em{font-style:normal;color:var(--green-d,#0A5C46)}
+.crumb{margin-left:12px;padding-left:12px;border-left:1px solid var(--line-2,rgba(13,26,22,.14));
+  font-size:12.4px;color:var(--muted,#5D6B67);white-space:nowrap;line-height:1;
+  overflow:hidden;text-overflow:ellipsis}
+.crumb b{font-weight:600;color:var(--ink,#0D1A16)}
+.hact{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none}
+/* _session.js fills this with an avatar and two lines, so it is styled for
+   that rather than as a single run of text. */
+.rf-who{display:flex;align-items:center;gap:9px;white-space:nowrap;flex:none}
+.rf-who:empty{display:none}
+.rf-who .rf-av{width:28px;height:28px;flex:none;border-radius:9px;display:grid;
+  place-items:center;background:linear-gradient(140deg,#0E9D73,#5A6CFF);color:#fff;
+  font-family:var(--mono,ui-monospace);font-size:10px;font-weight:700;line-height:1}
+.rf-who .rf-id{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rf-who .rf-id b{font-size:12.4px;font-weight:600;letter-spacing:-.014em;line-height:1.1;
+  overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.rf-who .rf-id small{font-family:var(--mono,ui-monospace);font-size:8.6px;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--dim,#93A19D);line-height:1}
+.hbtn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:99px;
+  border:1px solid var(--line-2,rgba(13,26,22,.14));background:rgba(255,255,255,.72);
+  font-family:'Manrope',system-ui,sans-serif;font-size:12.6px;font-weight:600;
+  color:var(--ink,#0D1A16);cursor:pointer;white-space:nowrap;line-height:1;
+  transition:all .24s cubic-bezier(.22,1,.36,1)}
+.hbtn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;flex:none;
+  transition:transform .24s cubic-bezier(.22,1,.36,1)}
+.hbtn:hover{background:#fff;border-color:var(--green,#0E9D73);color:var(--green-d,#0A5C46)}
+.hbtn.back:hover{transform:translateX(-2px)}
+.hbtn.back:hover svg{transform:translateX(-3px)}
+.hbtn.out:hover{border-color:var(--coral,#D0603F);background:var(--coral-s,#FBEAE4);color:#9B3F24}
+.hbtn.out:hover svg{transform:translateX(3px)}
+@media (max-width:820px){
+  .crumb{margin-left:8px;padding-left:8px;max-width:34vw}
+  .rf-who{display:none}
+  .hbtn{padding:8px 11px}
+}
+@media (max-width:560px){
+  .hdr .brand span{display:none}
+  .crumb{margin-left:0;padding-left:0;border-left:none;max-width:none;flex:1}
+  .hbtn span,.hbtn.out{font-size:0}
+  .hbtn.out svg{width:16px;height:16px}
+}
 </style>
 <link rel="stylesheet" href="_prefs.css">
 <script src="_prefs.js"></script>
@@ -235,22 +284,20 @@ select:disabled{opacity:.6;cursor:not-allowed}
 </div>
 
 <header class="hdr">
-  <div class="brand">
-    <img class="brandmark" src="../assets/logo-64.png" alt="ReviFlow RCM">
-    <span>R&nbsp;e&nbsp;v&nbsp;i&nbsp;F&nbsp;l&nbsp;o&nbsp;w</span>
-  </div>
-  <span class="crumb">Provider workspace / <b>Check eligibility</b></span>
-  <div class="hactions">
-  <span class="rf-who" id="rfWho"></span>
-    <a href="eligibility-batch.html" class="hbtn batch">
+  <div class="hin">
+    <div class="brand">
+      <img class="mk" src="../assets/logo-64.png" alt="ReviFlow RCM">
+      <span>ReviFlow<em>RCM</em></span>
+    </div>
+    <span class="crumb">Provider workspace / <b>Check eligibility</b></span>
+    <div class="hact">
+      <span class="rf-who" id="rfWho"></span>
+      <a href="eligibility-batch.html" class="hbtn batch">
       <svg viewBox="0 0 24 24"><path d="M4 5h16M4 10h16M4 15h9"/><path d="M15 17l3 3 3-3M18 20v-6"/></svg>Batch check
     </a>
-    <a href="provider-dashboard.html" class="hbtn">
-      <svg viewBox="0 0 24 24"><path d="M19 12H6M11 6l-6 6 6 6"/></svg>Back
-    </a>
-    <a href="../reviflow.html" class="hbtn out">Log out
-      <svg viewBox="0 0 24 24"><path d="M15 12H4M11 6l6 6-6 6"/><path d="M14 4h5a1 1 0 011 1v14a1 1 0 01-1 1h-5"/></svg>
-    </a>
+      <a href="provider-dashboard.html" class="hbtn back"><svg viewBox="0 0 24 24"><path d="M19 12H6M11 6l-6 6 6 6"/></svg>Back</a>
+      <a href="../reviflow.html" class="hbtn out">Log out<svg viewBox="0 0 24 24"><path d="M15 12H4M11 6l6 6-6 6"/><path d="M14 4h5a1 1 0 011 1v14a1 1 0 01-1 1h-5"/></svg></a>
+    </div>
   </div>
 </header>
 

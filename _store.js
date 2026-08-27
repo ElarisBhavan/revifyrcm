@@ -29,18 +29,18 @@
   /* ───────────────────────────────────────────────────────────── */
   /* Bumped on every release. Printed to the console and shown in the page
      footer, so which build is actually loaded is never in doubt. */
-  const BUILD = '2026.08.20-local-a';
+  const BUILD = '2026.08.27-encounter-v2';
   window.RF_BUILD = BUILD;
 
-  const DB = 'reviflow', STORE = 'accounts', META = 'meta', VER = 11;
-  const ORGS = 'orgs', PROVIDERS = 'providers', PATIENTS = 'patients', APPTS = 'appts', TASKS = 'tasks', CLAIMS = 'claims', ENC = 'encounters', HIST = 'history', CRED = 'credentialing', PAYERS = 'payers', MASTER = 'master', PAYMENTS = 'payments', MESSAGES = 'messages';
+  const DB = 'reviflow', STORE = 'accounts', META = 'meta', VER = 13;
+  const ORGS = 'orgs', PROVIDERS = 'providers', PATIENTS = 'patients', APPTS = 'appts', TASKS = 'tasks', CLAIMS = 'claims', ENC = 'encounters', HIST = 'history', CRED = 'credentialing', PAYERS = 'payers', MASTER = 'master', PAYMENTS = 'payments', MESSAGES = 'messages', DOCS = 'documents', PAYENROL = 'payerenrolments';
 
   /* ── IndexedDB plumbing ── */
   /* Names every store the app relies on, so a database left incomplete by an
      earlier version can be detected and repaired rather than failing silently. */
   function requiredStores(){
     return [STORE, META, ORGS, PROVIDERS, PATIENTS, ENC, PAYERS, MASTER,
-            CRED, HIST, CLAIMS, TASKS, APPTS, PAYMENTS, MESSAGES];
+            CRED, HIST, CLAIMS, TASKS, APPTS, PAYMENTS, MESSAGES, DOCS, PAYENROL];
   }
 
   let _dbCache = null;
@@ -59,7 +59,7 @@
         if(!d.objectStoreNames.contains(META))
           d.createObjectStore(META, { keyPath:'k' });
 
-        [ORGS, PROVIDERS, PATIENTS, ENC, PAYERS, CRED, HIST, CLAIMS, TASKS, PAYMENTS, MESSAGES].forEach(name => {
+        [ORGS, PROVIDERS, PATIENTS, ENC, PAYERS, CRED, HIST, CLAIMS, TASKS, PAYMENTS, MESSAGES, DOCS, PAYENROL].forEach(name => {
           if(!d.objectStoreNames.contains(name))
             d.createObjectStore(name, { keyPath:'id', autoIncrement:true });
         });
@@ -1333,9 +1333,15 @@
           c.created_by = me ? me.username : 'system';
           c.created_name = me ? (me.name || me.username) : 'System';
           c.claim_no = 'CLM' + Math.floor(900000 + Math.random()*99999);
-          c.status = c.status || 'submitted';
+          /* Saving the editor's draft is not the same thing as sending it —
+             that happens from the claims list, which is what actually calls
+             Stedi. Stamping this 'submitted' immediately used to make the
+             claim editor think the claim had already gone to the payer the
+             moment it was first saved, locking every field shut the very
+             next time it was opened. */
+          c.status = c.status || 'ready';
           c.history = [{ at:c.created_at, by:c.created_by, what:'created',
-                         detail:'Claim built and submitted' }];
+                         detail:'Claim built and ready to submit' }];
         }
         c.total = (c.lines || []).reduce((sum,l) => sum + (Number(l.charge)||0) * (Number(l.units)||1), 0);
         c.updated_at = new Date().toISOString();
@@ -1813,6 +1819,158 @@
       return { ok:true };
     },
 
+
+    /* ═══ DOCUMENTS ═══
+       Fee schedules, contracts, correspondence. Each gets a reference of its
+       own, sits in a category, and carries who may see it.
+
+       Three levels of access:
+         private  — only whoever uploaded it
+         team     — that person plus a named list
+         practice — anyone signed in
+
+       The check happens here rather than in the page, so a document cannot be
+       exposed by a screen that forgets to filter. */
+
+    docCategories(){
+      return [
+        { id:'fee',        label:'Fee schedules' },
+        { id:'contract',   label:'Contracts' },
+        { id:'corr',       label:'Correspondence' },
+        { id:'credential', label:'Credentialing' },
+        { id:'policy',     label:'Policies and procedures' },
+        { id:'insurance',  label:'Insurance and payer' },
+        { id:'clinical',   label:'Clinical reference' },
+        { id:'other',      label:'Other' }
+      ];
+    },
+
+    /* A reference somebody can read down a phone: DOC-FEE-2608-0007 */
+    async nextDocRef(category){
+      const all = await this.docsAll();
+      const now = new Date();
+      const stamp = String(now.getFullYear()).slice(2) +
+                    String(now.getMonth()+1).padStart(2,'0');
+      const cat = String(category||'other').toUpperCase().slice(0,4);
+      const prefix = 'DOC-' + cat + '-' + stamp + '-';
+      let n = 0;
+      all.forEach(d => {
+        const m = String(d.ref||'').match(/-(\d+)$/);
+        if(m && String(d.ref||'').indexOf(prefix) === 0) n = Math.max(n, +m[1]);
+      });
+      return prefix + String(n+1).padStart(4,'0');
+    },
+
+    /* every document, unfiltered — for reference numbering and admin views */
+    async docsAll(){
+      if(DRIVER==='api') return dList('document', {});
+      return rows(DOCS);
+    },
+
+    /* Who may see what. A supervisor or administrator sees everything, because
+       somebody has to be able to find a contract when the person who uploaded
+       it has left. */
+    canSeeDoc(d, me){
+      if(!d) return false;
+      if(!me) return false;
+      const level = String(d.access||'practice');
+      const mine  = String(d.owner||'') === String(me.username||'');
+      if(mine) return true;
+      if(['admin','supervisor'].indexOf(me.role) > -1) return true;
+      if(level === 'practice') return true;
+      if(level === 'private')  return false;
+      if(level === 'team'){
+        const list = (d.shared_with||[]).map(String);
+        return list.indexOf(String(me.username)) > -1 ||
+               list.indexOf(String(me.provider_ref)) > -1;
+      }
+      return false;
+    },
+
+    async docs(filter){
+      const me = getSession();
+      let list = await this.docsAll();
+      list = list.filter(d => !d.deleted && this.canSeeDoc(d, me));
+      const f = filter || {};
+      if(f.category) list = list.filter(d => d.category === f.category);
+      if(f.q){
+        const q = String(f.q).toLowerCase();
+        list = list.filter(d =>
+          [d.name, d.ref, d.note, d.tags].filter(Boolean).join(' ')
+            .toLowerCase().indexOf(q) > -1);
+      }
+      return list.sort((a,b) => String(b.at||'').localeCompare(String(a.at||'')));
+    },
+
+    async saveDoc(d){
+      try{
+        if(d.id === undefined || d.id === null || d.id === '') delete d.id;
+        if(!d.name) return { error:'The document needs a name' };
+        if(!d.category) return { error:'Choose a category' };
+
+        const me = getSession();
+        if(!me) return { error:'Sign in before uploading' };
+
+        if(!d.id){
+          d.ref     = d.ref || await this.nextDocRef(d.category);
+          d.at      = new Date().toISOString();
+          d.owner   = me.username;
+          d.owner_name = me.name || me.username;
+        }else{
+          /* only the owner, or somebody senior, may change one */
+          const existing = (await this.docsAll())
+            .find(x => String(x.id) === String(d.id));
+          if(existing && String(existing.owner) !== String(me.username) &&
+             ['admin','supervisor'].indexOf(me.role) < 0)
+            return { error:'Only the person who uploaded this can change it' };
+          d.owner = existing ? existing.owner : me.username;
+          d.owner_name = existing ? existing.owner_name : (me.name||me.username);
+        }
+
+        d.access = d.access || 'practice';
+        /* a private document cannot also be shared with people */
+        if(d.access !== 'team') d.shared_with = [];
+        d.updated_at = new Date().toISOString();
+        d.updated_by = me.username;
+
+        if(DRIVER==='api'){
+          const j = await dSave('document', d);
+          return { ok:true, id:j.id, ref:d.ref };
+        }
+        const id = await save_(DOCS, d);
+        return { ok:true, id: d.id || id, ref:d.ref };
+      }catch(err){ return { error:'Could not save: '+(err && err.message || err) }; }
+    },
+
+    async removeDoc(id){
+      const me = getSession();
+      const d = (await this.docsAll()).find(x => String(x.id) === String(id));
+      if(!d) return { error:'That document no longer exists' };
+      if(String(d.owner) !== String(me && me.username) &&
+         ['admin','supervisor'].indexOf(me && me.role) < 0)
+        return { error:'Only the person who uploaded this can remove it' };
+
+      /* Kept as a soft delete: a contract or a fee schedule is a record, and
+         somebody removing one should not erase the fact that it existed. */
+      d.deleted = true;
+      d.deleted_at = new Date().toISOString();
+      d.deleted_by = me.username;
+      if(DRIVER==='api') await dSave('document', d); else await save_(DOCS, d);
+      return { ok:true };
+    },
+
+    /* who this document could be shared with */
+    async docAudience(){
+      const list = await this.list();
+      const me = getSession();
+      return (list||[])
+        .filter(a => String(a.status||'active') !== 'inactive' &&
+                     a.username !== (me && me.username))
+        .map(a => ({ username:a.username, name:a.full_name||a.username,
+                     role:a.role, title:a.title||'' }))
+        .sort((a,b) => String(a.name).localeCompare(String(b.name)));
+    },
+
     async findPatient({ ref, memberId, last, first }){
       const list = await rows(PATIENTS);
       if(ref){ const a = list.find(p => String(p.id) === String(ref)); if(a) return a; }
@@ -1918,6 +2076,95 @@
           ...(extra || {})
         });
       }catch(e){}
+    },
+
+
+    /* ── who may see whose credentialing ──
+       A practice manager works across everybody. A clinician sees their own
+       file and nobody else's, because it holds identifiers, licence numbers
+       and portal credentials. */
+    credCanSeeAll(me){
+      me = me || getSession();
+      if(!me) return false;
+      return ['admin','supervisor','employee','frontoffice','billing']
+        .indexOf(me.role) > -1;
+    },
+
+    /* the credentialing files this person may open */
+    async credentialingVisible(){
+      const me = getSession();
+      const all = await this.credentialing();
+      if(!me) return [];
+      if(this.credCanSeeAll(me)) return all;
+      return (all||[]).filter(c =>
+        String(c.provider_ref) === String(me.provider_ref));
+    },
+
+    /* ── payer-level enrolments ──
+       Separate from a provider's own. ERA, EFT and eligibility are set up once
+       for the practice, not once per clinician, and were previously being
+       recorded against whichever provider happened to be open. */
+    async payerEnrolments(){
+      if(DRIVER==='api') return dList('payerenrolment', {});
+      return rows(PAYENROL);
+    },
+
+    async savePayerEnrolment(rec){
+      try{
+        if(rec.id === undefined || rec.id === null || rec.id === '') delete rec.id;
+        if(!rec.payer) return { error:'Choose a payer' };
+        if(!rec.kind)  return { error:'Choose what is being set up' };
+        const me = getSession();
+        if(!this.credCanSeeAll(me))
+          return { error:'Only the practice can change payer enrolments' };
+        if(!rec.id){
+          rec.created_at = new Date().toISOString();
+          rec.created_by = me ? me.username : 'system';
+        }
+        rec.updated_at = new Date().toISOString();
+        rec.updated_by = me ? me.username : 'system';
+        if(DRIVER==='api'){
+          const j = await dSave('payerenrolment', rec);
+          return { ok:true, id:j.id };
+        }
+        const id = await save_(PAYENROL, rec);
+        return { ok:true, id: rec.id || id };
+      }catch(err){ return { error:'Could not save: '+(err && err.message || err) }; }
+    },
+
+    async removePayerEnrolment(id){
+      const me = getSession();
+      if(!this.credCanSeeAll(me))
+        return { error:'Only the practice can remove payer enrolments' };
+      if(DRIVER==='api'){
+        try{ await dDel('payerenrolment', id); return { ok:true }; }
+        catch(e){ return { error:String(e.message||e) }; }
+      }
+      await kill(PAYENROL, id);
+      return { ok:true };
+    },
+
+    /* what a payer enrolment can be for */
+    payerEnrolKinds(){
+      return [
+        { id:'era',         label:'ERA — electronic remittance' },
+        { id:'eft',         label:'EFT — electronic payment' },
+        { id:'eligibility', label:'Eligibility' },
+        { id:'claims',      label:'Claim submission' },
+        { id:'portal',      label:'Portal access' },
+        { id:'other',       label:'Other' }
+      ];
+    },
+
+    /* how a submission was made */
+    submissionModes(){
+      return ['Portal','Clearing house','Email','Post','Fax','Telephone'];
+    },
+
+    /* the stages an enrolment moves through, in order */
+    credStages(){
+      return ['Not started','Application started','Submitted','Under review',
+              'Approved','Denied'];
     },
 
     /* ═══ CREDENTIALING ═══
@@ -2135,6 +2382,43 @@
       if(fee && fee.fee != null) return Number(fee.fee);
       const cpt = list.find(m => m.set === 'cpt' && String(m.code) === String(code));
       return cpt && cpt.fee != null ? Number(cpt.fee) : 0;
+    },
+
+    /* ═══ CLAIM RULES ═══
+       "When a claim matches this clinician/payer/location/CPT, carry these
+       box values automatically." One practice keeps a short list of these,
+       read far more often than written, so — like per-user settings above —
+       it lives in the local meta store rather than a table of its own. */
+    async claimRules(){
+      return (await meta('claim_rules')) || [];
+    },
+    async claimRule(id){
+      return ((await meta('claim_rules')) || []).find(r => r.id === id) || null;
+    },
+    async saveClaimRule(r){
+      if(!String(r.name||'').trim()) return { error:'Give the rule a name' };
+      const me = getSession();
+      const list = (await meta('claim_rules')) || [];
+      if(!r.id){
+        r.id = 'rule_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+        r.created_at = new Date().toISOString();
+        r.created_by = me ? me.username : 'system';
+        r.created_name = me ? (me.name || me.username) : 'System';
+        list.unshift(r);
+      }else{
+        const i = list.findIndex(x => x.id === r.id);
+        r.updated_at = new Date().toISOString();
+        r.updated_by = me ? me.username : 'system';
+        r.updated_name = me ? (me.name || me.username) : 'System';
+        if(i > -1) list[i] = { ...list[i], ...r }; else list.unshift(r);
+      }
+      await setMeta('claim_rules', list);
+      return { ok:true, id:r.id, rule:r };
+    },
+    async removeClaimRule(id){
+      const list = (await meta('claim_rules')) || [];
+      await setMeta('claim_rules', list.filter(x => x.id !== id));
+      return { ok:true };
     },
 
     /* ═══ PATIENT IMPORT ═══ */

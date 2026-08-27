@@ -39,10 +39,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .bg .bloom2{position:absolute;bottom:-32%;right:-12%;width:min(560px,64vw);height:min(560px,64vw);border-radius:50%;filter:blur(66px);background:radial-gradient(circle,rgba(90,108,255,.10),transparent 68%)}
 
 /* header */
-.hdr{position:relative;z-index:3;display:flex;align-items:center;gap:14px;padding:clamp(15px,2.2vw,24px) clamp(18px,3.6vw,44px)}
-.brand{display:flex;align-items:center;gap:9px}
 .brand svg{width:25px;height:25px}
-.brand span{font-family:'Sora',sans-serif;font-size:16px;font-weight:600;letter-spacing:-.035em}
 .brand em{font-style:normal;color:var(--mint);font-weight:400;font-size:.9em;margin-left:4px}
 .who{margin-left:16px;display:flex;align-items:center;gap:9px;padding-left:16px;border-left:1px solid var(--line)}
 .who .av{width:30px;height:30px;border-radius:9px;background:linear-gradient(140deg,var(--mint),var(--indigo));display:grid;place-items:center;font-family:'Sora',sans-serif;font-size:12px;font-weight:700;color:#fff}
@@ -248,6 +245,62 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   color:var(--mut)}
 .nempty{padding:38px 20px;text-align:center;color:var(--mut);font-size:12.6px;line-height:1.6}
 @media (max-width:640px){.notif{right:-8px;width:calc(100vw - 24px)}}
+
+/* ══ page header ══
+   One definition, identical on every provider page. Several pages were missing
+   .hin, .hact or .rf-who and fell back to whatever else happened to apply,
+   which is why the buttons sat differently from screen to screen. */
+.hdr{position:sticky;top:0;z-index:60;border-bottom:1px solid var(--line,rgba(13,26,22,.08));
+  background:rgba(250,248,243,.86);backdrop-filter:blur(20px) saturate(170%);
+  -webkit-backdrop-filter:blur(20px) saturate(170%)}
+.hin{max-width:1600px;margin:0 auto;padding:11px clamp(14px,2.4vw,30px);
+  display:flex;align-items:center;gap:11px;min-height:58px}
+.hdr .brand{display:flex;align-items:center;gap:10px;flex:none}
+.hdr .brand .mk{width:28px;height:28px;border-radius:9px;display:block}
+.hdr .brand span{font-family:'Sora',sans-serif;font-size:15px;font-weight:600;
+  letter-spacing:-.036em;white-space:nowrap;line-height:1}
+.hdr .brand em{font-style:normal;color:var(--green-d,#0A5C46)}
+.crumb{margin-left:12px;padding-left:12px;border-left:1px solid var(--line-2,rgba(13,26,22,.14));
+  font-size:12.4px;color:var(--muted,#5D6B67);white-space:nowrap;line-height:1;
+  overflow:hidden;text-overflow:ellipsis}
+.crumb b{font-weight:600;color:var(--ink,#0D1A16)}
+.hact{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none}
+/* _session.js fills this with an avatar and two lines, so it is styled for
+   that rather than as a single run of text. */
+.rf-who{display:flex;align-items:center;gap:9px;white-space:nowrap;flex:none}
+.rf-who:empty{display:none}
+.rf-who .rf-av{width:28px;height:28px;flex:none;border-radius:9px;display:grid;
+  place-items:center;background:linear-gradient(140deg,#0E9D73,#5A6CFF);color:#fff;
+  font-family:var(--mono,ui-monospace);font-size:10px;font-weight:700;line-height:1}
+.rf-who .rf-id{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rf-who .rf-id b{font-size:12.4px;font-weight:600;letter-spacing:-.014em;line-height:1.1;
+  overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.rf-who .rf-id small{font-family:var(--mono,ui-monospace);font-size:8.6px;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--dim,#93A19D);line-height:1}
+.hbtn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:99px;
+  border:1px solid var(--line-2,rgba(13,26,22,.14));background:rgba(255,255,255,.72);
+  font-family:'Manrope',system-ui,sans-serif;font-size:12.6px;font-weight:600;
+  color:var(--ink,#0D1A16);cursor:pointer;white-space:nowrap;line-height:1;
+  transition:all .24s cubic-bezier(.22,1,.36,1)}
+.hbtn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;flex:none;
+  transition:transform .24s cubic-bezier(.22,1,.36,1)}
+.hbtn:hover{background:#fff;border-color:var(--green,#0E9D73);color:var(--green-d,#0A5C46)}
+.hbtn.back:hover{transform:translateX(-2px)}
+.hbtn.back:hover svg{transform:translateX(-3px)}
+.hbtn.out:hover{border-color:var(--coral,#D0603F);background:var(--coral-s,#FBEAE4);color:#9B3F24}
+.hbtn.out:hover svg{transform:translateX(3px)}
+@media (max-width:820px){
+  .crumb{margin-left:8px;padding-left:8px;max-width:34vw}
+  .rf-who{display:none}
+  .hbtn{padding:8px 11px}
+}
+@media (max-width:560px){
+  .hdr .brand span{display:none}
+  .crumb{margin-left:0;padding-left:0;border-left:none;max-width:none;flex:1}
+  .hbtn span,.hbtn.out{font-size:0}
+  .hbtn.out svg{width:16px;height:16px}
+}
 </style>
 <link rel="stylesheet" href="_prefs.css">
 <script src="_prefs.js"></script>
@@ -262,43 +315,28 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 </div>
 
 <header class="hdr">
-  <div class="brand">
-    <img class="brandmark" src="../assets/logo-64.png" alt="ReviFlow RCM">
-    <span>ReviFlow<em>RCM</em></span>
-  </div>
+  <div class="hin">
+    <div class="brand">
+      <img class="mk" src="../assets/logo-64.png" alt="ReviFlow RCM">
+      <span>ReviFlow<em>RCM</em></span>
+    </div>
+    <span class="crumb">Provider workspace</span>
+    <div class="hact">
+      <span class="rf-who" id="rfWho"></span>
 
-  <div class="who" id="who">
-    <span class="av" id="whoAv">··</span>
-    <span><b id="whoName">—</b><small id="whoRole">—</small></span>
-  </div>
+      <!-- notifications: the bell, and the panel it opens -->
+      <button class="bell" id="bell" aria-label="Notifications">
+        <svg viewBox="0 0 24 24"><path d="M18 16v-5a6 6 0 10-12 0v5l-1.5 2.5h15z"/><path d="M10 21h4"/></svg>
+        <span class="bdot" id="bellN" hidden>0</span>
+      </button>
+      <div class="notif" id="notif" hidden>
+        <div class="nhead"><b>Notifications</b><span id="nSub">—</span>
+          <button class="nclear" id="nClear">Mark all read</button></div>
+        <div class="nlist" id="nList"></div>
+      </div>
 
-  <button class="bell" id="bell" aria-label="Notifications">
-    <svg viewBox="0 0 24 24"><path d="M18 16v-5a6 6 0 10-12 0v5l-1.5 2.5h15z"/><path d="M10 21h4"/></svg>
-    <span class="bdot" id="bellN" hidden>0</span>
-  </button>
-
-  <div class="notif" id="notif" hidden>
-    <div class="nhead"><b>Notifications</b><span id="nSub">—</span>
-      <button class="nclear" id="nClear">Mark all read</button></div>
-    <div class="nlist" id="nList"></div>
-  </div>
-
-  <a href="../reviflow.html" class="logout">
-    Log out
-    <svg viewBox="0 0 24 24"><path d="M15 12H4M11 6l6 6-6 6"/><path d="M14 4h5a1 1 0 011 1v14a1 1 0 01-1 1h-5"/></svg>
-  </a>
-
-  <div class="clock" id="clock" title="Local time">
-    <svg viewBox="0 0 100 100" aria-hidden="true">
-      <circle class="face" cx="50" cy="50" r="45"/>
-      <g class="ticks" id="ticks"></g>
-      <line class="hand hr"  id="hHr"  x1="50" y1="50" x2="50" y2="28"/>
-      <line class="hand min" id="hMin" x1="50" y1="50" x2="50" y2="18"/>
-      <line class="hand sec" id="hSec" x1="50" y1="56" x2="50" y2="14"/>
-      <circle class="pin" cx="50" cy="50" r="3.4"/>
-      <circle class="pin2" cx="50" cy="50" r="1.4"/>
-    </svg>
-    <span class="ctime"><b id="cDigits">--:--</b><small id="cDay">—</small></span>
+      <a href="../reviflow.html" class="hbtn out">Log out<svg viewBox="0 0 24 24"><path d="M15 12H4M11 6l6 6-6 6"/><path d="M14 4h5a1 1 0 011 1v14a1 1 0 01-1 1h-5"/></svg></a>
+    </div>
   </div>
 </header>
 
@@ -782,9 +820,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     var ROLE={provider:'Provider',supervisor:'Supervisor / Practice Manager',
               scheduler:'Scheduler',employee:'Employee',admin:'Administrator'};
 
-    $('whoAv').textContent=s.initials||RFStore.initialsOf(full)||'··';
-    $('whoName').textContent=full;
-    $('whoRole').textContent=(ROLE[s.role]||s.role)+(s.title?' · '+s.title:'');
+    /* the header identity is painted once by _session.js, the same way on
+       every page, so there is nothing to set here */
 
     var h=new Date().getHours();
     var part=h<12?'Good morning':h<18?'Good afternoon':'Good evening';

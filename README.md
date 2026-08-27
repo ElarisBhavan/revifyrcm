@@ -46,3 +46,7 @@ effect across the whole provider login.
 
 patient record detail, create claim, reports, message, admin section,
 employee section, master data, schedule role-access + collect payment.
+
+
+## 2026-08-27 Encounter workflow update
+The Patient Record encounter editor now separates clinical documentation, diagnoses, and billable services. A diagnosis is entered once per encounter and service lines reference diagnosis pointers (`dxptrs`); diagnoses never create charges. Encounters include a structured Subjective/Objective/Assessment/Plan progress note and must have a completed note, at least one diagnosis, and at least one diagnosis-linked CPT/HCPCS service before they can be signed and locked. Older encounter lines using `dx` are migrated in the UI for backward compatibility.

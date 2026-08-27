@@ -48,20 +48,11 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .strip .sp{margin-left:auto;display:flex;gap:22px;flex-wrap:wrap}
 
 /* ── header ── */
-.hdr{position:sticky;top:0;z-index:20;background:rgba(251,250,246,.9);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
-.hin{max-width:1180px;margin:0 auto;padding:11px clamp(16px,3vw,40px);display:flex;align-items:center;gap:12px}
-.brand{display:flex;align-items:center;gap:9px}
 .brand svg{width:23px;height:23px}
-.brand span{font-family:'Sora',sans-serif;font-size:15px;font-weight:600;letter-spacing:-.035em}
 .brand em{font-style:normal;color:var(--accent);font-weight:400;font-size:.9em;margin-left:3px}
-.crumb{margin-left:12px;padding-left:12px;border-left:1px solid var(--line-2);font-size:12.6px;color:var(--muted)}
 .crumb b{color:var(--ink);font-weight:600}
-.hact{margin-left:auto;display:flex;gap:8px}
-.hbtn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:99px;border:1px solid var(--line-2);background:rgba(255,255,255,.7);font-size:12.6px;font-weight:600;transition:all .32s var(--ease)}
 .hbtn svg{width:14px;height:14px;stroke:var(--accent);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .32s var(--ease)}
 .hbtn:hover{border-color:var(--accent);background:#fff}
-.hbtn.back:hover{transform:translateX(-2px)}
-.hbtn.back:hover svg{transform:translateX(-3px)}
 
 /* ── section nav ── */
 .snav{position:sticky;top:47px;z-index:19;background:rgba(251,250,246,.9);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
@@ -228,7 +219,6 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   background:transparent!important;border:none!important;box-shadow:none!important}
 
 /* ── live-result additions ── */
-.hin{max-width:1180px;margin:0 auto;padding:11px clamp(16px,3vw,40px);display:flex;align-items:center;gap:12px}
 .brand img{width:23px;height:23px;object-fit:contain}
 .hact{margin-left:auto;display:flex;gap:8px}
 .loadbox{padding:80px 20px;text-align:center;color:var(--muted)}
@@ -450,6 +440,62 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   padding:1px 5px;border-radius:4px;background:var(--amber-soft);color:var(--amber);
   margin-left:5px;text-transform:none}
 @media print{.lvlseg{display:none}}
+
+/* ══ page header ══
+   One definition, identical on every provider page. Several pages were missing
+   .hin, .hact or .rf-who and fell back to whatever else happened to apply,
+   which is why the buttons sat differently from screen to screen. */
+.hdr{position:sticky;top:0;z-index:60;border-bottom:1px solid var(--line,rgba(13,26,22,.08));
+  background:rgba(250,248,243,.86);backdrop-filter:blur(20px) saturate(170%);
+  -webkit-backdrop-filter:blur(20px) saturate(170%)}
+.hin{max-width:1600px;margin:0 auto;padding:11px clamp(14px,2.4vw,30px);
+  display:flex;align-items:center;gap:11px;min-height:58px}
+.hdr .brand{display:flex;align-items:center;gap:10px;flex:none}
+.hdr .brand .mk{width:28px;height:28px;border-radius:9px;display:block}
+.hdr .brand span{font-family:'Sora',sans-serif;font-size:15px;font-weight:600;
+  letter-spacing:-.036em;white-space:nowrap;line-height:1}
+.hdr .brand em{font-style:normal;color:var(--green-d,#0A5C46)}
+.crumb{margin-left:12px;padding-left:12px;border-left:1px solid var(--line-2,rgba(13,26,22,.14));
+  font-size:12.4px;color:var(--muted,#5D6B67);white-space:nowrap;line-height:1;
+  overflow:hidden;text-overflow:ellipsis}
+.crumb b{font-weight:600;color:var(--ink,#0D1A16)}
+.hact{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none}
+/* _session.js fills this with an avatar and two lines, so it is styled for
+   that rather than as a single run of text. */
+.rf-who{display:flex;align-items:center;gap:9px;white-space:nowrap;flex:none}
+.rf-who:empty{display:none}
+.rf-who .rf-av{width:28px;height:28px;flex:none;border-radius:9px;display:grid;
+  place-items:center;background:linear-gradient(140deg,#0E9D73,#5A6CFF);color:#fff;
+  font-family:var(--mono,ui-monospace);font-size:10px;font-weight:700;line-height:1}
+.rf-who .rf-id{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rf-who .rf-id b{font-size:12.4px;font-weight:600;letter-spacing:-.014em;line-height:1.1;
+  overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.rf-who .rf-id small{font-family:var(--mono,ui-monospace);font-size:8.6px;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--dim,#93A19D);line-height:1}
+.hbtn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:99px;
+  border:1px solid var(--line-2,rgba(13,26,22,.14));background:rgba(255,255,255,.72);
+  font-family:'Manrope',system-ui,sans-serif;font-size:12.6px;font-weight:600;
+  color:var(--ink,#0D1A16);cursor:pointer;white-space:nowrap;line-height:1;
+  transition:all .24s cubic-bezier(.22,1,.36,1)}
+.hbtn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;flex:none;
+  transition:transform .24s cubic-bezier(.22,1,.36,1)}
+.hbtn:hover{background:#fff;border-color:var(--green,#0E9D73);color:var(--green-d,#0A5C46)}
+.hbtn.back:hover{transform:translateX(-2px)}
+.hbtn.back:hover svg{transform:translateX(-3px)}
+.hbtn.out:hover{border-color:var(--coral,#D0603F);background:var(--coral-s,#FBEAE4);color:#9B3F24}
+.hbtn.out:hover svg{transform:translateX(3px)}
+@media (max-width:820px){
+  .crumb{margin-left:8px;padding-left:8px;max-width:34vw}
+  .rf-who{display:none}
+  .hbtn{padding:8px 11px}
+}
+@media (max-width:560px){
+  .hdr .brand span{display:none}
+  .crumb{margin-left:0;padding-left:0;border-left:none;max-width:none;flex:1}
+  .hbtn span,.hbtn.out{font-size:0}
+  .hbtn.out svg{width:16px;height:16px}
+}
 </style>
 <link rel="stylesheet" href="../_session.css">
 </head>
@@ -471,14 +517,16 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 <header class="hdr">
   <div class="hin">
     <div class="brand">
-      <img src="../assets/logo-64.png" alt="ReviFlow RCM">
+      <img class="mk" src="../assets/logo-64.png" alt="ReviFlow RCM">
       <span>ReviFlow<em>RCM</em></span>
     </div>
-    <span class="crumb">Check eligibility / <b>Benefits detail</b></span>
+    <span class="crumb">Provider workspace / <b>Eligibility result</b></span>
     <div class="hact">
-      <a href="eligibility.html" class="hbtn back"><svg viewBox="0 0 24 24"><path d="M19 12H6M11 6l-6 6 6 6"/></svg>Back</a>
-      <button class="hbtn" id="rawBtn"><svg viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>Raw 271</button>
+      <span class="rf-who" id="rfWho"></span>
       <button class="hbtn" id="printBtn"><svg viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 19H5a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2h-2"/><path d="M7 15h10v6H7z"/></svg>Print</button>
+      <button class="hbtn" id="rawBtn"><svg viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>Raw 271</button>
+      <a href="provider-dashboard.html" class="hbtn back"><svg viewBox="0 0 24 24"><path d="M19 12H6M11 6l-6 6 6 6"/></svg>Back</a>
+      <a href="../reviflow.html" class="hbtn out">Log out<svg viewBox="0 0 24 24"><path d="M15 12H4M11 6l6 6-6 6"/><path d="M14 4h5a1 1 0 011 1v14a1 1 0 01-1 1h-5"/></svg></a>
     </div>
   </div>
 </header>

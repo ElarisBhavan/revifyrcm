@@ -460,8 +460,26 @@
     var r=await RFStore.importMaster(SET,IMP);
     this.disabled=false;this.innerHTML='<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Import';
     closeM();await refresh();
+
+    /* Say why rows were skipped. Silently reporting a count meant an import
+       that the server refused outright looked the same as a spreadsheet with
+       a few bad rows. */
+    if(r.failed.length && !r.added && !r.updated){
+      var reasons={}, first='';
+      r.failed.forEach(function(f){
+        var w=String(f.why||'Unknown');
+        reasons[w]=(reasons[w]||0)+1;
+        if(!first)first=w;
+      });
+      toast('Nothing was imported', first, true);
+      console.warn('Every row was rejected:', reasons);
+      return;
+    }
+
     toast(r.added+' added, '+r.updated+' updated',
-      r.failed.length?(r.failed.length+' row(s) skipped'):'Live in '+SETS[SET].used[0]);
+      r.failed.length
+        ? r.failed.length+' skipped · '+String(r.failed[0].why||'see the console')
+        : 'Live in '+SETS[SET].used[0]);
     if(r.failed.length)console.warn('Skipped:',r.failed);
   });
 
