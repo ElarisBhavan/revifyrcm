@@ -14,7 +14,6 @@
 <script src="../_config.js"></script>
 <script src="../_guard.js"></script>
 <script src="../_store.js"></script>
-<script src="../assets/SOP-RCM-MTG-003 Dashboard.pdf"></script>
 <script src="../_session.js"></script>
 <script src="../_codes.js"></script>
 <script src="../_datepicker.js"></script>
@@ -448,7 +447,6 @@ tfoot td{background:var(--paper-2);font-weight:600;border-top:2px solid var(--li
 (function(){
   var $=function(i){return document.getElementById(i);};
   var SESS=null, DOCS=[], CATS=[], AUD=[], EDIT=null, PENDING=null;
-  var BUNDLED=(window.RFBundledDocuments||[]).filter(function(d){return d.category!=='credential';});
 
   function esc(v){return String(v==null?'':v).replace(/[&<>"]/g,function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -550,10 +548,8 @@ tfoot td{background:var(--paper-2);font-weight:600;border-top:2px solid var(--li
           '<span class="c" data-l="Visible to">'+accBadge(d)+'</span>'+
           '<span class="c" data-l="Uploaded">'+esc(fmtWhen(d.at))+'</span>'+
           '<span class="dacts">'+
-            ((d.data||d.file_url)
-              ? '<button class="ib" data-view="'+d.id+'" title="View">'+
-                '<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>' +
-                '<button class="ib" data-get="'+d.id+'" title="Download">'+
+            (d.data || d.file_url
+              ? '<button class="ib" data-get="'+d.id+'" title="Download">'+
                 '<svg viewBox="0 0 24 24"><path d="M12 3v13M7 12l5 5 5-5M4 20h16"/></svg></button>'
               : '')+
             (mine||['admin','supervisor'].indexOf(SESS.role)>-1
@@ -720,26 +716,12 @@ tfoot td{background:var(--paper-2);font-weight:600;border-top:2px solid var(--li
       return;
     }
 
-    var vw=e.target.closest('[data-view]');
-    if(vw){
-      var vf=DOCS.filter(function(x){return String(x.id)===String(vw.dataset.view);})[0];
-      if(!vf){ toast('That document is unavailable','',true); return; }
-      if(vf.file_url){ window.open(vf.file_url,'_blank','noopener'); return; }
-      if(vf.data){ window.open(vf.data,'_blank','noopener'); return; }
-      toast('That file is not stored here','',true);
-      return;
-    }
-
     var g=e.target.closest('[data-get]');
     if(g){
       var f=DOCS.filter(function(x){return String(x.id)===String(g.dataset.get);})[0];
-      if(!f){ toast('That file is unavailable','',true); return; }
-      if(f.file_url){
-        var link=document.createElement('a'); link.href=f.file_url; link.download=f.filename||f.name;
-        document.body.appendChild(link); link.click(); document.body.removeChild(link); return;
-      }
-      if(!f.data){ toast('That file is not stored here','',true); return; }
-      var a=document.createElement('a'); a.href=f.data; a.download=f.filename||f.name;
+      if(!f || (!f.data && !f.file_url)){ toast('That file is not available yet','',true); return; }
+      var a=document.createElement('a');
+      a.href=f.data || f.file_url; a.download=f.filename||f.name;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       return;
     }
@@ -759,12 +741,26 @@ tfoot td{background:var(--paper-2);font-weight:600;border-top:2px solid var(--li
 
   /* ── open ── */
   async function load(){
-    var stored=[];
-    try{ stored=await RFStore.docs({}); }catch(e){ console.error(e); }
-    var built=BUNDLED.map(function(d){
-      return Object.assign({owner:'system',owner_name:'ReviFlow RCM',access:'practice',at:'2026-01-01T00:00:00.000Z'},d);
-    });
-    DOCS=stored.concat(built);
+    try{ DOCS=await RFStore.docs({}); }catch(e){ DOCS=[]; console.error(e); }
+
+    /* Bundled offline upload document.
+       Put your PDF at /assets/uploads-document.pdf.
+       This is intentionally separate from the credential document. */
+    if(!DOCS.some(function(d){ return d.bundle_key==='uploads-document'; })){
+      DOCS.unshift({
+        id:'bundled-uploads-document',
+        bundle_key:'uploads-document',
+        category:'other',
+        name:'Upload Document',
+        ref:'OFFLINE-UPLOAD',
+        filename:'uploads-document.pdf',
+        file_url:'../assets/uploads-document.pdf',
+        access:'practice',
+        owner_name:'ReviFlow',
+        note:'Bundled offline document',
+        at:new Date().toISOString()
+      });
+    }
     paint();
   }
 
