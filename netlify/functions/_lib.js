@@ -253,8 +253,7 @@ async function requireSession(event, roles){
 
 module.exports = {
   db, hashPassword, verifyPassword, needsRehash, passwordProblem,
-  createSession, readSession, session: readSession,
-  revokeSession, revokeAllForAccount, requireSession,
+  createSession, readSession, revokeSession, revokeAllForAccount, requireSession,
   cookie, clearCookie, readCookie, signStep, verifyStep,
   randomSecret, totp, verifyTotp, otpauth,
   clientIp, deviceLabel, audit, rateLimit, clearRateLimit,

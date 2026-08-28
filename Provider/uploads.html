@@ -548,7 +548,7 @@ tfoot td{background:var(--paper-2);font-weight:600;border-top:2px solid var(--li
           '<span class="c" data-l="Visible to">'+accBadge(d)+'</span>'+
           '<span class="c" data-l="Uploaded">'+esc(fmtWhen(d.at))+'</span>'+
           '<span class="dacts">'+
-            (d.data || d.file_url
+            (d.data
               ? '<button class="ib" data-get="'+d.id+'" title="Download">'+
                 '<svg viewBox="0 0 24 24"><path d="M12 3v13M7 12l5 5 5-5M4 20h16"/></svg></button>'
               : '')+
@@ -719,9 +719,9 @@ tfoot td{background:var(--paper-2);font-weight:600;border-top:2px solid var(--li
     var g=e.target.closest('[data-get]');
     if(g){
       var f=DOCS.filter(function(x){return String(x.id)===String(g.dataset.get);})[0];
-      if(!f || (!f.data && !f.file_url)){ toast('That file is not available yet','',true); return; }
+      if(!f||!f.data){ toast('That file is not stored here','',true); return; }
       var a=document.createElement('a');
-      a.href=f.data || f.file_url; a.download=f.filename||f.name;
+      a.href=f.data; a.download=f.filename||f.name;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       return;
     }
@@ -742,25 +742,6 @@ tfoot td{background:var(--paper-2);font-weight:600;border-top:2px solid var(--li
   /* ── open ── */
   async function load(){
     try{ DOCS=await RFStore.docs({}); }catch(e){ DOCS=[]; console.error(e); }
-
-    /* Bundled offline upload document.
-       Put your PDF at /assets/uploads-document.pdf.
-       This is intentionally separate from the credential document. */
-    if(!DOCS.some(function(d){ return d.bundle_key==='uploads-document'; })){
-      DOCS.unshift({
-        id:'bundled-uploads-document',
-        bundle_key:'uploads-document',
-        category:'other',
-        name:'SOP-RCM-MTG-003 Dashboard',
-        ref:'OFFLINE-UPLOAD',
-        filename:'SOP-RCM-MTG-003 Dashboard.pdf',
-        file_url:'../assets/SOP-RCM-MTG-003 Dashboard.pdf',
-        access:'practice',
-        owner_name:'ReviFlow',
-        note:'Bundled offline document',
-        at:new Date().toISOString()
-      });
-    }
     paint();
   }
 
@@ -781,51 +762,6 @@ tfoot td{background:var(--paper-2);font-weight:600;border-top:2px solid var(--li
 
     await load();
   })();
-
-
-  /* ── open ── */
-  async function load(){
-    try{ DOCS=await RFStore.docs({}); }catch(e){ DOCS=[]; console.error(e); }
-
-    /* Bundled offline upload document.
-       Put your PDF at /assets/uploads-document.pdf.
-       This is intentionally separate from the credential document. */
-    if(!DOCS.some(function(d){ return d.bundle_key==='uploads-document'; })){
-      DOCS.unshift({
-        id:'bundled-uploads-document',
-        bundle_key:'uploads-document',
-        category:'other',
-        name:'SOP-RF-GOV-007 AI and PHI Usage SOP',
-        ref:'OFFLINE-UPLOAD',
-        filename:'SOP-RF-GOV-007 AI and PHI Usage SOP.pdf',
-        file_url:'../assets/SOP-RF-GOV-007 AI and PHI Usage SOP.pdf',
-        access:'practice',
-        owner_name:'ReviFlow',
-        note:'Bundled offline document',
-        at:new Date().toISOString()
-      });
-    }
-    paint();
-  }
-
-  (async function(){
-    await RFStore.ready();
-    SESS=RFStore.getSession();
-    if(!SESS){ window.location.href='../reviflow.html'; return; }
-    /* the shared header fills #rfWho from _session.js, so nothing to do here */
-
-    CATS=RFStore.docCategories();
-    $('fCat').innerHTML='<option value="">Every category</option>'+
-      CATS.map(function(c){
-        return '<option value="'+c.id+'">'+esc(c.label)+'</option>'; }).join('');
-    $('dCat').innerHTML=CATS.map(function(c){
-      return '<option value="'+c.id+'">'+esc(c.label)+'</option>'; }).join('');
-
-    try{ AUD=await RFStore.docAudience(); }catch(e){ AUD=[]; }
-
-    await load();
-  })();
-
 
 })();
 </script>

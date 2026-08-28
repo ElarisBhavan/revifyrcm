@@ -682,8 +682,8 @@ a{color:inherit;text-decoration:none}
   $('pwGo').addEventListener('click', async function(){
     if(this.classList.contains('busy')) return;
     var a=$('np1').value, b=$('np2').value, e=$('npErr');
-    if(a.length < 12){
-      e.textContent='Use at least 12 characters'; e.classList.add('show'); $('np1').focus(); return;
+    if(a.length < 10){
+      e.textContent='Use at least ten characters'; e.classList.add('show'); $('np1').focus(); return;
     }
     if(a !== b){
       e.textContent='Those two do not match'; e.classList.add('show'); $('np2').focus(); return;
@@ -693,17 +693,9 @@ a{color:inherit;text-decoration:none}
     try{
       var res = await RFStore.changePassword(PENDING, a);
       if(res && res.ok){
-        /* setting the first password can hand back a fresh challenge for
-           MFA enrolment or verification — never the account itself yet. */
-        if(res.mfaEnrol){
-          this.classList.remove('busy');
-          PENDING = res.challenge || PENDING;
-          showEnrol(res, res.name);
-          return;
-        }
+        /* a fresh password may still need a code before they are in */
         if(res.mfaRequired){
           this.classList.remove('busy');
-          PENDING = res.challenge || PENDING;
           showVerify('mfa', res.name);
           return;
         }
