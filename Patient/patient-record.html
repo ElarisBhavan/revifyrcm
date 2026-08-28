@@ -1299,7 +1299,36 @@ input,select,textarea{font:inherit}
         provider_ref: fromProv ? +fromProv : null,
         preferred_location:ORG?ORG.name:''
       });
+      /* savePatientRec can return an error, and API-backed stores may not
+         return the new row immediately. Never continue with a null patient. */
+      if(!r || r.error || r.id === undefined || r.id === null){
+        var saveMsg=(r&&r.error)?r.error:'The patient record could not be created.';
+        document.querySelector('.wrap').innerHTML=
+          '<div class="card" style="opacity:1;transform:none"><div class="empty">'+
+          '<b>Unable to create patient record</b><br>'+String(saveMsg)+
+          '<br><br><a class="btn pri" href="patient-dashboard.html" style="display:inline-flex">Back to the client list</a>'+ 
+          '</div></div>';
+        return;
+      }
       P=await RFStore.patient(r.id);
+      if(!P){
+        /* fallback lookup for API/local-store synchronization delays */
+        P=await RFStore.findPatient({
+          ref:r.id,
+          memberId:QS.get('member'),
+          last:QS.get('last'),
+          first:QS.get('first')
+        });
+      }
+      if(!P){
+        document.querySelector('.wrap').innerHTML=
+          '<div class="card" style="opacity:1;transform:none"><div class="empty">'+
+          '<b>Patient record was created but could not be loaded</b><br>'+ 
+          'Please return to the client list and open the patient again.'+
+          '<br><br><a class="btn pri" href="patient-dashboard.html" style="display:inline-flex">Back to the client list</a>'+ 
+          '</div></div>';
+        return;
+      }
       await RFStore.logHistory(P.id,'created','Chart created from the schedule');
     }
 
