@@ -1292,44 +1292,33 @@ input,select,textarea{font:inherit}
       /* failing that, the person opening the chart, when they are a clinician */
       if(!fromProv && SESS && SESS.provider_ref) fromProv = SESS.provider_ref;
 
-      var r=await RFStore.savePatientRec({
+      var newPatient={
         first_name:QS.get('first')||'',last_name:QS.get('last')||'New patient',
         dob:QS.get('dob')||'',member_id:QS.get('member')||'',
         relationship:'Self',insurances:[],
         provider_ref: fromProv ? +fromProv : null,
         preferred_location:ORG?ORG.name:''
-      });
-      /* savePatientRec can return an error, and API-backed stores may not
-         return the new row immediately. Never continue with a null patient. */
-      if(!r || r.error || r.id === undefined || r.id === null){
-        var saveMsg=(r&&r.error)?r.error:'The patient record could not be created.';
-        document.querySelector('.wrap').innerHTML=
-          '<div class="card" style="opacity:1;transform:none"><div class="empty">'+
-          '<b>Unable to create patient record</b><br>'+String(saveMsg)+
-          '<br><br><a class="btn pri" href="patient-dashboard.html" style="display:inline-flex">Back to the client list</a>'+ 
-          '</div></div>';
-        return;
+      };
+      var r=await RFStore.savePatientRec(newPatient);
+      if(!r || r.ok===false || !r.id){
+        throw new Error((r&&r.error)||'The patient could not be created.');
       }
+
+      /* Some API deployments return the successful write before the immediate
+         read endpoint can see the new row. Never replace a valid patient with
+         null in that situation. */
       P=await RFStore.patient(r.id);
       if(!P){
-        /* fallback lookup for API/local-store synchronization delays */
-        P=await RFStore.findPatient({
-          ref:r.id,
-          memberId:QS.get('member'),
-          last:QS.get('last'),
-          first:QS.get('first')
-        });
+        P=Object.assign({},newPatient,{id:r.id,internal_id:r.internal_id||''});
       }
-      if(!P){
-        document.querySelector('.wrap').innerHTML=
-          '<div class="card" style="opacity:1;transform:none"><div class="empty">'+
-          '<b>Patient record was created but could not be loaded</b><br>'+ 
-          'Please return to the client list and open the patient again.'+
-          '<br><br><a class="btn pri" href="patient-dashboard.html" style="display:inline-flex">Back to the client list</a>'+ 
-          '</div></div>';
-        return;
+      if(!P.id){
+        throw new Error('The patient was saved, but no patient ID was returned.');
       }
-      await RFStore.logHistory(P.id,'created','Chart created from the schedule');
+      try{
+        await RFStore.logHistory(P.id,'created','Chart created from the schedule');
+      }catch(historyErr){
+        console.warn('Patient created but history could not be written:',historyErr);
+      }
     }
 
     await reload();
@@ -1356,10 +1345,23 @@ input,select,textarea{font:inherit}
       ' (id '+P.id+') · '+(P.insurances||[]).length+' polic'+
       ((P.insurances||[]).length===1?'y':'ies')+' · '+ENCS.length+' encounter(s) · '+
       CLAIMS.length+' claim(s)');
-  })();
+  })().catch(function(err){
+    console.error('Patient record boot failed:',err);
+    var msg=String(err&&err.message||err);
+    var wrap=document.querySelector('.wrap');
+    if(wrap){
+      wrap.innerHTML='<div class="card" style="opacity:1;transform:none"><div class="empty">'+
+        '<b>Could not open this patient record</b><br>'+esc(msg)+
+        '<br><br><a class="btn pri" href="patient-dashboard.html" style="display:inline-flex">Back to the client list</a>'+
+        '</div></div>';
+    }
+  });
 
   async function reload(){
     /* a fresh read, so the page never paints from a stale copy */
+    if(!P || P.id==null){
+      throw new Error('Patient record is unavailable.');
+    }
     var fresh=await RFStore.patient(P.id);
     if(fresh)P=fresh;
     APPTS=await RFStore.apptsForPatient(P.id,P.last_name,P.first_name,P.member_id);
