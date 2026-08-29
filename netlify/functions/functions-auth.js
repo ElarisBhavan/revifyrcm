@@ -8,6 +8,23 @@ const MAX_IP_FAILS   = 20, IP_WINDOW_MIN = 15, IP_BLOCK_MIN = 30;
 /* the same wording whether or not the account exists */
 const VAGUE = { error:'invalid', message:'That username and password combination is not correct.' };
 
+/* Two-step codes are re-checked on a cadence rather than on every single sign
+   in: once the six digits were entered within the last two hours, and it is
+   still the same calendar day (UTC) they were entered, a fresh sign-in does
+   not ask again. Either boundary being crossed — two hours elapsed, or a new
+   day has started — asks again. `last_login` already gets stamped by finish()
+   at the end of every completed sign-in (MFA'd or not), so no extra column
+   is needed to track this. */
+const MFA_STEPUP_HOURS = 2;
+function mfaStepUpNeeded(acct){
+  if(!acct.last_login) return true;
+  const last = new Date(acct.last_login), now = new Date();
+  if(now.getTime() - last.getTime() > MFA_STEPUP_HOURS*3600*1000) return true;
+  return last.getUTCFullYear() !== now.getUTCFullYear()
+      || last.getUTCMonth()    !== now.getUTCMonth()
+      || last.getUTCDate()     !== now.getUTCDate();
+}
+
 async function sendResetEmail(to, link, name){
   const key = process.env.RESEND_API_KEY;
   if(!key) return { sent:false, reason:'RESEND_API_KEY not set' };
@@ -119,8 +136,11 @@ exports.handler = async (event) => {
                          name:acct.full_name, username:acct.username });
       }
       if(acct.mfa_enabled && acct.mfa_secret){
-        return L.J(200,{ mfaRequired:true, challenge:L.signStep({ mfa:true, id:acct.id }, 5),
-                         name:acct.full_name });
+        if(mfaStepUpNeeded(acct)){
+          return L.J(200,{ mfaRequired:true, challenge:L.signStep({ mfa:true, id:acct.id }, 5),
+                           name:acct.full_name });
+        }
+        return finish(acct, event);
       }
       /* MFA is mandatory for anyone who can reach PHI */
       if(!acct.mfa_enabled && process.env.REQUIRE_MFA !== 'false'){
@@ -166,7 +186,7 @@ exports.handler = async (event) => {
 
       const secret = acct.mfa_secret || L.randomSecret();
       await sql`UPDATE accounts SET mfa_secret=${secret} WHERE id=${acct.id}`;
-      return L.J(200,{ ok:true, mfaEnrol:true,
+      return L.J(200,{ ok:true, mfaEnrol:true, name:acct.full_name,
         challenge:L.signStep({ enrol:true, id:acct.id }, 10),
         secret, otpauth:L.otpauth(acct.username, secret) });
     }

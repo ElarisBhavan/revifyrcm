@@ -52,7 +52,10 @@ function passwordProblem(pw){
 
 /* ── sessions: opaque token, hashed at rest, revocable ── */
 const sha256 = v => crypto.createHash('sha256').update(String(v)).digest('hex');
-const SESSION_HOURS = 12;
+/* Kept in step with auth.js's two-step re-verification cadence: a session
+   that outlives 2 hours forces a fresh sign-in, which is what actually makes
+   "ask for the six-digit code every two hours" happen in practice. */
+const SESSION_HOURS = 2;
 const IDLE_MINUTES  = 30;
 
 async function createSession(account, event){

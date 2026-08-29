@@ -25,7 +25,7 @@
   /* Set in _config.js, which loads before this file. The fallback keeps the
      application working if that file is ever missing. */
   const DRIVER = (typeof window !== 'undefined' &&
-                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'api';
+                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'local';
   /* ───────────────────────────────────────────────────────────── */
   /* Bumped on every release. Printed to the console and shown in the page
      footer, so which build is actually loaded is never in doubt. */
@@ -457,15 +457,26 @@
 
     /* forced password change, then MFA enrolment */
     async changePassword(id, newPassword){
+      if(DRIVER==='api'){
+        /* `id` here is the signed challenge token the login step handed back,
+           not a local record id — this never had a server branch, so in api
+           mode it fell straight through to the IndexedDB lookup below, found
+           nothing (the challenge string never matches a local numeric id),
+           and silently returned {error:'unknown'} — which is exactly the
+           generic "That password was not accepted." the provider saw. */
+        const r = await apiCall('/api/auth','first-password',{ challenge:id, password:newPassword });
+        return r.body;
+      }
       const a = (await all()).find(x => x.id === id);
       if(!a) return { error:'unknown' };
-      if(String(newPassword).length < 10) return { error:'weak', message:'Use at least 10 characters.' };
+      if(String(newPassword).length < 12) return { error:'weak', message:'Use at least 12 characters.' };
       a.password_hash = await hashPassword(newPassword);
       a.must_change = false;
       a.mfa_secret = a.mfa_secret || randomSecret();
       await put(a);
       await audit(a.username,'change_password',a.username,{});
-      return { ok:true, id:a.id, secret:a.mfa_secret, otpauth: otpauth(a.username, a.mfa_secret) };
+      return { ok:true, mfaEnrol:true, id:a.id, name:a.full_name,
+               secret:a.mfa_secret, otpauth: otpauth(a.username, a.mfa_secret) };
     },
 
     async verifyMfa(id, code, enrol){
