@@ -254,6 +254,12 @@ async function requireSession(event, roles){
 module.exports = {
   db, hashPassword, verifyPassword, needsRehash, passwordProblem,
   createSession, readSession, revokeSession, revokeAllForAccount, requireSession,
+  /* data.js and admin-users.js call L.session() as a "give me the caller or
+     null" convenience — readSession IS that function, it just never got
+     exported under the name they call it by. Without this alias every
+     /api/data request throws (L.session is not a function) before it can
+     read or write a single record. */
+  session: readSession,
   cookie, clearCookie, readCookie, signStep, verifyStep,
   randomSecret, totp, verifyTotp, otpauth,
   clientIp, deviceLabel, audit, rateLimit, clearRateLimit,

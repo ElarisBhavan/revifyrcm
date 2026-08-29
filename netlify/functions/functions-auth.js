@@ -202,7 +202,7 @@ exports.handler = async (event) => {
         message:'If that account exists, a reset link has been sent to the email on file.' };
       const [acct] = await sql`SELECT * FROM accounts
         WHERE LOWER(username)=LOWER(${body.username}) OR LOWER(email)=LOWER(${body.username}) LIMIT 1`;
-      if(!acct || !acct.email){
+      if(!acct){
         await L.audit(event,{ actor:body.username, action:'reset_requested', outcome:'no_account' });
         return L.J(200, generic);
       }
@@ -211,10 +211,25 @@ exports.handler = async (event) => {
       await sql`INSERT INTO reset_tokens (token_hash, account_id, expires_at, ip)
                 VALUES (${L.sha256(raw)}, ${acct.id}, ${new Date(Date.now()+30*60000)}, ${ip})`;
       const origin = process.env.SITE_URL || url.origin;
-      const mail = await sendResetEmail(acct.email,
-        `${origin}/Admin/reset-password.html?token=${raw}`, acct.full_name);
+      const link = `${origin}/Admin/reset-password.html?token=${raw}`;
+
+      /* An account with no email on file (the very first admin, created
+         through /api/bootstrap, often has none) or a deployment where
+         RESEND_API_KEY was never set otherwise had NO way to recover a
+         locked-out password — 'forgot' always looked like it worked and
+         nothing ever arrived. DEV_SHOW_RESET_LINK was already documented in
+         BACKEND-SETUP.md as the intended escape hatch but was never actually
+         wired up here. This hands the link back in the response instead of
+         emailing it. It intentionally trades away the "don't reveal whether
+         an account exists" protection below — that's why it's opt-in and
+         must never stay set once real email delivery is configured. */
+      const devLink = process.env.DEV_SHOW_RESET_LINK === 'true';
+      const mail = acct.email ? await sendResetEmail(acct.email, link, acct.full_name)
+                               : { sent:false, reason:'no email on file' };
       await L.audit(event,{ actor_id:acct.id, actor:acct.username, action:'reset_requested',
-        detail:{ emailed: mail.sent } });
+        detail:{ emailed: mail.sent, dev_link_shown: devLink } });
+
+      if(devLink) return L.J(200, { ...generic, dev_link: link, emailed: mail.sent });
       return L.J(200, generic);
     }
 

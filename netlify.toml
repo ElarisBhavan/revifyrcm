@@ -77,6 +77,14 @@
   status = 200
   force = true
 
+# Twilio's "a call comes in" webhook. No session cookie reaches this one —
+# it verifies the X-Twilio-Signature header instead. See BACKEND-SETUP.md.
+[[redirects]]
+  from = "/api/voice-schedule"
+  to   = "/.netlify/functions/voice-schedule"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/api/era"
   to   = "/.netlify/functions/era"

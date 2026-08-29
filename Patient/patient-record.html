@@ -16,6 +16,7 @@
 <script src="../_datepicker.js"></script>
 <script src="../_session.js"></script>
 <script src="../_codes.js"></script>
+<script src="../_note-templates.js"></script>
 <script src="../_claimform.js"></script>
 <script src="../_notify.js"></script>
 <style>
@@ -581,6 +582,35 @@ input,select,textarea{font:inherit}
 .dxlist{padding:11px 13px}.dxrow{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line)}.dxrow:last-child{border-bottom:0}.dxptr{width:24px;height:24px;border-radius:7px;background:var(--green-s);color:var(--green-d);display:grid;place-items:center;font-family:var(--mono);font-size:10px;font-weight:700;flex:none}.dxedit{flex:1;min-width:0}.dxedit input{width:170px;max-width:100%;padding:7px 9px;border:1px solid var(--line-2);border-radius:8px;background:#fff;font-size:11.5px}.dxdesc{margin-left:8px;font-size:10.5px;color:var(--muted)}.dxpri{font-family:var(--mono);font-size:8px;color:var(--dim);flex:none}.dxempty,.tableempty{padding:16px;text-align:center;color:var(--dim);font-size:11px}.serviceadd{padding:13px;border-top:1px solid var(--line);background:var(--paper)}.feeLine{padding:7px 1px 10px;font-family:var(--mono);font-size:10px;color:var(--dim)}.dxchoose{padding:10px 11px;border:1px solid var(--line-2);border-radius:10px;background:#fff}.dxchoose>b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.045em;margin-bottom:8px}.dxchecks{display:flex;gap:7px;flex-wrap:wrap}.dxpick{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:7px;background:var(--paper-2);font-size:10.5px;color:var(--muted);cursor:pointer}.dxpick input{width:auto}.dxpick b{font-family:var(--mono);color:var(--green-d)}.dxchips{display:flex;gap:4px;flex-wrap:wrap}.dxchip{display:inline-block;padding:3px 6px;border-radius:5px;background:var(--green-s);color:var(--green-d);font-family:var(--mono);font-size:8.5px}.subline{font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.4}.modpill{display:inline-block;margin-top:4px;padding:2px 5px;border-radius:4px;background:rgba(59,111,245,.08);color:var(--blue);font-family:var(--mono);font-size:8px}.dim{color:var(--dim);font-size:10px}.pending{margin-top:9px}.pendhint{padding:7px 9px;background:var(--green-s);color:var(--green-d);font-family:var(--mono);font-size:8.5px;font-weight:700}.pendrow{display:flex;align-items:center;gap:8px;padding:8px 9px;border:1px solid var(--line);border-top:0;background:#fff;font-size:10.5px}.pendrow>b{font-family:var(--mono);flex:none}.pendrow>span{flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pendrow>em{font-family:var(--mono);font-style:normal;color:var(--green-d);flex:none}.pendrow>button{border:0;background:none;color:var(--coral);cursor:pointer;font-size:16px;line-height:1}.ib.del{color:var(--coral);font-size:16px}
 @media(max-width:720px){.notegrid{grid-template-columns:1fr}.dxdesc{display:block;margin:3px 0 0}.dxpri{display:none}.encsection{margin-left:9px;margin-right:9px}}
 
+/* ── structured progress-note templates ── */
+.ntf-head{display:flex;align-items:center;gap:10px;padding:13px;border-bottom:1px solid var(--line);background:var(--paper-2);flex-wrap:wrap}
+.ntf-head .f{flex:1;min-width:200px}
+.ntf-body{display:grid;grid-template-columns:1fr 1fr;gap:13px 16px;padding:15px}
+.ntf-field span{font-size:9.7px;text-transform:uppercase;letter-spacing:.045em}
+.ntf-field.full,.ntf-group.full{grid-column:1/-1}
+.ntf-group{border:1px solid var(--line-2);border-radius:11px;padding:11px 12px;background:#fff}
+.ntf-group>b{display:block;font-size:10.6px;font-weight:700;letter-spacing:.02em;margin-bottom:8px;color:var(--ink)}
+.ntf-options{display:flex;flex-direction:column;gap:3px}
+.ntf-options .chk{padding:3px 0}
+.ntf-options .chk.ro{cursor:default;opacity:.85}
+.ntf-static{background:var(--paper-2)}
+.ntf-static p{font-size:11.4px;line-height:1.6;color:var(--muted);white-space:pre-wrap}
+@media(max-width:720px){.ntf-body{grid-template-columns:1fr}}
+
+.ntv-wrap{padding:15px}
+.ntv-row{margin-bottom:14px}
+.ntv-row:last-child{margin-bottom:0}
+.ntv-row>b{display:block;font-size:9.7px;text-transform:uppercase;letter-spacing:.045em;color:var(--dim);margin-bottom:4px}
+.ntv-row>p{font-size:12.4px;line-height:1.6;color:var(--ink)}
+.ntv-empty{padding:22px;text-align:center;color:var(--dim);font-size:11.5px}
+.ntv-signed{margin:0 15px 15px;padding:11px 13px;border-radius:11px;background:var(--green-s);color:var(--green-d);font-size:11px;line-height:1.6}
+
+.signPreview{padding:16px;border:1px solid var(--line-2);border-radius:12px;background:var(--paper-2);text-align:center}
+.signPreview .sig{font-family:'Segoe Script','Brush Script MT',cursive;font-size:26px;color:var(--ink);line-height:1.2}
+.signPreview .meta{margin-top:8px;font-size:10.4px;color:var(--muted);line-height:1.55}
+.signWarn{font-size:11px;color:var(--dim);margin-top:12px;line-height:1.6}
+.signWarn a{color:var(--green-d)}
+
 /* ── notes ── */
 .notes{display:grid;gap:9px;margin-bottom:16px;max-height:340px;overflow-y:auto}
 .noteCard{padding:12px 14px;border-radius:12px;background:var(--paper-2);
@@ -1109,26 +1139,62 @@ input,select,textarea{font:inherit}
   </div>
 </div>
 
-<!-- PROGRESS SUMMARY -->
-<div class="modal" id="mProgress" role="dialog" aria-modal="true">
+<!-- PROGRESS NOTE -->
+<div class="modal wide" id="mProgress" role="dialog" aria-modal="true">
   <div class="mhead">
     <span class="mi"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/></svg></span>
-    <div><h3>Progress summary <span class="noteStatus draft" id="pnStatus">DRAFT</span></h3><p id="pnSub">—</p></div>
+    <div><h3>Progress note <span class="noteStatus draft" id="pnStatus">DRAFT</span></h3><p id="pnSub">—</p></div>
     <button class="mx" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
-  <div class="mbody">
-    <div class="notegrid">
-      <label class="f"><span>Subjective</span><textarea id="pn_subjective" rows="4"></textarea></label>
-      <label class="f"><span>Objective</span><textarea id="pn_objective" rows="4"></textarea></label>
-      <label class="f"><span>Assessment · clinical impression</span><textarea id="pn_assessment" rows="4"></textarea></label>
-      <label class="f"><span>Plan</span><textarea id="pn_plan" rows="4"></textarea></label>
+
+  <!-- editable form (draft) -->
+  <div id="pnEdit">
+    <div class="ntf-head">
+      <label class="f"><span>Note template</span>
+        <select id="pnTemplate">
+          <!-- options filled at runtime from RFNoteTemplates.list -->
+        </select>
+      </label>
     </div>
-    <div class="signedline" id="pnSignedLine" hidden></div>
+    <div class="mbody ntf-body" id="pnFields"></div>
   </div>
-  <div class="mfoot">
+
+  <!-- read-only view (signed & locked) -->
+  <div id="pnView" hidden>
+    <div class="ntv-wrap" id="pnViewFields"></div>
+    <div class="ntv-signed" id="pnSignedLine"></div>
+  </div>
+
+  <div class="mfoot" id="pnFoot">
     <button class="btn sec" data-close>Close</button>
     <span class="sp"></span>
-    <button class="btn pri" id="pnSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Save note</button>
+    <button class="btn sec" id="pnSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Save draft</button>
+    <button class="btn pri" id="pnSign"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Sign note</button>
+  </div>
+</div>
+
+<!-- SIGN & LOCK PROGRESS NOTE -->
+<div class="modal" id="mSignNote" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></span>
+    <div><h3>Sign and lock progress note</h3><p>Signed and locked notes are uneditable.</p></div>
+    <button class="mx" data-close-sign aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody">
+    <div class="grid2">
+      <label class="f"><span>Your name</span><input type="text" id="snName" placeholder="Full name"></label>
+      <label class="f"><span>Credentials</span><input type="text" id="snCred" placeholder="e.g. LPC-S, RPT-S"></label>
+    </div>
+    <div class="signPreview" id="snPreview" style="margin-top:13px">
+      <div class="sig" id="snSigText">—</div>
+      <div class="meta" id="snMeta">Signed by — · —</div>
+    </div>
+    <div class="signWarn">Once signed and locked this note can no longer be edited. The encounter can then be locked for billing.</div>
+  </div>
+  <div class="mfoot">
+    <button class="btn sec" data-close-sign>Cancel</button>
+    <span class="sp"></span>
+    <button class="btn pri" id="snConfirm">Sign and lock</button>
   </div>
 </div>
 
@@ -1188,34 +1254,120 @@ input,select,textarea{font:inherit}
   document.addEventListener('click',function(e){if(e.target.closest('[data-close]'))closeM();});
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeM();});
 
-  /* ── progress summary modal ── */
-  var NOTE_ENC=null;
+  /* ── progress note modal ── */
+  var NOTE_ENC=null, NOTE_LOCKED=false;
+
+  function providerFor(e){
+    return PROVS.filter(function(x){return String(x.id)===String(e.clinician_id);})[0]
+      || PROVS.filter(function(x){return String(x.id)===String(P.provider_ref);})[0] || null;
+  }
+
+  function populateTemplateSelect(selectedId){
+    var sel=$('pnTemplate');
+    sel.innerHTML=RFNoteTemplates.list.map(function(t){
+      return '<option value="'+t.id+'"'+(t.id===selectedId?' selected':'')+'>'+esc(t.name)+'</option>';
+    }).join('');
+  }
+
   function openProgressNote(eid){
     var raw=ENCS.find(function(x){return x.id===eid;});
     if(!raw)return;
-    var e=normalizeEncounter(raw), note=encounterNote(e), locked=e.status==='locked';
-    NOTE_ENC=eid;
-    $('pnSub').textContent=fmtD(e.dos)+' · '+(e.clinician||'—');
+    var e=normalizeEncounter(raw), note=encounterNote(e), locked=e.status==='locked'||note.status==='signed';
+    NOTE_ENC=eid; NOTE_LOCKED=locked;
+    var prov=providerFor(e);
+    var defaultTplId=note.template_id||RFNoteTemplates.forSpecialty(prov&&prov.specialty);
+    var tpl=RFNoteTemplates.byId(defaultTplId);
+
+    $('pnSub').textContent=fmtD(e.dos)+' · '+(e.clinician||'—')+(prov&&prov.specialty?' · '+prov.specialty:'');
     var st=$('pnStatus');
     st.className='noteStatus '+(note.status==='signed'?'signed':'draft');
     st.textContent=note.status==='signed'?'SIGNED':'DRAFT';
-    ['subjective','objective','assessment','plan'].forEach(function(k){
-      var el=$('pn_'+k); if(!el)return; el.value=note[k]; el.readOnly=locked;
-    });
-    var sl=$('pnSignedLine');
+
+    populateTemplateSelect(tpl.id);
+    $('pnTemplate').disabled=locked;
+
     if(locked){
-      sl.hidden=false;
-      sl.textContent=note.signed_by?'Signed by '+note.signed_by+' · '+fmtTS(note.signed_at):'Signed clinical documentation';
+      $('pnEdit').hidden=true; $('pnView').hidden=false;
+      $('pnViewFields').innerHTML=RFNoteTemplates.renderReadOnly(tpl, note.answers)
+        || '<div class="ntv-empty">No content was entered on this note.</div>';
+      $('pnSignedLine').textContent=note.signed_by
+        ? 'Signed by '+note.signed_by+(note.signed_credentials?' · '+note.signed_credentials:'')+' · '+fmtTS(note.signed_at)
+        : 'Signed clinical documentation';
+      $('pnSave').style.display='none'; $('pnSign').style.display='none';
     }else{
-      sl.hidden=true; sl.textContent='';
+      $('pnEdit').hidden=false; $('pnView').hidden=true;
+      $('pnFields').innerHTML=RFNoteTemplates.renderForm(tpl, note.answers, false);
+      $('pnSave').style.display=''; $('pnSign').style.display='';
     }
-    $('pnSave').style.display=locked?'none':'';
     openM('mProgress');
   }
+
+  $('pnTemplate').addEventListener('change',function(){
+    var tpl=RFNoteTemplates.byId(this.value);
+    $('pnFields').innerHTML=RFNoteTemplates.renderForm(tpl, {}, false);
+  });
+
   document.addEventListener('click',function(e){
     var op=e.target.closest('[data-noteopen]');
     if(op)openProgressNote(+op.dataset.noteopen);
   });
+
+  /* ── sign & lock a progress note ── */
+  var SIGN_TPL=null;
+  function updateSignPreview(){
+    var name=$('snName').value.trim()||'—', cred=$('snCred').value.trim();
+    $('snSigText').textContent=name;
+    $('snMeta').textContent='Signed by '+name+(cred?' · '+cred:'')+' · '+fmtTS(new Date().toISOString());
+  }
+  ['snName','snCred'].forEach(function(id){ $(id).addEventListener('input',updateSignPreview); });
+
+  document.addEventListener('click',function(e){
+    if(e.target.closest('#pnSign')){
+      if(NOTE_ENC==null)return;
+      SIGN_TPL=$('pnTemplate').value;
+      var answers=RFNoteTemplates.collectForm(RFNoteTemplates.byId(SIGN_TPL), $('pnFields'));
+      if(!RFNoteTemplates.hasContent(RFNoteTemplates.byId(SIGN_TPL), answers)){
+        toast('Nothing to sign','Fill in at least one field before signing',true);return;
+      }
+      var prov=null; var raw=ENCS.find(function(x){return x.id===NOTE_ENC;});
+      if(raw)prov=providerFor(normalizeEncounter(raw));
+      var me=SESS?(SESS.name||SESS.username):'';
+      $('snName').value=(prov&&prov.full_name)||me||'';
+      $('snCred').value=(prov&&prov.title)||'';
+      updateSignPreview();
+      openM('mSignNote');
+      return;
+    }
+    if(e.target.closest('#snConfirm')){
+      var nm=$('snName').value.trim();
+      if(!nm){toast('Name required','Enter your name to sign this note',true);$('snName').focus();return;}
+      confirmSignNote();
+    }
+    if(e.target.closest('[data-close-sign]')){
+      $('mSignNote').classList.remove('on'); /* leaves the progress note modal open behind it */
+    }
+  });
+
+  async function confirmSignNote(){
+    if(NOTE_ENC==null)return;
+    var e=normalizeEncounter(await RFStore.encounter(NOTE_ENC)); if(!e)return;
+    var tpl=RFNoteTemplates.byId($('pnTemplate').value);
+    var answers=RFNoteTemplates.collectForm(tpl, $('pnFields'));
+    var prior=e.progress_note||{};
+    e.progress_note={
+      template_id:tpl.id, answers:answers, status:'signed',
+      created_by:prior.created_by||(SESS?(SESS.name||SESS.username):'system'),
+      created_at:prior.created_at||new Date().toISOString(),
+      updated_at:new Date().toISOString(),
+      signed_by:$('snName').value.trim(), signed_credentials:$('snCred').value.trim(),
+      signed_at:new Date().toISOString()
+    };
+    var r=await RFStore.saveEncounter(e);
+    if(!r.ok){toast('Could not sign note',r.error||'',true);return;}
+    await RFStore.logHistory(P.id,'progress_note_signed',fmtShort(e.dos)+' · '+tpl.name+' · signed by '+e.progress_note.signed_by);
+    ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);paintEncounters();paintHistory();closeM();
+    toast('Progress note signed and locked','The note is now part of the permanent record');
+  }
 
   /* ── tabs ── */
   $('tabs').addEventListener('click',function(e){
@@ -2111,10 +2263,20 @@ input,select,textarea{font:inherit}
   }
   function encounterNote(e){
     var n=e.progress_note||e.clinical_note||{};
+    if(n.template_id){
+      return {
+        template_id:n.template_id, answers:n.answers||{}, status:n.status||'draft',
+        created_by:n.created_by||'', created_at:n.created_at||'', updated_at:n.updated_at||'',
+        signed_at:n.signed_at||'', signed_by:n.signed_by||'', signed_credentials:n.signed_credentials||''
+      };
+    }
+    /* legacy S/O/A/P notes saved before templates existed */
     return {
-      subjective:String(n.subjective||''), objective:String(n.objective||''),
-      assessment:String(n.assessment||''), plan:String(n.plan||''),
-      status:n.status||'draft', signed_at:n.signed_at||'', signed_by:n.signed_by||''
+      template_id:'simple_soap',
+      answers:{subjective:String(n.subjective||''), objective:String(n.objective||''),
+               assessment:String(n.assessment||''), plan:String(n.plan||'')},
+      status:n.status||'draft', created_by:'', created_at:'', updated_at:'',
+      signed_at:n.signed_at||'', signed_by:n.signed_by||'', signed_credentials:''
     };
   }
   function encounterTotal(e){
@@ -2143,7 +2305,9 @@ input,select,textarea{font:inherit}
       var d=new Date(e.dos+'T12:00:00'), locked=e.status==='locked';
       var lines=e.lines||[], diagnoses=e.diagnoses||[], note=encounterNote(e);
       var total=encounterTotal(e), isOpen=ENC_OPEN[e.id]!=null?ENC_OPEN[e.id]:!locked;
-      var noteComplete=['subjective','objective','assessment','plan'].every(function(k){return note[k].trim();});
+      var noteTpl=RFNoteTemplates.byId(note.template_id);
+      var noteSigned=note.status==='signed';
+      var noteStarted=RFNoteTemplates.hasContent(noteTpl, note.answers);
       var dxHtml=diagnoses.length ? diagnoses.map(function(dx,i){
         return '<div class="dxrow"><span class="dxptr">'+esc(dx.pointer||String.fromCharCode(65+i))+'</span>'+
           '<div class="dxedit"><input class="edxcode mono" data-e="'+e.id+'" data-i="'+i+'" value="'+esc(dx.code||'')+'" placeholder="ICD-10 code" autocomplete="off">'+
@@ -2170,9 +2334,9 @@ input,select,textarea{font:inherit}
         '<span class="pill '+(locked?'ok':'warn')+'">'+(locked?'LOCKED':'OPEN')+'</span>'+ 
         '<span class="quick">'+money(total)+'<b>'+lines.length+' service'+(lines.length===1?'':'s')+'</b></span><span class="chev"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></div>'+ 
         '<div class="encbody"><div class="encctx">'+fmtD(e.dos)+' · '+esc(e.clinician||'—')+' · POS '+esc(e.pos||'11')+'</div>'+ 
-        '<section class="encsection"><div class="secthead"><div><b>Progress summary</b><small>Documentation supporting the services performed during this encounter.</small></div>'+
-          '<span class="noteStatus '+(note.status==='signed'?'signed':'draft')+'">'+(note.status==='signed'?'SIGNED':'DRAFT')+'</span></div>'+
-          '<div class="sectionbar"><span class="muted">'+(locked?(note.signed_by?'Signed by '+esc(note.signed_by)+' · '+esc(fmtTS(note.signed_at)):'Signed clinical documentation'):(noteComplete?'Subjective, Objective, Assessment and Plan are complete.':'Complete Subjective, Objective, Assessment and Plan before signing.'))+'</span><button type="button" class="btn sec sm" data-noteopen="'+e.id+'">'+(locked?'View progress summary':'Open progress summary')+'</button></div>'+
+        '<section class="encsection"><div class="secthead"><div><b>Progress note</b><small>'+esc(noteTpl.name)+'</small></div>'+
+          '<span class="noteStatus '+(noteSigned?'signed':'draft')+'">'+(noteSigned?'SIGNED':'DRAFT')+'</span></div>'+
+          '<div class="sectionbar"><span class="muted">'+(noteSigned?('Signed by '+esc(note.signed_by)+(note.signed_credentials?', '+esc(note.signed_credentials):'')+' · '+esc(fmtTS(note.signed_at))):(noteStarted?'Draft saved. Sign the note to lock it and enable billing.':'Open the note to document this visit.'))+'</span><button type="button" class="btn sec sm" data-noteopen="'+e.id+'">'+(noteSigned?'View progress note':'Open progress note')+'</button></div>'+
         '</section>'+
         '<section class="encsection"><div class="secthead"><div><b>Diagnoses</b><small>Enter each diagnosis once for the encounter. Diagnoses do not create charges.</small></div><span class="countpill">'+diagnoses.length+' / 12</span></div>'+ 
           '<div class="dxlist">'+dxHtml+'</div>'+(!locked?'<div class="sectionbar"><button class="btn sec sm" data-dxadd="'+e.id+'">+ Add diagnosis</button><button class="btn sec sm" data-dxsave="'+e.id+'">Save diagnoses</button><span class="muted">Diagnosis pointers are reused by service lines.</span></div>':'')+ 
@@ -2186,7 +2350,7 @@ input,select,textarea{font:inherit}
             '<div class="sectionbar"><button class="btn sec sm" data-ladd="'+e.id+'">Add service</button><button class="btn pri sm" data-lsave="'+e.id+'">Save services</button><span class="muted">No charge is created for a diagnosis.</span></div></div>':'')+ 
         '</section>'+ 
         '<div class="encfoot"><span class="mono">'+lines.length+' service'+(lines.length===1?'':'s')+' · '+diagnoses.length+' diagnosis'+(diagnoses.length===1?'':'es')+' · '+money(total)+'</span><span class="sp"></span>'+ 
-          (locked?'<button class="btn sec sm" data-unlock="'+e.id+'">Unlock</button>':'<button class="btn pri sm" data-lock="'+e.id+'"'+((lines.length&&diagnoses.length&&noteComplete)?'':' disabled')+'>Sign &amp; lock encounter</button>')+ 
+          (locked?'<button class="btn sec sm" data-unlock="'+e.id+'">Unlock</button>':'<button class="btn pri sm" data-lock="'+e.id+'"'+((lines.length&&diagnoses.length&&noteSigned)?'':' disabled')+' title="'+(noteSigned?'':'Sign the progress note before locking this encounter for billing')+'">Sign &amp; lock encounter</button>')+ 
         '</div></div></div>';
     }).join('');
 
@@ -2224,11 +2388,18 @@ input,select,textarea{font:inherit}
     if(ns){
       var eid=NOTE_ENC;if(eid==null)return;
       var e=normalizeEncounter(await RFStore.encounter(eid));if(!e)return;
-      e.progress_note=e.progress_note||{};
-      ['subjective','objective','assessment','plan'].forEach(function(k){var el=$('pn_'+k);e.progress_note[k]=el?el.value.trim():(e.progress_note[k]||'');});
-      e.progress_note.status='draft';e.progress_note.updated_at=new Date().toISOString();
+      var tpl=RFNoteTemplates.byId($('pnTemplate').value);
+      var answers=RFNoteTemplates.collectForm(tpl, $('pnFields'));
+      var prior=e.progress_note||{};
+      e.progress_note={
+        template_id:tpl.id, answers:answers, status:'draft',
+        created_by:prior.created_by||(SESS?(SESS.name||SESS.username):'system'),
+        created_at:prior.created_at||new Date().toISOString(),
+        updated_at:new Date().toISOString(),
+        signed_by:'', signed_credentials:'', signed_at:''
+      };
       var r=await RFStore.saveEncounter(e);if(!r.ok){toast('Could not save note',r.error||'',true);return;}
-      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);paintEncounters();paintHistory();closeM();toast('Progress summary saved','The note remains editable until the encounter is signed');return;
+      ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);paintEncounters();paintHistory();closeM();toast('Progress note saved','The note remains editable until it is signed');return;
     }
 
     var da=ev.target.closest('[data-dxadd]');
@@ -2304,7 +2475,7 @@ input,select,textarea{font:inherit}
 
     if(ul){
       var e4=normalizeEncounter(await RFStore.encounter(+ul.dataset.unlock));if(!e4)return;var claimed=CLAIMS.filter(function(c){return String(c.enc_id)===String(e4.id);})[0];if(claimed){toast('Cannot unlock','Delete claim '+claimed.claim_no+' first',true);return;}
-      e4.status='open';if(e4.progress_note)e4.progress_note.status='draft';await RFStore.saveEncounter(e4);await RFStore.logHistory(P.id,'encounter_unlocked',fmtShort(e4.dos));ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);paintEncounters();paintBilling();paintHistory();toast('Encounter unlocked','It is editable again and removed from billing');return;
+      e4.status='open';await RFStore.saveEncounter(e4);await RFStore.logHistory(P.id,'encounter_unlocked',fmtShort(e4.dos));ENCS=await RFStore.encounters(P.id);HIST=await RFStore.history(P.id);paintEncounters();paintBilling();paintHistory();toast('Encounter unlocked','Billing is editable again. The signed progress note stays locked.');return;
     }
   });
 

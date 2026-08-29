@@ -216,6 +216,47 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 CREATE INDEX IF NOT EXISTS tasks_assignee_idx ON tasks (assignee, status);
 
+-- ── the generic record store ───────────────────────────────────────────
+-- netlify/functions/data.js (the shared /api/data endpoint used by every
+-- "kind" — patient, appt, provider, org, claim, task, and so on — plus
+-- netlify/functions/voice-schedule.js, the phone-scheduling webhook) reads
+-- and writes here rather than the per-entity tables above. Those tables
+-- describe the shape of the data; this is where it actually lives once the
+-- app runs in 'api' mode. Without it, every /api/data call fails outright.
+CREATE SEQUENCE IF NOT EXISTS app_records_id_seq;
+
+CREATE TABLE IF NOT EXISTS app_records (
+  kind        TEXT NOT NULL,
+  id          BIGINT NOT NULL,
+  org_id      BIGINT,
+  patient_ref BIGINT,
+  provider_id BIGINT,
+  on_date     DATE,
+  status      TEXT,
+  search      TEXT,
+  data        JSONB NOT NULL,
+  created_by  TEXT, created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_by  TEXT, updated_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at  TIMESTAMPTZ,
+  PRIMARY KEY (kind, id)
+);
+CREATE INDEX IF NOT EXISTS app_records_kind_idx     ON app_records (kind, deleted_at);
+CREATE INDEX IF NOT EXISTS app_records_org_idx      ON app_records (kind, org_id)      WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS app_records_patient_idx  ON app_records (kind, patient_ref) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS app_records_provider_idx ON app_records (kind, provider_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS app_records_date_idx     ON app_records (kind, on_date)     WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS app_records_status_idx   ON app_records (kind, status)      WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS app_records_search_idx   ON app_records (kind, search);
+
+-- one row per read/write of a PHI-bearing "kind", written by data.js's log()
+CREATE TABLE IF NOT EXISTS phi_access_log (
+  id          BIGSERIAL PRIMARY KEY,
+  actor       TEXT, actor_id BIGINT, action TEXT, kind TEXT, record_id BIGINT,
+  patient_ref BIGINT, ip TEXT, user_agent TEXT, detail JSONB DEFAULT '{}'::jsonb,
+  at          TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS phi_access_log_patient_idx ON phi_access_log (patient_ref, at DESC);
+
 -- eligibility responses contain PHI; keep only as long as you need them
 CREATE TABLE IF NOT EXISTS eligibility_checks (
   id BIGSERIAL PRIMARY KEY,
