@@ -35,8 +35,8 @@
      the error still reaches the console (and _guard.js's banner) instead of
      silently blanking the editor. */
   function safe(fn, label){
-    try{ fn(); }
-    catch(err){ console.error('ReviFlow claim form: '+label+' failed', err); }
+    try{ return fn(); }
+    catch(err){ console.error('ReviFlow claim form: '+label+' failed', err); return undefined; }
   }
 
   /* Matches a payer name against Admin → Payers as forgivingly as
@@ -1153,45 +1153,53 @@
     on('cfCancel', 'click', close);
 
     on('cfSend', 'change', function(e){
-      if(e.target.name!=='cfSendM') return;
-      C.send_method = e.target.value; applySend();
+      safe(function(){
+        if(e.target.name!=='cfSendM') return;
+        C.send_method = e.target.value; applySend();
+      }, 'cfSend change');
     });
-    on('cf_rel', 'change', function(){ read(); applyRel(); });
+    on('cf_rel', 'change', function(){ safe(function(){ read(); applyRel(); }, 'cf_rel change'); });
     on('cf_freq', 'change', function(){
-      read(); applyFreq(); applyLock();
+      safe(function(){ read(); applyFreq(); applyLock(); }, 'cf_freq change');
     });
 
     /* payer name fills the id, the mailing address behind the scenes, and
        box 1's insurance type from the admin list */
     function fillPayer(){
-      var hit = findPayer($('cf_payer').value);
-      if(!hit) return;
-      $('cf_payer').value = hit.name||'';
-      if(hit.payer_id) $('cf_payerid').value = hit.payer_id;
-      /* the numbered form keeps this box to just a name and an ID, so the
-         mailing address a paper claim needs travels on the claim itself */
-      if(hit.mailing_address) C.payer_address = hit.mailing_address;
-      var kind = instypeFromPlan(hit.plan_type);
-      var r = document.querySelector('input[name="cf_instype"][value="'+kind+'"]');
-      if(r) r.checked = true;
-      C.insurance_type = kind;
-      var h = $('cf_payer_h');
-      if(h) h.textContent = 'Matched '+(hit.name||'')+' in Admin → Payers.';
-      read();
+      safe(function(){
+        var hit = findPayer($('cf_payer').value);
+        if(!hit) return;
+        $('cf_payer').value = hit.name||'';
+        if(hit.payer_id) $('cf_payerid').value = hit.payer_id;
+        /* the numbered form keeps this box to just a name and an ID, so the
+           mailing address a paper claim needs travels on the claim itself */
+        if(hit.mailing_address) C.payer_address = hit.mailing_address;
+        var kind = instypeFromPlan(hit.plan_type);
+        var r = document.querySelector('input[name="cf_instype"][value="'+kind+'"]');
+        if(r) r.checked = true;
+        C.insurance_type = kind;
+        var h = $('cf_payer_h');
+        if(h) h.textContent = 'Matched '+(hit.name||'')+' in Admin → Payers.';
+        read();
+      }, 'fillPayer');
     }
     on('cf_payer', 'change', fillPayer);
     on('cf_payer', 'blur', fillPayer);
 
 
     on('cf_issues', 'click', function(e){
-      var a = e.target.closest('[data-goto]'); if(a) show(a.dataset.goto);
+      safe(function(){
+        var a = e.target.closest('[data-goto]'); if(a) show(a.dataset.goto);
+      }, 'cf_issues click');
     });
 
     on('cfPrint', 'click', function(){
-      read();
-      if(OPTS.preview) $('cf_preview').innerHTML = OPTS.preview(C);
-      show('review');
-      setTimeout(function(){ window.print(); },180);
+      safe(function(){
+        read();
+        if(OPTS.preview) $('cf_preview').innerHTML = OPTS.preview(C);
+        show('review');
+        setTimeout(function(){ window.print(); },180);
+      }, 'cfPrint click');
     });
 
 
@@ -1236,59 +1244,69 @@
   /* box 21: a dropdown of matching ICD-10 codes under whichever letter
      has focus, or is being typed into */
   on('cf_dxgrid', 'focusin', function(e){
-    var inp = e.target.closest('[data-dx]'); if(inp) openDxDrop(inp);
+    safe(function(){ var inp = e.target.closest('[data-dx]'); if(inp) openDxDrop(inp); }, 'dxgrid focusin');
   });
   on('cf_dxgrid', 'input', function(e){
-    var inp = e.target.closest('[data-dx]'); if(inp) openDxDrop(inp);
+    safe(function(){ var inp = e.target.closest('[data-dx]'); if(inp) openDxDrop(inp); }, 'dxgrid input');
   });
   on('cf_dxgrid', 'mousedown', function(e){
-    var item = e.target.closest('.dxi'); if(!item) return;
-    e.preventDefault();
-    var wrap = item.closest('.dxc'), inp = wrap && wrap.querySelector('[data-dx]');
-    if(!inp) return;
-    inp.value = item.dataset.code || '';
-    read();
-    closeDxDrops();
-    clearTimeout(window._cfDxT);
-    window._cfDxT = setTimeout(paintDx1500, 120);
+    safe(function(){
+      var item = e.target.closest('.dxi'); if(!item) return;
+      e.preventDefault();
+      var wrap = item.closest('.dxc'), inp = wrap && wrap.querySelector('[data-dx]');
+      if(!inp) return;
+      inp.value = item.dataset.code || '';
+      read();
+      closeDxDrops();
+      clearTimeout(window._cfDxT);
+      window._cfDxT = setTimeout(function(){ safe(paintDx1500,'paintDx1500'); }, 120);
+    }, 'dxgrid mousedown');
   });
   document.addEventListener('click', function(e){
-    if(!e.target.closest('.dxc')) closeDxDrops();
+    safe(function(){ if(!e.target.closest('.dxc')) closeDxDrops(); }, 'dx click-outside');
   });
 
   on('cf_addline', 'click', function(){
-    read();
-    C.lines = C.lines || [];
-    C.lines.push({ cpt:'', mod:'', mod2:'', dxptrs:C.dx && C.dx[0] ? ['1'] : [],
-                   charge:0, units:1, unit_type:'UN', from:C.dos||'', pos:C.pos||'' });
-    paintLines1500();
-    var rows = $('cf_svclines').querySelectorAll('.svcr');
-    var last = rows[rows.length-1];
-    if(last){ var cpt = last.querySelector('[data-f="cpt"]'); if(cpt) cpt.focus(); }
+    safe(function(){
+      read();
+      C.lines = C.lines || [];
+      C.lines.push({ cpt:'', mod:'', mod2:'', dxptrs:C.dx && C.dx[0] ? ['1'] : [],
+                     charge:0, units:1, unit_type:'UN', from:C.dos||'', pos:C.pos||'' });
+      paintLines1500();
+      var rows = $('cf_svclines').querySelectorAll('.svcr');
+      var last = rows[rows.length-1];
+      if(last){ var cpt = last.querySelector('[data-f="cpt"]'); if(cpt) cpt.focus(); }
+    }, 'cf_addline click');
   });
 
   on('cf_svclines', 'click', function(e){
-    var rm = e.target.closest('[data-rmline]');
-    if(!rm) return;
-    read();
-    C.lines.splice(+rm.dataset.rmline, 1);
-    paintLines1500();
+    safe(function(){
+      var rm = e.target.closest('[data-rmline]');
+      if(!rm) return;
+      read();
+      C.lines.splice(+rm.dataset.rmline, 1);
+      paintLines1500();
+    }, 'cf_svclines click');
   });
 
   /* typing a payer name fills its ID from the payer list */
   on('cf_payer', 'input', function(){
-    var v = this.value.trim().toLowerCase();
-    if(v.length < 2) return;
-    var payers = (window.RFCodes && RFCodes.payers) ? RFCodes.payers() : [];
-    var hit = payers.filter(function(p){
-      return String(p.name||'').toLowerCase() === v; })[0];
-    if(hit){
-      if($('cf_payerid') && !$('cf_payerid').value) $('cf_payerid').value = hit.payer_id || '';
-      read();
-    }
+    var self = this;
+    safe(function(){
+      var v = self.value.trim().toLowerCase();
+      if(v.length < 2) return;
+      var payers = (window.RFCodes && RFCodes.payers) ? RFCodes.payers() : [];
+      var hit = payers.filter(function(p){
+        return String(p.name||'').toLowerCase() === v; })[0];
+      if(hit){
+        if($('cf_payerid') && !$('cf_payerid').value) $('cf_payerid').value = hit.payer_id || '';
+        read();
+      }
+    }, 'cf_payer input');
   });
 
     on('cfSave', 'click', async function(){
+      var btn = this;
       /* The button is disabled while locked, but a disabled button is a
          courtesy rather than a guarantee — check the state itself too. */
       if(isFiled(C) && !amending()){
@@ -1296,18 +1314,25 @@
           'Set the submission type to 7 or 8 to change it');
         return;
       }
-      var issues = validate();
-      var errs = issues.filter(function(x){ return x.level==='err'; });
-      if(errs.length){
-        show('review');
-        notify(errs.length+' thing'+(errs.length===1?'':'s')+' to fix',
-          'The payer would reject this claim as it stands');
-        return;
-      }
-      this.disabled = true;
+      var issues = [];
+      var validateOk = safe(function(){
+        issues = validate();
+        var errs = issues.filter(function(x){ return x.level==='err'; });
+        if(errs.length){
+          show('review');
+          notify(errs.length+' thing'+(errs.length===1?'':'s')+' to fix',
+            'The payer would reject this claim as it stands');
+        }
+        return !errs.length;
+      }, 'cfSave validate');
+      if(validateOk !== true) return;
+      btn.disabled = true;
       try{
         if(OPTS.onSave) await OPTS.onSave(C);
-      }finally{ this.disabled = false; }
+      }catch(err){
+        console.error('ReviFlow claim form: onSave failed', err);
+        notify('Could not save', 'Something went wrong saving this claim — your entries are still on screen');
+      }finally{ btn.disabled = false; }
     });
   }
 
