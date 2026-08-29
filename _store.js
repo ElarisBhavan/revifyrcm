@@ -25,7 +25,7 @@
   /* Set in _config.js, which loads before this file. The fallback keeps the
      application working if that file is ever missing. */
   const DRIVER = (typeof window !== 'undefined' &&
-                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'api';
+                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'local';
   /* ───────────────────────────────────────────────────────────── */
   /* Bumped on every release. Printed to the console and shown in the page
      footer, so which build is actually loaded is never in doubt. */
@@ -1992,8 +1992,20 @@
     },
 
     async findPatient({ ref, memberId, last, first }){
-      const list = await rows(PATIENTS);
-      if(ref){ const a = list.find(p => String(p.id) === String(ref)); if(a) return a; }
+      /* This used to always read the local/offline IndexedDB cache, even
+         when DRIVER==='api' — so a patient created or booked on the shared
+         server could go "not found" here and get a duplicate shell record
+         created for them (see the shell-creation fallback in
+         patient-record.html), each with its own id and its own Internal ID.
+         That is one of the ways the same patient ended up showing two
+         different IDs in different places. Route through the driver-aware
+         helpers instead, so this always looks at the same data everyone
+         else sees. */
+      if(ref){
+        const a = await this.patient(ref);
+        if(a) return a;
+      }
+      const list = await this.patients();
       if(memberId){
         const M = String(memberId).toUpperCase();
         const b = list.find(p => String(p.member_id||'').toUpperCase() === M ||
@@ -2010,6 +2022,7 @@
     },
     async savePatientRec(p){
       if(DRIVER==='api'){
+        if(!String(p.last_name||'').trim()) return { error:'Last name is required' };
         try{ const j=await dSave('patient',p); return { ok:true, id:j.id, internal_id:(j.record||{}).internal_id }; }
         catch(e){ return { error:String(e.message||e) }; }
       }
