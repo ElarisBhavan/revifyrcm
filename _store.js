@@ -25,7 +25,7 @@
   /* Set in _config.js, which loads before this file. The fallback keeps the
      application working if that file is ever missing. */
   const DRIVER = (typeof window !== 'undefined' &&
-                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'api';
+                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'local';
   /* ───────────────────────────────────────────────────────────── */
   /* Bumped on every release. Printed to the console and shown in the page
      footer, so which build is actually loaded is never in doubt. */
@@ -655,6 +655,14 @@
       }catch(err){ return { error:'Save failed: '+(err && err.message || err) }; }
     },
     async removeOrg(id){
+      if(DRIVER==='api'){
+        try{
+          const linked = (await dList('provider')).filter(p => String(p.org_id)===String(id));
+          if(linked.length) return { error:`${linked.length} provider(s) are still attached to this organization.` };
+          await dDel('org', id);
+          return { ok:true };
+        }catch(e){ return { error:String(e.message||e) }; }
+      }
       const linked = (await rows(PROVIDERS)).filter(p => p.org_id === id);
       if(linked.length) return { error:`${linked.length} provider(s) are still attached to this organization.` };
       await kill(ORGS, id);
@@ -700,6 +708,7 @@
       }catch(err){ return { error:'Save failed: '+(err && err.message || err) }; }
     },
     async removeProvider(id){
+      if(DRIVER==='api'){ try{ await dDel('provider', id); return { ok:true }; }catch(e){ return { error:String(e.message||e) }; } }
       await kill(PROVIDERS, id);
       const me = getSession();
       await audit(me?me.username:'system','delete_provider',String(id),{});

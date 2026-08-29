@@ -273,6 +273,16 @@ exports.handler = async (event) => {
 
   }catch(err){
     console.error('auth error', err);
+    /* JWT_SECRET missing/misconfigured surfaces here as a generic 500 on the very
+       first login of any brand-new account (must-change), any MFA challenge, or
+       any password reset — since every one of those issues a signed step token.
+       That makes it look like "can't log in for the first time" with no clue why.
+       Give a distinguishable, still-safe error code so it's diagnosable instead of
+       a silent server error. */
+    if(String(err && err.message).includes('JWT_SECRET')){
+      return L.J(500,{ error:'config',
+        message:'Server is not fully configured (missing JWT_SECRET). Contact your administrator.' });
+    }
     return L.J(500,{ error:'server' });   // never leak internals to the client
   }
 };

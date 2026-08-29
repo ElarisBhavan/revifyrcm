@@ -15,7 +15,7 @@ const initialsOf = n => String(n||'').replace(/^Dr\.?\s+/i,'')
   .split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
 
 exports.handler = async (event) => {
-  const me = L.session(event);
+  const me = await L.session(event);
   if(!me) return L.J(401, { error:'Not signed in' });
   if(me.role !== 'admin') return L.J(403, { error:'Administrator access required' });
 
@@ -64,8 +64,10 @@ exports.handler = async (event) => {
                 ${!!b.mfa_enabled},${secret},${b.must_change !== false},${me.username})
         RETURNING id,username,role,full_name,provider_ref,org_id`;
 
-      await L.audit(me.username,'create_account',username,{ role });
+      await L.audit(event,{ actor_id:me.id, actor:me.username, action:'create_account',
+        entity:'account', entity_id:row.id, detail:{ role } });
       return L.J(201, {
+        ok: true,
         account: row,
         tempPassword: b.password ? null : pw,   // shown once, never stored in the clear
         mfa: secret ? { secret, otpauth: L.otpauth(username, secret) } : null
@@ -91,8 +93,9 @@ exports.handler = async (event) => {
           status      = COALESCE(${b.status ?? null}, status),
           updated_at  = NOW()
         WHERE id=${id} RETURNING id,username,role,status,provider_ref,org_id`;
-      await L.audit(me.username,'update_account',row?.username,b);
-      return L.J(200, { account: row });
+      await L.audit(event,{ actor_id:me.id, actor:me.username, action:'update_account',
+        entity:'account', entity_id:row?.id, detail:b });
+      return L.J(200, { ok: true, account: row });
     }
 
     /* ── reset a password on the user's behalf ── */
@@ -104,7 +107,8 @@ exports.handler = async (event) => {
         UPDATE accounts SET password_hash=${L.hashPassword(pw)}, must_change=TRUE,
                failed_attempts=0, locked_until=NULL, updated_at=NOW()
         WHERE id=${id} RETURNING username`;
-      await L.audit(me.username,'reset_password',row?.username,{});
+      await L.audit(event,{ actor_id:me.id, actor:me.username, action:'reset_password',
+        entity:'account', entity_id:id });
       return L.J(200, { ok:true, tempPassword: pw, username: row?.username });
     }
 
@@ -116,13 +120,15 @@ exports.handler = async (event) => {
         const secret = L.randomSecret();
         const [row] = await sql`UPDATE accounts SET mfa_secret=${secret}, mfa_enabled=FALSE
                                 WHERE id=${id} RETURNING username`;
-        await L.audit(me.username,'mfa_reset',row?.username,{});
+        await L.audit(event,{ actor_id:me.id, actor:me.username, action:'mfa_reset',
+          entity:'account', entity_id:id });
         return L.J(200, { ok:true, secret, otpauth: L.otpauth(row.username, secret),
                           note:'The user completes enrolment at their next sign-in.' });
       }
       const [row] = await sql`UPDATE accounts SET mfa_enabled=FALSE, mfa_secret=NULL
                               WHERE id=${id} RETURNING username`;
-      await L.audit(me.username,'mfa_disable',row?.username,{});
+      await L.audit(event,{ actor_id:me.id, actor:me.username, action:'mfa_disable',
+        entity:'account', entity_id:id });
       return L.J(200, { ok:true });
     }
 
@@ -130,7 +136,8 @@ exports.handler = async (event) => {
     if(action === 'unlock'){
       const [row] = await sql`UPDATE accounts SET failed_attempts=0, locked_until=NULL
                               WHERE id=${b.id} RETURNING username`;
-      await L.audit(me.username,'unlock',row?.username,{});
+      await L.audit(event,{ actor_id:me.id, actor:me.username, action:'unlock',
+        entity:'account', entity_id:b.id });
       return L.J(200, { ok:true });
     }
 
@@ -145,7 +152,8 @@ exports.handler = async (event) => {
         if(count <= 1) return L.J(400, { error:'This is the last active administrator' });
       }
       await sql`DELETE FROM accounts WHERE id=${id}`;
-      await L.audit(me.username,'delete_account',target.username,{});
+      await L.audit(event,{ actor_id:me.id, actor:me.username, action:'delete_account',
+        entity:'account', entity_id:id });
       return L.J(200, { ok:true });
     }
 
