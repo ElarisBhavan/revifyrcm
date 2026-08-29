@@ -25,7 +25,7 @@
   /* Set in _config.js, which loads before this file. The fallback keeps the
      application working if that file is ever missing. */
   const DRIVER = (typeof window !== 'undefined' &&
-                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'api';
+                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'local';
   /* ───────────────────────────────────────────────────────────── */
   /* Bumped on every release. Printed to the console and shown in the page
      footer, so which build is actually loaded is never in doubt. */
@@ -1386,7 +1386,15 @@
 
     /* every appointment for one patient, newest first */
     async apptsForPatient(ref, last, first, memberId){
-      const list = await rows(APPTS);
+      /* This read straight from the local IndexedDB store with no
+         DRIVER==='api' branch, so in api mode a patient's chart always saw
+         zero appointments — which meant the "every appointment gets an
+         encounter" step below never had anything to work with, so a newly
+         scheduled visit never got its encounter created automatically.
+         appts()/appt() above already know how to fetch the 'appt' kind from
+         the server; this mirrors that and applies the same patient-matching
+         filter used for the local-store path. */
+      const list = DRIVER==='api' ? await dList('appt', {}) : await rows(APPTS);
       const L = String(last||'').trim().toLowerCase();
       const F = String(first||'').trim().toLowerCase();
       const M = String(memberId||'').trim().toUpperCase();
@@ -2056,8 +2064,25 @@
       return list.filter(e => String(e.patient_ref) === String(patientRef))
                  .sort((a,b) => (b.dos||'').localeCompare(a.dos||''));
     },
-    async encounter(id){ return (await rows(ENC)).find(e => e.id === id) || null; },
+    async encounter(id){
+      /* This never had a DRIVER==='api' branch, so in api mode it always read
+         the (empty, unseeded) local IndexedDB store and returned null — every
+         caller that does `normalizeEncounter(await RFStore.encounter(id))`
+         then silently got back a bare {} instead of the real encounter,
+         because normalizeEncounter coerces a null into an empty object rather
+         than staying null. Saving that bare object created a brand-new,
+         orphaned encounter row (no patient_ref, no dos) instead of updating
+         the real one — which is why signing or saving a progress note showed
+         a success toast but the note was gone the next time the chart loaded:
+         it was never written to the visit's actual encounter. */
+      if(DRIVER==='api') return dapi('encounter','get',null,id).then(j=>j.record).catch(()=>null);
+      return (await rows(ENC)).find(e => e.id === id) || null;
+    },
     async encounterForAppt(apptId){
+      if(DRIVER==='api'){
+        const list = await dList('encounter',{});
+        return list.find(e => String(e.appt_id) === String(apptId)) || null;
+      }
       return (await rows(ENC)).find(e => String(e.appt_id) === String(apptId)) || null;
     },
     async saveEncounter(e){
