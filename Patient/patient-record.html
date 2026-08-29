@@ -260,6 +260,15 @@ input,select,textarea{font:inherit}
 .modal{position:fixed;z-index:91;left:50%;top:50%;width:min(620px,calc(100vw - 22px));max-height:calc(100vh - 44px);overflow:auto;transform:translate(-50%,-46%) scale(.96);opacity:0;visibility:hidden;background:rgba(255,255,255,.62);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);border:1px solid rgba(255,255,255,.7);border-radius:19px;box-shadow:0 40px 90px -30px rgba(14,26,23,.55);transition:all .38s var(--e)}
 .modal.on{opacity:1;visibility:visible;transform:translate(-50%,-50%) scale(1)}
 .modal.wide{width:min(900px,calc(100vw - 22px))}
+/* Slim, tinted scrollbar instead of the browser's default solid-white track —
+   the thumb sits on the modal's own translucent background rather than
+   showing as a separate white column, and stays narrow with an inset border
+   so it never overlaps the text beside it. */
+.modal,.dv,.notes{scrollbar-width:thin;scrollbar-color:rgba(14,26,23,.24) transparent}
+.modal::-webkit-scrollbar,.dv::-webkit-scrollbar,.notes::-webkit-scrollbar{width:9px}
+.modal::-webkit-scrollbar-track,.dv::-webkit-scrollbar-track,.notes::-webkit-scrollbar-track{background:transparent}
+.modal::-webkit-scrollbar-thumb,.dv::-webkit-scrollbar-thumb,.notes::-webkit-scrollbar-thumb{background:rgba(14,26,23,.24);border-radius:8px;border:2.5px solid transparent;background-clip:padding-box}
+.modal::-webkit-scrollbar-thumb:hover,.dv::-webkit-scrollbar-thumb:hover,.notes::-webkit-scrollbar-thumb:hover{background:rgba(14,26,23,.4)}
 .mhead{display:flex;align-items:center;gap:11px;padding:16px 19px;border-bottom:1px solid rgba(14,26,23,.1)}
 .mhead .mi{width:32px;height:32px;flex:none;border-radius:10px;background:var(--green-s);display:grid;place-items:center}
 .mhead .mi svg{width:16px;height:16px;stroke:var(--green-d);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -352,8 +361,25 @@ input,select,textarea{font:inherit}
   .pcta .btn{flex:1;justify-content:center}
 }
 @media print{
-  .hdr,.tabs,.pbar,.pcta,.scrim,.mhead,.mfoot,.toast{display:none!important}
-  .modal{position:static;transform:none;opacity:1;visibility:visible;box-shadow:none;border:none;width:100%;max-height:none;background:#fff}
+  /* Every modal on this page (New patient, Sign note, Add payment, Progress
+     note, …) shares the .modal class and normally stays in the DOM at
+     opacity:0/visibility:hidden rather than display:none, so the old rule
+     below — which made ".modal" visible and static for printing — made ALL
+     of them print at once, stacked one after another, along with the whole
+     chart page underneath (header, tabs, every section). Hiding everything
+     at the body level and then re-showing only the modal that is actually
+     open (".modal.on") is what keeps a print to just the one dialog on
+     screen — e.g. only the progress note, not the New patient form and the
+     Sign note dialog as well. The claim form (".cf", from _claimform.js) is
+     a separate, body-level overlay with its own working print rule in
+     _claimform.css, so it is exempted here rather than caught by this
+     catch-all and hidden along with everything else. */
+  body>*:not(.modal.on):not(.cf.on){display:none!important}
+  .modal.on{
+    display:block!important;position:static;transform:none;opacity:1;visibility:visible;
+    box-shadow:none;border:none;width:100%;max-height:none;background:#fff
+  }
+  .modal.on .mhead,.modal.on .mfoot{display:none!important}
   .dv{max-height:none;overflow:visible}
 }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}.card,.pbar,.tabs{opacity:1;transform:none}}
