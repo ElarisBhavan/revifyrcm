@@ -344,27 +344,30 @@
 .opt input:checked + i::after{transform:scale(1)}
 .opt input:disabled + i{opacity:.45}
 
-/* box 21, the diagnoses A–L — twelve of their own rounded boxes, three
-   across, four deep — the curved-edge "each field is its own bordered card"
-   look box 24's inputs use, sized for a single code and its description */
-.dxgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.dxc{position:relative;display:flex;flex-direction:column;gap:6px;
-  padding:10px 11px;border:1px solid var(--b);border-radius:11px;
-  background:var(--paper-2,#F4F2EC)}
-.dxc.primary{background:linear-gradient(140deg,#DFF5EC,#CDEDE0);
-  border-color:rgba(14,157,115,.35)}
-.dxc-top{display:flex;align-items:center;gap:8px}
-.dxc .dxn{display:grid;place-items:center;width:22px;height:22px;border-radius:6px;
-  flex:none;background:#fff;font-family:var(--mono,ui-monospace);
-  font-size:9.6px;font-weight:700;color:var(--muted,#5C6A66)}
+/* box 21, the diagnoses A–L — plain rounded-pill fields, three across, four
+   deep. No card behind them: just the pill itself, a small letter above it,
+   and the matched description underneath. */
+.dxgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 14px}
+.dxc{position:relative;display:flex;flex-direction:column;gap:5px}
+.dxc-top{display:flex;align-items:baseline;gap:7px}
+.dxc .dxn{flex:none;font-family:var(--mono,ui-monospace);font-size:9.6px;
+  font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--dim,#8A9A97)}
 .dxc.primary .dxn{color:var(--green-d,#0A5C46)}
-.dxc input{width:100%;min-width:0;padding:7px 8px;border-radius:7px;border:1px solid var(--b);
-  background:#fff;font-size:11.8px;font-family:var(--mono,ui-monospace);text-transform:uppercase}
+.dxc input{width:100%;min-width:0;padding:10px 16px;border-radius:999px;
+  border:1.6px solid var(--b);background:#fff;font-size:12px;
+  font-family:var(--mono,ui-monospace);text-transform:uppercase}
 .dxc input:focus{outline:none;border-color:var(--green,#0E9D73);
   box-shadow:0 0 0 2px rgba(14,157,115,.13)}
-.dxc .desc{font-size:10px;color:var(--muted,#5C6A66);line-height:1.35;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dxc .desc.empty{color:var(--dim,#8A9A97);font-style:italic}
+.dxc.primary input{border-color:rgba(14,157,115,.55)}
+/* every property spelled out here, on purpose — this app already has a
+   generic .empty utility class (for "nothing here" placeholders) elsewhere,
+   and its padding/centering silently applied to a plain-named ".empty" on
+   this element too. Given its own name, .dx-blank, plus a fully specified
+   rule, nothing else in the stylesheet can partially override this again. */
+.dxc .desc{display:block;font-size:10px;font-style:normal;font-weight:400;
+  line-height:1.35;text-align:left;padding:0 0 0 16px;margin:0;
+  color:var(--muted,#5C6A66);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dxc .desc.dx-blank{color:var(--dim,#8A9A97);font-style:italic}
 @media (max-width:900px){.dxgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:480px){.dxgrid{grid-template-columns:1fr}}
 

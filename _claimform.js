@@ -420,7 +420,7 @@
           '<input type="text" data-dx="'+i+'" value="'+esc(v)+'" maxlength="8" autocomplete="off" '+
             'placeholder="'+(i===0?'F41.1':'—')+'">'+
         '</div>'+
-        '<span class="desc'+(desc?'':' empty')+'" title="'+esc(desc)+'">'+
+        '<span class="desc'+(desc?'':' dx-blank')+'" title="'+esc(desc)+'">'+
           (desc?esc(desc):(i===0?'Primary diagnosis':'—'))+'</span>'+
         '<div class="dxlist-drop" data-dxdrop="'+i+'"></div>'+
       '</div>';
