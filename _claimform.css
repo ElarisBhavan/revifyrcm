@@ -344,33 +344,29 @@
 .opt input:checked + i::after{transform:scale(1)}
 .opt input:disabled + i{opacity:.45}
 
-/* box 21, the diagnoses A–L — laid out as a row table, same look as box 24's
-   service lines, so the two "add up to twelve/many rows" boxes on the form
-   read as one design instead of two */
-.dxtbl{border:1px solid var(--b);border-radius:11px;overflow:visible}
-.dxtblh,.dxrow1500{display:grid;grid-template-columns:34px 160px 1fr;gap:8px;align-items:center;padding:8px 11px}
-.dxtblh{background:var(--paper-2,#F4F2EC);border-bottom:1px solid var(--b);
-  font-family:var(--mono,ui-monospace);font-size:8.2px;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--dim,#8A9A97)}
-.dxrow1500{border-bottom:1px solid var(--bs);position:relative}
-.dxrow1500:last-child{border-bottom:none}
-.dxrow1500.primary{background:linear-gradient(90deg,rgba(14,157,115,.05),transparent 40%)}
-.dxn{display:grid;place-items:center;width:22px;height:22px;border-radius:6px;
-  background:var(--paper-2,#F4F2EC);font-family:var(--mono,ui-monospace);
+/* box 21, the diagnoses A–L — twelve of their own rounded boxes, three
+   across, four deep — the curved-edge "each field is its own bordered card"
+   look box 24's inputs use, sized for a single code and its description */
+.dxgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.dxc{position:relative;display:flex;flex-direction:column;gap:6px;
+  padding:10px 11px;border:1px solid var(--b);border-radius:11px;
+  background:var(--paper-2,#F4F2EC)}
+.dxc.primary{background:linear-gradient(140deg,#DFF5EC,#CDEDE0);
+  border-color:rgba(14,157,115,.35)}
+.dxc-top{display:flex;align-items:center;gap:8px}
+.dxc .dxn{display:grid;place-items:center;width:22px;height:22px;border-radius:6px;
+  flex:none;background:#fff;font-family:var(--mono,ui-monospace);
   font-size:9.6px;font-weight:700;color:var(--muted,#5C6A66)}
-.dxrow1500.primary .dxn{background:linear-gradient(140deg,#DFF5EC,#CDEDE0);color:var(--green-d,#0A5C46)}
-.dxrow1500 input{width:100%;padding:7px 8px;border-radius:7px;border:1px solid var(--b);
+.dxc.primary .dxn{color:var(--green-d,#0A5C46)}
+.dxc input{width:100%;min-width:0;padding:7px 8px;border-radius:7px;border:1px solid var(--b);
   background:#fff;font-size:11.8px;font-family:var(--mono,ui-monospace);text-transform:uppercase}
-.dxrow1500 input:focus{outline:none;border-color:var(--green,#0E9D73);
+.dxc input:focus{outline:none;border-color:var(--green,#0E9D73);
   box-shadow:0 0 0 2px rgba(14,157,115,.13)}
-.dxrow1500 .desc{font-size:11.4px;color:var(--muted,#5C6A66);overflow:hidden;
-  text-overflow:ellipsis;white-space:nowrap}
-.dxrow1500 .desc.empty{color:var(--dim,#8A9A97);font-style:italic}
-@media (max-width:700px){
-  .dxtblh{display:none}
-  .dxrow1500{grid-template-columns:28px 1fr}
-  .dxrow1500 .desc{display:none}
-}
+.dxc .desc{font-size:10px;color:var(--muted,#5C6A66);line-height:1.35;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dxc .desc.empty{color:var(--dim,#8A9A97);font-style:italic}
+@media (max-width:900px){.dxgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.dxgrid{grid-template-columns:1fr}}
 
 /* box 24, the service lines */
 .svc{border:1px solid var(--b);border-radius:11px;overflow:hidden}
@@ -425,8 +421,9 @@
 .bx.dim-off{opacity:.5}
 .bx.dim-off .bxf input{background:var(--paper-2,#F4F2EC);cursor:not-allowed}
 
-/* box 21 — a code field that offers matches as you focus or type */
-.dxcell{position:relative}
+/* box 21 — a code field that offers matches as you focus or type. .dxc
+   itself already carries position:relative, so the dropdown just needs
+   somewhere to anchor. */
 .dxlist-drop{position:absolute;z-index:40;left:0;right:0;top:calc(100% + 4px);
   max-height:220px;overflow:auto;background:#fff;border:1px solid var(--b);
   border-radius:10px;box-shadow:0 18px 40px -16px rgba(14,26,23,.3);

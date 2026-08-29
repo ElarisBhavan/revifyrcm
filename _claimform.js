@@ -39,6 +39,34 @@
     catch(err){ console.error('ReviFlow claim form: '+label+' failed', err); }
   }
 
+  /* Matches a payer name against Admin → Payers as forgivingly as
+     reasonable. A patient's insurance record and the payer list in Admin
+     are typed by different people at different times, so a difference as
+     small as an extra space or a trailing "Inc." should not be the reason
+     the payer ID is left blank when a person looking at the screen can
+     plainly see it is the same payer. */
+  function normPayerName(s){
+    return String(s||'').trim().toLowerCase().replace(/\s+/g,' ').replace(/[.,]/g,'');
+  }
+  function findPayer(nameOrId){
+    if(!window.RFCodes || !RFCodes.payers) return null;
+    var raw = String(nameOrId||'').trim();
+    if(!raw) return null;
+    var q = normPayerName(raw), qid = raw.toLowerCase();
+    var list = RFCodes.payers();
+    var hit = list.filter(function(p){
+      return normPayerName(p.name) === q || String(p.payer_id||'').toLowerCase() === qid;
+    })[0];
+    if(!hit && q){
+      /* one name contains the other, so "Aetna" still finds "Aetna Inc" */
+      hit = list.filter(function(p){
+        var pn = normPayerName(p.name);
+        return pn && (pn.indexOf(q) > -1 || q.indexOf(pn) > -1);
+      })[0];
+    }
+    return hit || null;
+  }
+
   function fmtShort(d){
     if(!d) return '';
     var p = String(d).split('-');
@@ -292,7 +320,7 @@
 
     /* ── 21, the diagnoses ── */
     bx('21','Diagnosis or nature of illness or injury',
-        '<div class="dxtbl" id="cf_dxgrid"></div>'+
+        '<div class="dxgrid" id="cf_dxgrid"></div>'+
         '<span class="fh">A is the primary diagnosis. Up to twelve, lettered A to L, '+
         'and each service line points at up to four of them.</span>',
         {span:2, req:true}) +
@@ -378,21 +406,23 @@
     var grid=$('cf_dxgrid');
     if(!grid) return;
     var list=(C.dx&&C.dx.length)?C.dx.slice():[''];
-    /* all twelve, A through L, are on screen from the start, laid out as a
-       table row per letter — the same look box 24's service lines use */
-    var out='<div class="dxtblh"><span></span><span>ICD-10 code *</span><span>Description</span></div>';
+    /* all twelve, A through L, are on screen from the start, laid out as
+       their own rounded boxes, three across — the same "each field lives
+       in its own bordered card" look box 24's service lines use, sized for
+       a single code instead of a full row */
+    var out='';
     for(var i=0;i<12;i++){
       var v=list[i]||'';
       var desc=(v&&window.RFCodes&&RFCodes.icdDesc)?RFCodes.icdDesc(v):'';
-      out+='<div class="dxrow1500'+(i===0?' primary':'')+'">'+
-        '<span class="dxn" title="'+(i===0?'Primary diagnosis':'Diagnosis '+DXL[i])+'">'+DXL[i]+'</span>'+
-        '<span class="dxcell">'+
+      out+='<div class="dxc'+(i===0?' primary':'')+'">'+
+        '<div class="dxc-top">'+
+          '<span class="dxn" title="'+(i===0?'Primary diagnosis':'Diagnosis '+DXL[i])+'">'+DXL[i]+'</span>'+
           '<input type="text" data-dx="'+i+'" value="'+esc(v)+'" maxlength="8" autocomplete="off" '+
             'placeholder="'+(i===0?'F41.1':'—')+'">'+
-          '<div class="dxlist-drop" data-dxdrop="'+i+'"></div>'+
-        '</span>'+
+        '</div>'+
         '<span class="desc'+(desc?'':' empty')+'" title="'+esc(desc)+'">'+
           (desc?esc(desc):(i===0?'Primary diagnosis':'—'))+'</span>'+
+        '<div class="dxlist-drop" data-dxdrop="'+i+'"></div>'+
       '</div>';
     }
     grid.innerHTML=out;
@@ -409,7 +439,8 @@
     }).join('');
   }
   function openDxDrop(input){
-    var drop = input.parentElement && input.parentElement.querySelector('[data-dxdrop]');
+    var wrap = input.closest('.dxc');
+    var drop = wrap && wrap.querySelector('[data-dxdrop]');
     if(!drop) return;
     closeDxDrops();
     drop.innerHTML = dxDropHTML(input.value);
@@ -556,6 +587,11 @@
       C.rel_other = C.rel_other || 'N';
       C.outside_lab = C.outside_lab || 'N';
       C.assignment = C.assignment || 'Y';
+      /* box 27 (accept assignment) is a separate question from box 13, but
+         it is answered "Yes" on the near-totality of claims for the same
+         reason: it is what lets the payer pay the practice directly rather
+         than reimbursing the patient. */
+      C.accept_assignment = C.accept_assignment || 'Y';
       normaliseLines();
       fill();
       show(OPTS.section || ((C.rejections && C.rejections.length) ? 'review' : 'payer'));
@@ -662,20 +698,40 @@
        lookup here, once, right after the name is on the page, fills it in
        immediately whenever the practice has that payer on file. */
     if($('cf_payer') && $('cf_payerid') && !String($('cf_payerid').value||'').trim()){
-      var payerName = String($('cf_payer').value||'').trim().toLowerCase();
-      if(payerName && window.RFCodes && RFCodes.payers){
-        var payerHit = RFCodes.payers().filter(function(p){
-          return String(p.name||'').toLowerCase() === payerName; })[0];
-        if(payerHit && payerHit.payer_id){
-          $('cf_payerid').value = payerHit.payer_id;
-          C.payer_id = payerHit.payer_id;
-        }
+      var payerHit = findPayer($('cf_payer').value);
+      if(payerHit && payerHit.payer_id){
+        $('cf_payerid').value = payerHit.payer_id;
+        C.payer_id = payerHit.payer_id;
       }
     }
 
     var payers = (window.RFCodes && RFCodes.payers) ? RFCodes.payers() : [];
     if($('cfPayerList')) $('cfPayerList').innerHTML = payers.map(function(p){
       return '<option value="'+esc(p.name)+'">'+esc(p.payer_id||'')+'</option>'; }).join('');
+
+    /* box 1a: which responsibility levels make sense to offer depends on
+       how many insurance policies the patient actually has on file. A
+       patient with only a primary policy has no secondary or tertiary payer
+       to coordinate benefits with, so those choices are just noise; once a
+       second policy is on file, this claim is being filed after the
+       primary, so it is Secondary or Tertiary that applies. */
+    if($('cf_resp')){
+      var patIns = OPTS.context && OPTS.context.patient && OPTS.context.patient.insurances;
+      var respOpts = [['P','P — Primary'],['S','S — Secondary'],['T','T — Tertiary']];
+      if(patIns && patIns.length){
+        var ranks = patIns.map(function(i){ return String(i.rank||''); });
+        var hasSecondary = ranks.indexOf('2') > -1 || ranks.indexOf('3') > -1;
+        respOpts = hasSecondary
+          ? [['S','S — Secondary'],['T','T — Tertiary']]
+          : [['P','P — Primary']];
+      }
+      var curResp = C.responsibility || respOpts[0][0];
+      $('cf_resp').innerHTML = respOpts.map(function(o){
+        return '<option value="'+esc(o[0])+'">'+esc(o[1])+'</option>'; }).join('');
+      var respOk = respOpts.some(function(o){ return o[0]===curResp; });
+      $('cf_resp').value = respOk ? curResp : respOpts[0][0];
+      if(!respOk) C.responsibility = respOpts[0][0];
+    }
 
     /* Place of service now sits on each service line, where box 24B puts it,
        so the single dropdown is gone. */
@@ -1108,12 +1164,7 @@
     /* payer name fills the id, the mailing address behind the scenes, and
        box 1's insurance type from the admin list */
     function fillPayer(){
-      if(!window.RFCodes || !RFCodes.payers) return;
-      var q = String($('cf_payer').value||'').trim().toLowerCase();
-      if(!q) return;
-      var hit = RFCodes.payers().filter(function(p){
-        return String(p.name||'').toLowerCase()===q ||
-               String(p.payer_id||'').toLowerCase()===q; })[0];
+      var hit = findPayer($('cf_payer').value);
       if(!hit) return;
       $('cf_payer').value = hit.name||'';
       if(hit.payer_id) $('cf_payerid').value = hit.payer_id;
@@ -1193,7 +1244,7 @@
   on('cf_dxgrid', 'mousedown', function(e){
     var item = e.target.closest('.dxi'); if(!item) return;
     e.preventDefault();
-    var wrap = item.closest('.dxcell'), inp = wrap && wrap.querySelector('[data-dx]');
+    var wrap = item.closest('.dxc'), inp = wrap && wrap.querySelector('[data-dx]');
     if(!inp) return;
     inp.value = item.dataset.code || '';
     read();
@@ -1202,7 +1253,7 @@
     window._cfDxT = setTimeout(paintDx1500, 120);
   });
   document.addEventListener('click', function(e){
-    if(!e.target.closest('.dxcell')) closeDxDrops();
+    if(!e.target.closest('.dxc')) closeDxDrops();
   });
 
   on('cf_addline', 'click', function(){
