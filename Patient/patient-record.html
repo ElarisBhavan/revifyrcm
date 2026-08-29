@@ -2546,10 +2546,21 @@ input,select,textarea{font:inherit}
     if(lk){
       var lid=+lk.dataset.lock;if((PENDING[lid]||[]).length){toast('Unsaved services','Select Save services before signing',true);return;}
       var e3=normalizeEncounter(await RFStore.encounter(lid));if(!e3)return;
-      var n3=encounterNote(e3),noteOK=['subjective','objective','assessment','plan'].every(function(k){return n3[k].trim();});
+      /* encounterNote() puts every template's fields under .answers (the
+         built-in Simple Progress Note included) — reading n3.subjective/
+         .objective/.assessment/.plan directly is the pre-template shape and
+         is always undefined now, so undefined.trim() crashed here with
+         "Cannot read properties of undefined (reading 'trim')" any time
+         someone tried to sign & lock an encounter. RFNoteTemplates.
+         hasContent() is the template-agnostic completeness check already
+         used elsewhere in this file for the same question, so it also works
+         for the specialty templates (behavioral health, chiropractic, etc.)
+         that don't use subjective/objective/assessment/plan at all. */
+      var n3=encounterNote(e3), n3Tpl=RFNoteTemplates.byId(n3.template_id);
+      var noteOK=n3.status==='signed' && RFNoteTemplates.hasContent(n3Tpl, n3.answers);
       if(!e3.diagnoses.length){toast('Diagnosis required','Add and save at least one diagnosis',true);return;}
       if(!e3.lines.length){toast('Service required','Add at least one CPT/HCPCS service',true);return;}
-      if(!noteOK){toast('Clinical note incomplete','Complete and save Subjective, Objective, Assessment and Plan before signing',true);return;}
+      if(!noteOK){toast('Clinical note incomplete','Sign the progress note before locking this encounter',true);return;}
       var badLine=(e3.lines||[]).find(function(l){return !Array.isArray(l.dxptrs)||!l.dxptrs.length;});
       if(badLine){toast('Diagnosis linkage required',badLine.cpt+' has no diagnosis pointer',true);return;}
       e3.progress_note=e3.progress_note||{};e3.progress_note.status='signed';e3.progress_note.signed_at=new Date().toISOString();e3.progress_note.signed_by=SESS?(SESS.name||SESS.username):'system';
