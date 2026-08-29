@@ -82,16 +82,6 @@
       '<button class="cf-x" id="cfClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'+
     '</div>'+
 
-    '<div class="cf-nav" id="cfNav">'+
-      '<button data-s="payer" class="on">Payer</button>'+
-      '<button data-s="billing">Billing provider</button>'+
-      '<button data-s="sub">Subscriber</button>'+
-      '<button data-s="pat">Patient</button>'+
-      '<button data-s="claim">Claim<span class="n" id="cfDxN">0</span></button>'+
-      '<button data-s="lines">Service lines<span class="n" id="cfLnN">0</span></button>'+
-      '<button data-s="review">Review</button>'+
-    '</div>'+
-
     '<div class="cf-body" id="cfBody">'+
       '<div class="cf-lock" id="cfLockNote" hidden></div>'+
 
@@ -302,7 +292,7 @@
 
     /* ── 21, the diagnoses ── */
     bx('21','Diagnosis or nature of illness or injury',
-        '<div class="dxgrid" id="cf_dxgrid"></div>'+
+        '<div class="dxtbl" id="cf_dxgrid"></div>'+
         '<span class="fh">A is the primary diagnosis. Up to twelve, lettered A to L, '+
         'and each service line points at up to four of them.</span>',
         {span:2, req:true}) +
@@ -388,17 +378,21 @@
     var grid=$('cf_dxgrid');
     if(!grid) return;
     var list=(C.dx&&C.dx.length)?C.dx.slice():[''];
-    /* all twelve, A through L, are on screen from the start */
-    var out='';
+    /* all twelve, A through L, are on screen from the start, laid out as a
+       table row per letter — the same look box 24's service lines use */
+    var out='<div class="dxtblh"><span></span><span>ICD-10 code *</span><span>Description</span></div>';
     for(var i=0;i<12;i++){
       var v=list[i]||'';
       var desc=(v&&window.RFCodes&&RFCodes.icdDesc)?RFCodes.icdDesc(v):'';
-      out+='<div class="dxc">'+
-        '<label>'+DXL[i]+(i===0?' (primary)':'')+'</label>'+
-        '<input type="text" data-dx="'+i+'" value="'+esc(v)+'" maxlength="8" autocomplete="off" '+
-          'placeholder="'+(i===0?'F41.1':'')+'">'+
-        (desc?'<span class="desc" title="'+esc(desc)+'">'+esc(desc)+'</span>':'')+
-        '<div class="dxlist-drop" data-dxdrop="'+i+'"></div>'+
+      out+='<div class="dxrow1500'+(i===0?' primary':'')+'">'+
+        '<span class="dxn" title="'+(i===0?'Primary diagnosis':'Diagnosis '+DXL[i])+'">'+DXL[i]+'</span>'+
+        '<span class="dxcell">'+
+          '<input type="text" data-dx="'+i+'" value="'+esc(v)+'" maxlength="8" autocomplete="off" '+
+            'placeholder="'+(i===0?'F41.1':'—')+'">'+
+          '<div class="dxlist-drop" data-dxdrop="'+i+'"></div>'+
+        '</span>'+
+        '<span class="desc'+(desc?'':' empty')+'" title="'+esc(desc)+'">'+
+          (desc?esc(desc):(i===0?'Primary diagnosis':'—'))+'</span>'+
       '</div>';
     }
     grid.innerHTML=out;
@@ -551,6 +545,17 @@
       C.send_method = C.send_method || 'electronic';
       C.frequency = C.frequency || '1';
       C.tax_kind = C.tax_kind || 'EIN';
+      /* Sensible defaults for a fresh claim — only filled in when the field
+         is genuinely unset, so an existing saved claim's own answers are
+         never overridden. Box 10 (employment/auto/other accident) and box
+         20 (outside lab) are "No" far more often than "Yes"; box 13
+         (assignment of benefits) is "Yes" for the near-totality of claims,
+         since that is what lets the payer pay the practice directly. */
+      C.rel_employment = C.rel_employment || 'N';
+      C.rel_auto = C.rel_auto || 'N';
+      C.rel_other = C.rel_other || 'N';
+      C.outside_lab = C.outside_lab || 'N';
+      C.assignment = C.assignment || 'Y';
       normaliseLines();
       fill();
       show(OPTS.section || ((C.rejections && C.rejections.length) ? 'review' : 'payer'));
@@ -647,6 +652,26 @@
     });
     /* box 28 takes a plain figure, as the printed form does */
     if($('cf_total')) $('cf_total').value = (+(C.total||0)).toFixed(2);
+
+    /* The payer name arrives already filled in — from the patient's policy
+       when the claim is built from an encounter, or from a previously saved
+       claim — but the matching Payer ID only used to fill in reactively,
+       once the person typed into or left the Payer name field themselves.
+       That meant a claim opened with the name already present kept an empty
+       ID until someone re-triggered the field by hand. Doing the same
+       lookup here, once, right after the name is on the page, fills it in
+       immediately whenever the practice has that payer on file. */
+    if($('cf_payer') && $('cf_payerid') && !String($('cf_payerid').value||'').trim()){
+      var payerName = String($('cf_payer').value||'').trim().toLowerCase();
+      if(payerName && window.RFCodes && RFCodes.payers){
+        var payerHit = RFCodes.payers().filter(function(p){
+          return String(p.name||'').toLowerCase() === payerName; })[0];
+        if(payerHit && payerHit.payer_id){
+          $('cf_payerid').value = payerHit.payer_id;
+          C.payer_id = payerHit.payer_id;
+        }
+      }
+    }
 
     var payers = (window.RFCodes && RFCodes.payers) ? RFCodes.payers() : [];
     if($('cfPayerList')) $('cfPayerList').innerHTML = payers.map(function(p){
@@ -1029,12 +1054,6 @@
       $('cfState').textContent = errs.length ? (errs.length+' TO FIX') : 'READY';
       $('cfState').className = 'cf-state '+(errs.length?'issues':'ready');
     }
-    document.querySelectorAll('#cfNav button').forEach(function(b){
-      var bad = issues.some(function(x){ return x.level==='err' && x.sec===b.dataset.s; });
-      var dot = b.querySelector('.dot');
-      if(bad && !dot){ b.insertAdjacentHTML('beforeend','<span class="dot"></span>'); }
-      else if(!bad && dot){ dot.remove(); }
-    });
     if(OPTS.preview) $('cf_preview').innerHTML = OPTS.preview(C);
   }
 
@@ -1060,20 +1079,6 @@
     var body = $('cfBody'); if(body) body.scrollTop = 0;
     return;
   }
-  function showOld(sec){
-    if(C) read();
-    SEC = sec;
-    document.querySelectorAll('#cfNav button').forEach(function(b){
-      b.classList.toggle('on', b.dataset.s===sec); });
-    document.querySelectorAll('.cf-sec').forEach(function(s){
-      s.classList.toggle('on', s.dataset.sec===sec); });
-    $('cfBody').scrollTop = 0;
-    if(sec==='review') paintReview();
-    var i = ORDER.indexOf(sec);
-    $('cfPrev').style.visibility = i<=0 ? 'hidden' : '';
-    $('cfNext').style.visibility = i>=ORDER.length-1 ? 'hidden' : '';
-  }
-
   /* ── events, bound once ── */
   function wire(){
     /* The form is one sheet now, so the only thing to switch between is the
@@ -1086,9 +1091,6 @@
       else console.warn('ReviFlow claim form: no element #'+id+' to bind '+ev);
     };
 
-    on('cfNav', 'click', function(e){
-      var b = e.target.closest('[data-s]'); if(b) show(b.dataset.s);
-    });
     on('cfNext', 'click', function(){ show(CUR === 'review' ? 'form' : 'review'); });
     on('cfPrev', 'click', function(){ show('form'); });
     on('cfClose', 'click', close);
@@ -1146,30 +1148,38 @@
 
   /* everything typed goes straight into the claim, so nothing is lost by
      scrolling away from a box */
+  /* Both handlers are wrapped in safe() — a delegated listener on the whole
+     body fires on nearly every keystroke and click in the form, so one bad
+     field value or a stale reference in a follow-on paint step must not be
+     able to leave the editor half-updated or looking blank. */
   on('cfBody', 'input', function(e){
-    var el = e.target;
-    if(!el.matches('input, select, textarea')) return;
-    read();
-    if(el.dataset.dx != null){
-      /* a diagnosis changed: descriptions and the pointer hints follow */
-      clearTimeout(window._cfDxT);
-      window._cfDxT = setTimeout(paintDx1500, 500);
-    }
-    if(el.dataset.f === 'charge' || el.dataset.f === 'units'){
-      var lines = C.lines || [];
-      var total = lines.reduce(function(a,l){ return a+(+l.charge||0)*(+l.units||1); },0);
-      C.total = Math.round(total*100)/100;
-      $('cf_linetotal').textContent = money(C.total);
-      var t = $('cf_total'); if(t) t.value = (+C.total).toFixed(2);
-    }
+    safe(function(){
+      var el = e.target;
+      if(!el.matches('input, select, textarea')) return;
+      read();
+      if(el.dataset.dx != null){
+        /* a diagnosis changed: descriptions and the pointer hints follow */
+        clearTimeout(window._cfDxT);
+        window._cfDxT = setTimeout(function(){ safe(paintDx1500,'paintDx1500'); }, 500);
+      }
+      if(el.dataset.f === 'charge' || el.dataset.f === 'units'){
+        var lines = C.lines || [];
+        var total = lines.reduce(function(a,l){ return a+(+l.charge||0)*(+l.units||1); },0);
+        C.total = Math.round(total*100)/100;
+        $('cf_linetotal').textContent = money(C.total);
+        var t = $('cf_total'); if(t) t.value = (+C.total).toFixed(2);
+      }
+    }, 'cfBody input');
   });
 
   on('cfBody', 'change', function(e){
-    if(!e.target.matches('input[type="radio"], select')) return;
-    read();
-    if(e.target.name === 'cf_send') applySend();
-    if(e.target.name === 'cf_rel') applyRel();
-    if(e.target.name === 'cf_otherplan') applyOtherIns();
+    safe(function(){
+      if(!e.target.matches('input[type="radio"], select')) return;
+      read();
+      if(e.target.name === 'cf_send') applySend();
+      if(e.target.name === 'cf_rel') applyRel();
+      if(e.target.name === 'cf_otherplan') applyOtherIns();
+    }, 'cfBody change');
   });
 
   /* box 21: a dropdown of matching ICD-10 codes under whichever letter
@@ -1183,7 +1193,7 @@
   on('cf_dxgrid', 'mousedown', function(e){
     var item = e.target.closest('.dxi'); if(!item) return;
     e.preventDefault();
-    var wrap = item.closest('.dxc'), inp = wrap && wrap.querySelector('[data-dx]');
+    var wrap = item.closest('.dxcell'), inp = wrap && wrap.querySelector('[data-dx]');
     if(!inp) return;
     inp.value = item.dataset.code || '';
     read();
@@ -1192,7 +1202,7 @@
     window._cfDxT = setTimeout(paintDx1500, 120);
   });
   document.addEventListener('click', function(e){
-    if(!e.target.closest('.dxc')) closeDxDrops();
+    if(!e.target.closest('.dxcell')) closeDxDrops();
   });
 
   on('cf_addline', 'click', function(){
