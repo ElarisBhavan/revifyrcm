@@ -1169,6 +1169,7 @@ input,select,textarea{font:inherit}
 
   <div class="mfoot" id="pnFoot">
     <button class="btn sec" data-close>Close</button>
+    <button class="btn sec" id="pnPrint" type="button"><svg viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>Print</button>
     <span class="sp"></span>
     <button class="btn sec" id="pnSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Save draft</button>
     <button class="btn pri" id="pnSign"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Sign note</button>
@@ -1314,6 +1315,40 @@ input,select,textarea{font:inherit}
     if(op)openProgressNote(+op.dataset.noteopen);
   });
 
+  /* ── print a progress note (draft-in-progress or signed) ──
+     Reuses the read-only render (same one shown for a locked note) so what
+     prints always matches what a reader would see, then falls back to the
+     @media print rule further up the sheet (it already hides .mhead/.mfoot
+     and everything else outside the modal) to produce a clean page. */
+  function printProgressNote(){
+    if(NOTE_ENC==null)return;
+    var raw=ENCS.find(function(x){return x.id===NOTE_ENC;});
+    if(!raw){toast('Nothing to print','This encounter could not be found — try reopening the chart',true);return;}
+    var e=normalizeEncounter(raw), note=encounterNote(e);
+    var tpl=RFNoteTemplates.byId($('pnTemplate').value);
+    var wasEditing=!$('pnEdit').hidden;
+    var answers=(note.status==='signed')?note.answers
+      : (wasEditing?RFNoteTemplates.collectForm(tpl,$('pnFields')):note.answers);
+    if(!RFNoteTemplates.hasContent(tpl,answers)){toast('Nothing to print','Add some content to the note first',true);return;}
+
+    $('pnViewFields').innerHTML=RFNoteTemplates.renderReadOnly(tpl,answers)
+      ||'<div class="ntv-empty">No content was entered on this note.</div>';
+    $('pnSignedLine').textContent=note.status==='signed'
+      ?('Signed by '+note.signed_by+(note.signed_credentials?' · '+note.signed_credentials:'')+' · '+fmtTS(note.signed_at))
+      :'Draft — not yet signed';
+    $('pnEdit').hidden=true; $('pnView').hidden=false;
+
+    function restore(){
+      if(wasEditing){$('pnEdit').hidden=false;$('pnView').hidden=true;}
+      window.removeEventListener('afterprint',restore);
+    }
+    window.addEventListener('afterprint',restore);
+    setTimeout(function(){window.print();},50);
+  }
+  document.addEventListener('click',function(e){
+    if(e.target.closest('#pnPrint'))printProgressNote();
+  });
+
   /* ── sign & lock a progress note ── */
   var SIGN_TPL=null;
   function updateSignPreview(){
@@ -1352,7 +1387,9 @@ input,select,textarea{font:inherit}
 
   async function confirmSignNote(){
     if(NOTE_ENC==null)return;
-    var e=normalizeEncounter(await RFStore.encounter(NOTE_ENC)); if(!e)return;
+    var fetched=await RFStore.encounter(NOTE_ENC);
+    if(!fetched||fetched.id==null){toast('Could not sign note','This encounter could not be found — try reopening the chart',true);return;}
+    var e=normalizeEncounter(fetched);
     var tpl=RFNoteTemplates.byId($('pnTemplate').value);
     var answers=RFNoteTemplates.collectForm(tpl, $('pnFields'));
     var prior=e.progress_note||{};
@@ -2404,7 +2441,13 @@ input,select,textarea{font:inherit}
     var ns=ev.target.closest('#pnSave');
     if(ns){
       var eid=NOTE_ENC;if(eid==null)return;
-      var e=normalizeEncounter(await RFStore.encounter(eid));if(!e)return;
+      var fetched=await RFStore.encounter(eid);
+      /* normalizeEncounter always hands back an object even for a missing
+         record (it coerces null to {}), so check the real fetch here rather
+         than trust the normalized result — otherwise a lookup failure quietly
+         creates a brand-new, orphaned encounter instead of updating this one. */
+      if(!fetched||fetched.id==null){toast('Could not save note','This encounter could not be found — try reopening the chart',true);return;}
+      var e=normalizeEncounter(fetched);
       var tpl=RFNoteTemplates.byId($('pnTemplate').value);
       var answers=RFNoteTemplates.collectForm(tpl, $('pnFields'));
       var prior=e.progress_note||{};
