@@ -319,7 +319,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         <thead><tr>
           <th style="width:26%">Name</th>
           <th style="width:16%">Member ID</th>
-          <th style="width:18%">Relationship</th>
+          <th style="width:18%">Clinician</th>
           <th style="width:17%">Last seen</th>
           <th style="width:13%">Balance</th>
           <th style="width:10%">Manage</th>
@@ -356,21 +356,26 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     <div class="fs on" data-s="1">
       <div class="fgrid">
         <label class="f"><span>First name <u>*</u></span><input type="text" id="n_first" placeholder="Colton"></label>
+        <label class="f"><span>Middle name</span><input type="text" id="n_middle" placeholder="Optional"></label>
         <label class="f"><span>Last name <u>*</u></span><input type="text" id="n_last" placeholder="Acosta"></label>
+        <label class="f"><span>Goes by</span><input type="text" id="n_pname" placeholder="Preferred name, if different"></label>
         <label class="f"><span>Date of birth <u>*</u></span><input type="date" id="n_dob" min="1900-01-01" max="2100-12-31"></label>
         <label class="f"><span>Sex</span><select id="n_sex"><option>Male</option><option>Female</option><option>Other</option><option>Unknown</option></select></label>
+        <label class="f"><span>Client status</span><select id="n_status"><option value="active">Active</option><option value="prospective">Prospective</option></select></label>
         <label class="f"><span>Rendering clinician <u>*</u></span>
           <select id="n_clin">
             <option value="">Select clinician</option>
           </select>
           <p class="fh" id="clinHint" style="color:var(--amber)"></p></label>
+        <label class="f"><span>Referred by</span><input type="text" id="n_refby" placeholder="Provider, practice or source"></label>
+        <label class="f"><span>Preferred language</span><select id="n_lang"><option value="">—</option><option>English</option><option>Spanish</option><option>Vietnamese</option><option>Mandarin</option><option>Tagalog</option><option>Arabic</option><option>French</option><option>Hindi</option><option>Tamil</option><option>Other</option></select></label>
         <label class="f"><span>Member ID <span style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--dim)">AUTO</span></span>
-          <input type="text" id="n_mid" placeholder="Generated from name" readonly></label>
+          <input type="text" id="n_mid" placeholder="Assigned on save" readonly></label>
         <label class="f full"><span>Address</span><input type="text" id="n_addr" placeholder="1101 Alderwood Dr, Justin, TX 76247-1581"></label>
       </div>
       <div class="hint">
         <svg viewBox="0 0 24 24" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
-        <span>The member ID is built from the first three letters of the first and last name plus a sequence — this is what staff use to pull the record.</span>
+        <span>The Internal ID is assigned automatically by the server once the record is saved, so it can never collide with another patient's — the box above is only a preview of the shape it will take.</span>
       </div>
     </div>
 
@@ -390,8 +395,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         <label class="f"><span>Member ID on card <u>*</u></span><input type="text" id="n_mem1" placeholder="R61503620"></label>
         <label class="f"><span>Group ID</span><input type="text" id="n_grp1" placeholder="65006500"></label>
         <label class="f"><span>Copay / coinsurance</span><input type="text" id="n_cop1" placeholder="$35"></label>
-        <label class="f"><span>Subscriber name</span><input type="text" id="n_sub1" placeholder="Leave blank if self"></label>
-        <label class="f"><span>Relationship</span><select id="n_rel1"><option>Self</option><option>Child</option><option>Spouse</option><option>Other</option></select></label>
+        <label class="f"><span>Relationship to subscriber</span><select id="n_rel1"><option>Self</option><option>Spouse</option><option>Child</option><option>Other dependent</option></select></label>
+      </div>
+      <div class="fgrid" id="n_subWrap" style="display:none">
+        <label class="f"><span>Subscriber first name</span><input type="text" id="n_subFirst" placeholder="Leave blank if self"></label>
+        <label class="f"><span>Subscriber last name</span><input type="text" id="n_subLast"></label>
       </div>
 
       <div class="subhead">Secondary insurance <span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--dim)">— optional</span></div>
@@ -432,15 +440,18 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     <div class="fs" data-s="4">
       <div class="subhead">Primary contact</div>
       <div class="fgrid">
-        <label class="f"><span>Name</span><input type="text" id="n_c1n" placeholder="Bailey Acosta"></label>
-        <label class="f"><span>Relationship</span><select id="n_c1r"><option>Parent</option><option>Self</option><option>Spouse</option><option>Guardian</option><option>Other</option></select></label>
+        <label class="f"><span>First name</span><input type="text" id="n_c1first" placeholder="Bailey"></label>
+        <label class="f"><span>Last name</span><input type="text" id="n_c1last" placeholder="Acosta"></label>
+        <label class="f"><span>Relationship</span><select id="n_c1r"><option>Parent</option><option>Self</option><option>Spouse</option><option>Legal guardian</option><option>Grandparent</option><option>Other</option></select></label>
         <label class="f"><span>Mobile</span><input type="tel" id="n_c1p" placeholder="(817) 705-5527"></label>
         <label class="f"><span>Email</span><input type="email" id="n_c1e" placeholder="baileyacosta@gmail.com"></label>
       </div>
       <div class="subhead">Secondary contact <span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--dim)">— optional</span></div>
       <div class="fgrid">
-        <label class="f"><span>Name</span><input type="text" id="n_c2n" placeholder="Isaac Acosta"></label>
+        <label class="f"><span>First name</span><input type="text" id="n_c2first" placeholder="Isaac"></label>
+        <label class="f"><span>Last name</span><input type="text" id="n_c2last" placeholder="Acosta"></label>
         <label class="f"><span>Mobile</span><input type="tel" id="n_c2p" placeholder="(817) 739-3811"></label>
+        <label class="f"><span>Email</span><input type="email" id="n_c2e" placeholder="Optional"></label>
       </div>
     </div>
   </div>
@@ -567,15 +578,22 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   function toStore(p){
     return {
       id: (typeof p.ref==='number') ? p.ref : undefined,
-      internal_id: p.mid || '',
+      /* A brand-new record leaves internal_id out entirely so the server
+         (netlify/functions/data.js) assigns the real, collision-free one —
+         see the note by n_mid below. An existing record's already-assigned
+         id is still passed through untouched so editing never clobbers it. */
+      internal_id: p.mid || undefined,
       first_name: p.first || '', last_name: p.last || '',
-      middle_name: p.middle || '',
+      middle_name: p.middle || '', preferred_name: p.pname || '',
       dob: p.dob || '', sex: p.sex || '',
       phone: p.phone || '', email: p.email || '', address: p.addr || '',
       relationship: p.relationship || 'Self',
+      sub_first: p.subFirst || '', sub_last: p.subLast || '',
       member_id: p.memberId || '', payer: p.payer || '',
       preferred_location: p.location || '',
+      provider_ref: p.provider_ref != null ? p.provider_ref : null,
       clinician: p.clinician || '',
+      referred_by: p.referredBy || '', language: p.language || '',
       status: p.status || 'active',
       insurances: (function(){
         var out=[];
@@ -601,11 +619,20 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     var p2 = ins.filter(function(x){return x.rank==='2';})[0] || {};
     return {
       ref: r.id,
+      /* PT+id is only ever a display fallback for a record that predates
+         server-assigned internal_ids — every new save now always has one
+         (see data.js), so this branch should rarely if ever be hit going
+         forward. */
       id: r.internal_id || ('PT'+r.id),
-      first: r.first_name || '', last: r.last_name || '',
+      first: r.first_name || '', last: r.last_name || '', middle: r.middle_name || '',
+      pname: r.preferred_name || '',
       dob: r.dob || '', sex: r.sex || '',
       mid: r.internal_id || '',
       status: r.status || 'active',
+      relationship: r.relationship || 'Self',
+      subFirst: r.sub_first || '', subLast: r.sub_last || '',
+      provider_ref: r.provider_ref != null ? r.provider_ref : null,
+      referredBy: r.referred_by || '', language: r.language || '',
       clinician: r.clinician || '',
       payer: p1.name || r.payer || '',
       memberId: p1.member_id || r.member_id || '',
@@ -1003,12 +1030,20 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     if(step<4){step++;paint();}
   });
 
-  /* auto member ID */
+  /* Member ID preview only — cosmetic, never what actually gets saved.
+     The real Internal ID is assigned by the server from the record's real
+     database id once it exists (see data.js), which is what fixed the bug
+     where a freshly created patient showed one ID on this dashboard and a
+     different one on their own chart: the two used to be computed by two
+     completely different formulas. */
   ['n_first','n_last'].forEach(function(id){
     $(id).addEventListener('input',function(){
       var f=$('n_first').value.trim(),l=$('n_last').value.trim();
       $('n_mid').value=(f.length>=3&&l.length>=3)?mid(f,l,DATA.length+3):'';
     });
+  });
+  $('n_rel1').addEventListener('change',function(){
+    $('n_subWrap').style.display=this.value==='Self'?'none':'';
   });
   $('n_ccnum').addEventListener('input',function(){
     this.value=this.value.replace(/\D/g,'').replace(/(.{4})/g,'$1 ').trim();
@@ -1026,13 +1061,33 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
   $('mSave').addEventListener('click',function(){
     var f=$('n_first').value.trim(),l=$('n_last').value.trim(),
+        rel=$('n_rel1').value||'Self',
         num=$('n_ccnum').value.replace(/\s/g,''),
         useCard=$('ccToggle').querySelector('.on').dataset.cc==='yes';
+
+    /* Contacts use the same shape patient-record.html's own contact editor
+       writes ({first,last,relationship,phone,email,address,primary,
+       is_subscriber}) — the old {n,r,p,e} shape saved here was silently
+       incompatible, so a patient created from this wizard with contacts
+       filled in showed a blank Contacts card when opened on their chart. */
+    var contacts=[
+      {first:$('n_c1first').value.trim(),last:$('n_c1last').value.trim(),
+       relationship:$('n_c1r').value,phone:$('n_c1p').value.trim(),
+       email:$('n_c1e').value.trim(),address:'',primary:true,is_subscriber:false},
+      {first:$('n_c2first').value.trim(),last:$('n_c2last').value.trim(),
+       relationship:'Other',phone:$('n_c2p').value.trim(),
+       email:$('n_c2e').value.trim(),address:'',primary:false,is_subscriber:false}
+    ].filter(function(c){return c.first;});
+
     var p={
-      id:'PT'+(2000+DATA.length),
-      first:f,last:l,dob:$('n_dob').value,sex:$('n_sex').value,
-      mid:$('n_mid').value||mid(f,l,DATA.length+3),
-      status:'active',provider_ref:+$('n_clin').value||null,clinician:clinName($('n_clin').value),
+      first:f,last:l,middle:$('n_middle').value.trim(),pname:$('n_pname').value.trim(),
+      dob:$('n_dob').value,sex:$('n_sex').value,
+      status:$('n_status').value||'active',
+      provider_ref:+$('n_clin').value||null,clinician:clinName($('n_clin').value),
+      referredBy:$('n_refby').value.trim(),language:$('n_lang').value,
+      relationship:rel,
+      subFirst:rel==='Self'?'':$('n_subFirst').value.trim(),
+      subLast:rel==='Self'?'':$('n_subLast').value.trim(),
       payer:$('n_pay1').value,memberId:$('n_mem1').value,groupId:$('n_grp1').value,
       copay:parseFloat(($('n_cop1').value||'0').replace(/[^0-9.]/g,''))||0,
       payer2:$('n_pay2').value||'',memberId2:$('n_mem2').value||'',
@@ -1040,16 +1095,20 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       contactMissing:!$('n_c1p').value.trim(),
       lastSeen:'',nextAppt:'',patBal:0,insBal:0,visits:0,
       card:(useCard&&num.length>=12)?{last4:num.slice(-4),exp:$('n_ccexp').value,brand:num[0]==='4'?'Visa':'Mastercard'}:null,
-      contacts:[
-        {n:$('n_c1n').value,r:$('n_c1r').value,p:$('n_c1p').value,e:$('n_c1e').value},
-        {n:$('n_c2n').value,r:'Other',p:$('n_c2p').value,e:''}
-      ].filter(function(c){return c.n;})
+      contacts:contacts
     };
     (async function(){
       var rec=toStore(p); delete rec.id;
       var r=await RFStore.savePatientRec(rec);
       if(!r||!r.ok){toast('Could not save',(r&&r.error)||'The record was not stored',true);return;}
-      p.ref=r.id; p.mid=r.internal_id||p.mid;
+      /* The record's id and Internal ID now come only from what the server
+         actually assigned and stored — never from a value guessed on this
+         page — so what's shown here the instant a patient is created is
+         guaranteed to match what patient-record.html shows when it's opened
+         right after. */
+      p.ref=r.id;
+      p.mid=r.internal_id||('PT'+r.id);
+      p.id=p.mid;
       DATA.unshift(p);
       closeM();render();
       toast('Record created',p.first+' '+p.last+' · '+p.mid);
@@ -1058,6 +1117,9 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       $('mNew').querySelectorAll('input').forEach(function(el){el.value='';});
       $('mNew').querySelectorAll('select').forEach(function(el){el.selectedIndex=0;});
       $('mNew').querySelectorAll('.bad').forEach(function(el){el.classList.remove('bad');});
+      $('n_subWrap').style.display='none';
+      $('ccFields').style.display='';
+      $('ccToggle').querySelectorAll('button').forEach(function(b,i){b.classList.toggle('on',i===0);});
     },420);
   });
 

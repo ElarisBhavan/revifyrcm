@@ -1006,8 +1006,10 @@ input,select,textarea{font:inherit}
       <label class="f"><span>First name <u>*</u></span><input type="text" id="d_first"></label>
       <label class="f"><span>Middle name</span><input type="text" id="d_middle"></label>
       <label class="f"><span>Last name <u>*</u></span><input type="text" id="d_last"></label>
+      <label class="f"><span>Goes by</span><input type="text" id="d_pname" placeholder="Preferred name, if different"></label>
       <label class="f"><span>Date of birth <u>*</u></span><input type="date" id="d_dob" min="1900-01-01" max="2100-12-31"></label>
       <label class="f"><span>Sex</span><select id="d_sex"><option value="">—</option><option>Female</option><option>Male</option><option>Other</option><option>Unknown</option></select></label>
+      <label class="f"><span>Client status</span><select id="d_status"><option value="active">Active</option><option value="prospective">Prospective</option><option value="inactive">Inactive</option></select></label>
       <label class="f"><span>Contact number</span><input type="tel" id="d_phone"></label>
       <label class="f"><span>Email</span><input type="email" id="d_email"></label>
       <label class="f"><span>Relationship to subscriber</span><select id="d_rel"><option>Self</option><option>Spouse</option><option>Child</option><option>Other dependent</option></select></label>
@@ -1568,18 +1570,21 @@ input,select,textarea{font:inherit}
 
   function paintHeader(){
     var full=[P.first_name,P.last_name].filter(Boolean).join(' ')||'Unnamed patient';
+    var display=full+(P.preferred_name?' "'+P.preferred_name+'"':'');
     document.title=full+' — ReviFlow';
     $('crumbName').textContent=full;
-    $('pName').textContent=full;
+    $('pName').textContent=display;
     $('pAv').textContent=((P.first_name||'?')[0]+(P.last_name||'?')[0]).toUpperCase();
 
     var a=ageOf(P.dob),ins=(P.insurances||[]).filter(function(x){return x.rank==='1';})[0];
     var t=today();
     var next=APPTS.filter(function(x){return x.date>=t&&x.status!=='Cancelled';})
                   .sort(function(x,y){return x.date.localeCompare(y.date)||x.start-y.start;})[0];
+    var status=P.status||'active';
 
     $('pMeta').innerHTML=
       '<span class="tag'+(ins?'':' off')+'">'+(ins?'INSURED':'SELF PAY')+'</span>'+
+      (status!=='active'?'<span class="tag off">'+esc(status.toUpperCase())+'</span>':'')+
       '<span>'+(P.dob?fmtShort(P.dob)+(a!==''?' · '+a+' y/o':''):'DOB not on file')+'</span>'+
       '<span class="sep">|</span>'+
       '<span>'+(next
@@ -1601,8 +1606,9 @@ input,select,textarea{font:inherit}
 
     $('ptGrid').innerHTML=
       dl('Internal ID',P.internal_id,true)+
+      dl('Client status',P.status?(P.status.charAt(0).toUpperCase()+P.status.slice(1)):'Active')+
       dl('First name',P.first_name)+dl('Middle name',P.middle_name)+
-      dl('Last name',P.last_name)+
+      dl('Last name',P.last_name)+dl('Goes by',P.preferred_name)+
       '<div><dt>Date of birth</dt><dd>'+
         (P.dob?fmtShort(P.dob)+(a!==''?' · '+a+' y/o':''):'<span style="color:var(--dim);font-weight:400">—</span>')+
         (minor?' <span class="minortag">MINOR</span>':'')+'</dd></div>'+
@@ -1838,8 +1844,10 @@ input,select,textarea{font:inherit}
     $('d_first').value=P.first_name||'';
     $('d_middle').value=P.middle_name||'';
     $('d_last').value=P.last_name||'';
+    $('d_pname').value=P.preferred_name||'';
     $('d_dob').value=P.dob||'';
     $('d_sex').value=P.sex||'';
+    $('d_status').value=P.status||'active';
     $('d_phone').value=P.phone||'';
     $('d_email').value=P.email||'';
     $('d_rel').value=P.relationship||'Self';
@@ -1870,17 +1878,25 @@ input,select,textarea{font:inherit}
   });
 
   $('demoSave').addEventListener('click',async function(){
+    /* d_first and d_dob carry the same required asterisk as d_last in the
+       markup, but only d_last was ever actually enforced here — a patient
+       could be saved with no first name or date of birth despite the form
+       marking both as mandatory. */
+    if(!$('d_first').value.trim()){toast('First name required','',true);$('d_first').focus();return;}
     if(!$('d_last').value.trim()){toast('Last name required','',true);$('d_last').focus();return;}
+    if(!$('d_dob').value){toast('Date of birth required','',true);$('d_dob').focus();return;}
     var before={first:P.first_name,last:P.last_name,phone:P.phone,addr:P.address,
-                rel:P.relationship,loc:P.preferred_location};
+                rel:P.relationship,loc:P.preferred_location,status:P.status};
 
     /* only the fields on this form are touched — everything else on the
        record, including insurances and contacts, is left exactly as it was */
     P.first_name=$('d_first').value.trim();
     P.middle_name=$('d_middle').value.trim();
     P.last_name=$('d_last').value.trim();
+    P.preferred_name=$('d_pname').value.trim();
     P.dob=$('d_dob').value;
     P.sex=$('d_sex').value;
+    P.status=$('d_status').value||'active';
     P.phone=$('d_phone').value.trim();
     P.email=$('d_email').value.trim();
     P.relationship=$('d_rel').value;
@@ -1912,6 +1928,7 @@ input,select,textarea{font:inherit}
     if(before.addr!==P.address)changed.push('address updated');
     if(before.rel!==P.relationship)changed.push('relationship → '+P.relationship);
     if(before.loc!==P.preferred_location)changed.push('location → '+(P.preferred_location||'cleared'));
+    if(before.status!==P.status)changed.push('status → '+P.status);
     await RFStore.logHistory(P.id,'demographics_edited',
       changed.length?changed.join(' · '):'Demographic fields updated');
     HIST=await RFStore.history(P.id);
