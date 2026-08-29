@@ -193,6 +193,20 @@ exports.handler = async (event) => {
         rec.id = id;
         rec.created_by = me.username;
         rec.created_at = new Date().toISOString();
+
+        /* The patient's chart number ("Internal ID") used to only ever get
+           generated client-side — one scheme in the dashboard's "new patient"
+           wizard (built from the in-browser list length, so two people
+           creating patients around the same time could collide), a
+           different one in the offline/local-storage code path, and no
+           generation at all when a chart was created as a booking shell from
+           the schedule. That's why the same patient could show a different
+           ID on the dashboard than on their own chart, or no ID at all.
+           Assigning it here, once, from the real database id, makes it a
+           single source of truth that is always present and never collides. */
+        if(kind === 'patient' && !rec.internal_id){
+          rec.internal_id = 'PT-' + String(id).padStart(6,'0');
+        }
       }
       rec.updated_at = new Date().toISOString();
 
