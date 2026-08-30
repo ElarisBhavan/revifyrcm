@@ -717,6 +717,13 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     });
   }
 
+  /* common CMS place-of-service codes, used only when the payer sends the
+     code without its own name */
+  var POS_NAMES={'11':'Office','12':'Home','19':'Off campus outpatient hospital',
+    '21':'Inpatient hospital','22':'On campus outpatient hospital','23':'Emergency room',
+    '02':'Telehealth','81':'Independent laboratory','31':'Skilled nursing facility',
+    '32':'Nursing facility','20':'Urgent care facility','24':'Ambulatory surgical center'};
+
   /* place of service, per benefit line — Stedi has shown this under a few
      different shapes depending on the payer, so probe defensively rather
      than trust one exact key name */
@@ -726,13 +733,29 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     function label(p){
       if(p==null)return '';
       if(typeof p==='string'||typeof p==='number')return String(p);
-      return [p.code||p.placeOfServiceCode,p.name||p.description||p.placeOfServiceName]
+      var code=p.code||p.placeOfServiceCode;
+      return [code,p.name||p.description||p.placeOfServiceName||POS_NAMES[code]]
         .filter(Boolean).join(' — ');
     }
     if(Array.isArray(raw)&&raw.length)return raw.map(label).filter(Boolean).join(', ');
     if(raw&&typeof raw==='object'){var l=label(raw);if(l)return l;}
     if(b.placeOfServiceCode||b.placeOfServiceName)
-      return [b.placeOfServiceCode,b.placeOfServiceName].filter(Boolean).join(' — ');
+      return [b.placeOfServiceCode,b.placeOfServiceName||POS_NAMES[b.placeOfServiceCode]].filter(Boolean).join(' — ');
+
+    /* Stedi's own responses often carry this instead: a "Mutually Defined"
+       (ZZ) additional-information entry — the JSON form of an X12 III
+       segment (e.g. "III*ZZ*11") — whose industryCode/industry pair is the
+       place of service for that line (industryCode "11" = Office, the same
+       CMS code set used above). */
+    var extra=(b.eligibilityAdditionalInformationList||[])
+      .concat(b.eligibilityAdditionalInformation?[b.eligibilityAdditionalInformation]:[]);
+    for(var i=0;i<extra.length;i++){
+      var it=extra[i];
+      var isMutuallyDefined=it&&(it.codeListQualifierCode==='ZZ'||/mutually defined/i.test(it.codeListQualifier||''));
+      if(isMutuallyDefined&&(it.industryCode||it.industry)){
+        return [it.industryCode,it.industry||POS_NAMES[it.industryCode]].filter(Boolean).join(' — ');
+      }
+    }
     return '';
   }
 
@@ -765,26 +788,45 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
   /* Coordination of benefits — a standard 271 can carry this as a benefit
      line with EB01 code 'R' ("Other or Additional Payor"), so no separate
-     COB call is needed to surface what the payer already sent. */
+     COB call is needed to surface what the payer already sent. Stedi's own
+     responses put the useful detail in three places on that same line:
+     benefitsRelatedEntities (who the other payer is), benefitsAdditionalInformation
+     (the member's policy/ID number with that payer), and benefitsDateInformation
+     (when the record was last updated, and the coordinationOfBenefits range —
+     a "YYYYMMDD-YYYYMMDD" string, open-ended when the end is a 9999 sentinel). */
+  var ENTITY_ID_LABEL={PI:'Payer ID',XX:'NPI',SY:'SSN',II:'Health ID',FI:'Federal Tax ID',
+    '24':'Employer ID',TJ:'Federal Tax ID'};
   function cobInfo(N){
     var lines=(N.benefits||[]).filter(function(b){return b.code==='R';});
     if(!lines.length)return null;
-    var rows=[];
-    lines.forEach(function(b){
-      var ents=(b.benefitsRelatedEntities||b.benefitsRelatedEntity||[]);
-      if(ents.length){
-        ents.forEach(function(e){
-          rows.push({
-            name:e.entityName||e.entityIdentifier||b.name||'Other payer',
-            type:title(e.entityRelationship||e.entityIdentifier||''),
-            idNum:e.entityIdentification||e.npi||e.memberId||null
-          });
-        });
-      }else{
-        rows.push({name:b.name||b.planCoverage||'Other or additional payer',type:'',idNum:null});
-      }
+    function splitRange(str){
+      if(!str||typeof str!=='string'||str.indexOf('-')<0)return null;
+      var parts=str.split('-');
+      if(parts.length!==2)return null;
+      var beginOk=/^\d{8}$/.test(parts[0]);
+      if(!beginOk)return null;
+      var openEnd=!/^\d{8}$/.test(parts[1])||/^9{4}/.test(parts[1]);
+      return { begin:parts[0], end: openEnd?null:parts[1] };
+    }
+    return lines.map(function(b){
+      var entsRaw=b.benefitsRelatedEntities||b.benefitsRelatedEntity||null;
+      var ents=Array.isArray(entsRaw)?entsRaw:(entsRaw?[entsRaw]:[]);
+      var e=ents[0]||{};
+      var add=b.benefitsAdditionalInformation||{};
+      var dt=b.benefitsDateInformation||{};
+      var range=splitRange(dt.coordinationOfBenefits);
+      return {
+        name: e.entityName||b.name||'Other payer',
+        relationship: title(e.entityIdentifier||''),
+        entityIdLabel: e.entityIdentification ? (ENTITY_ID_LABEL[e.entityIdentification]||('ID ('+e.entityIdentification+')')) : null,
+        entityIdValue: e.entityIdentificationValue||null,
+        policyId: add.memberId||add.policyNumber||add.groupNumber||null,
+        appliesTo: (b.serviceTypes&&b.serviceTypes.length) ? b.serviceTypes.join(', ') : null,
+        lastUpdated: dt.dateOfLastUpdate ? fmtDate(dt.dateOfLastUpdate) : null,
+        coverageBegin: range ? fmtDate(range.begin) : null,
+        coverageEnd: range ? (range.end ? fmtDate(range.end) : 'Open ended') : null
+      };
     });
-    return rows;
   }
 
   /* one pass, used both on load and whenever the network or care-setting
@@ -819,7 +861,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
 
   /* Stamped so a stale copy of this file is visible in the console. */
-  var RESULT_BUILD='2026.08.30-a';
+  var RESULT_BUILD='2026.08.30-c';
   console.info('%cReviFlow eligibility result '+RESULT_BUILD+
     ' · planDates '+(typeof planDates==='function'?'present':'MISSING'),
     'color:#0A5C46;font-weight:700');
@@ -832,33 +874,39 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   function planDates(N){
     /* dates arrive as YYYYMMDD or YYYY-MM-DD; compare on digits alone */
     var key = function(v){ return String(v).replace(/\D/g,''); };
+    /* Stedi's own eligibility responses report the far end of an
+       open-ended range as a 9999-based sentinel (e.g. "99991231") rather
+       than leaving it blank — treat that as "no end date", not a real one. */
+    function isSentinelEnd(v){ return !v || /^9{4}/.test(key(v)); }
+    /* the plan record often reports a single "YYYYMMDD-YYYYMMDD" range
+       (planDateInformation.plan is the confirmed real-world shape) rather
+       than separate begin/end fields */
+    function splitRange(str){
+      if(!str || typeof str!=='string' || str.indexOf('-')<0) return null;
+      var parts=str.split('-');
+      if(parts.length!==2) return null;
+      if(key(parts[0]).length<8) return null;
+      return { begin: parts[0], end: isSentinelEnd(parts[1]) ? null : parts[1] };
+    }
     function fields(o){
       if(!o) return {begin:null,end:null};
+      if(typeof o.plan==='string'){
+        var r=splitRange(o.plan);
+        if(r) return r;
+      }
       var b = o.planBegin || o.planBeginDate || o.eligibilityBegin ||
               o.eligibilityBeginDate || o.benefitBegin || o.periodStart ||
               o.startDate || o.effectiveDate;
       var e = o.planEnd || o.planEndDate || o.eligibilityEnd ||
               o.eligibilityEndDate || o.benefitEnd || o.periodEnd ||
               o.endDate || o.expirationDate || o.terminationDate;
-      return { begin: b?String(b):null, end: e?String(e):null };
+      return { begin: b?String(b):null, end: (e&&!isSentinelEnd(e))?String(e):null };
     }
     function ok(f){ return f && f.begin && key(f.begin).length>=8; }
 
-    /* 1 · "Health benefit plan coverage" (code 1 / STC 30) is the one line
-       a payer means to describe the WHOLE plan rather than a single
-       service — the most reliable source, and it must not be diluted by
-       narrower, service-specific date ranges reported elsewhere in the
-       same response. */
-    var planWide=(N.benefits||[]).filter(function(b){
-      return b.code==='1' || (b.serviceTypeCodes||[]).indexOf('30')>-1;
-    });
-    for(var i=0;i<planWide.length;i++){
-      var f=fields(planWide[i].benefitsDateInformation||planWide[i]);
-      if(ok(f)) return { begin:f.begin, end:f.end };
-    }
-
-    /* 2 · an explicit statement at the plan or status level, when the
-       payer provides one directly rather than through a benefit line */
+    /* 1 · an explicit statement at the top level or plan/status level —
+       this is what payers most commonly send, either as planBegin/planEnd
+       or as a single combined range under planDateInformation.plan */
     var topSources=[
       N.raw && N.raw.planDateInformation,
       N.plan && N.plan.planDateInformation,
@@ -866,12 +914,28 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     ].concat((N.status||[]).map(function(st){ return st.planDateInformation || st; }));
     for(var j=0;j<topSources.length;j++){
       var f2=fields(topSources[j]);
-      if(ok(f2)) return { begin:f2.begin, end:f2.end };
+      if(ok(f2)) return f2;
+    }
+
+    /* 2 · "Health benefit plan coverage" (code 1 / STC 30) is the one line
+       a payer means to describe the WHOLE plan rather than a single
+       service — used when there is no top-level statement to fall back
+       on. Must not be diluted by narrower, service-specific date ranges
+       reported elsewhere in the same response. */
+    var planWide=(N.benefits||[]).filter(function(b){
+      return b.code==='1' || (b.serviceTypeCodes||[]).indexOf('30')>-1;
+    });
+    for(var i=0;i<planWide.length;i++){
+      var f=fields(planWide[i].benefitsDateInformation||planWide[i]);
+      if(ok(f)) return f;
     }
 
     /* 3 · last resort — any benefit-level date, earliest begin / latest
        end, so a plan is not shown as open-ended just because nothing
-       scoped to the whole plan was reported */
+       scoped to the whole plan was reported. Coordination-of-benefits
+       dates live in this same benefitsDateInformation object under a
+       different key (coordinationOfBenefits) and are never picked up
+       here since fields() only reads plan/planBegin-shaped keys. */
     var begins=[], ends=[];
     (N.benefits||[]).forEach(function(b){
       var f=fields(b.benefitsDateInformation||b);
@@ -1012,8 +1076,12 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
               ? cob.map(function(c){
                   return '<div class="cobrow"><dl class="pgrid">'+
                     box('Payer / entity',c.name)+
-                    (c.type?box('Relationship',c.type):'')+
-                    (c.idNum?box('Identifier',c.idNum,true):'')+
+                    (c.relationship?box('Relationship',c.relationship):'')+
+                    (c.policyId?box('Policy / member ID',c.policyId,true):'')+
+                    (c.entityIdValue?box(c.entityIdLabel||'Identifier',c.entityIdValue,true):'')+
+                    (c.appliesTo?box('Applies to',c.appliesTo):'')+
+                    (c.lastUpdated?box('Last updated',c.lastUpdated):'')+
+                    (c.coverageBegin?box('Coverage period',c.coverageBegin+' – '+(c.coverageEnd||'—')):'')+
                   '</dl></div>';
                 }).join('')
               : '<p class="none">No additional payer information provided.</p>')+
@@ -1094,11 +1162,20 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         '</div></section>');
     }
 
-    /* ── contacts the payer attached ── */
+    /* ── contacts the payer attached ──
+       Each entity is kept together with the benefit line it came from, so an
+       ID (entityIdentificationValue — e.g. a secondary payer's payer ID) and
+       a coverage date can be shown alongside it instead of just name/address.
+       Neither of those travels with the entity itself in every payer's
+       response, so they fall back sensibly: a per-line benefitsDateInformation
+       (the same source COB dates come from) when the line has one, otherwise —
+       for the plan-wide/Active Coverage line specifically — the plan's own
+       begin/end dates already shown above, since that is the coverage period
+       this entity was attached to. */
     var contacts=[];
     N.benefits.forEach(function(b){
       (b.benefitsRelatedEntities||b.benefitsRelatedEntity||[]).forEach(function(e){
-        contacts.push(e);
+        contacts.push({ e: e, b: b });
       });
     });
     if(contacts.length){
@@ -1106,13 +1183,30 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         '<div class="chead"><span class="ico"><svg viewBox="0 0 24 24">'+
           '<path d="M5 4h4l2 5-2.5 1.5a12 12 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg></span>'+
           '<h2>Service level contacts</h2></div>'+
-        '<div class="cbody">'+contacts.map(function(e){
+        '<div class="cbody">'+contacts.map(function(row){
+          var e=row.e, b=row.b;
           var ad=e.address||{};
           var phones=(e.contactInformation&&e.contactInformation.contacts)||[];
+          var idLabel=e.entityIdentification ? (ENTITY_ID_LABEL[e.entityIdentification]||('ID ('+e.entityIdentification+')')) : null;
+          var dt=b.benefitsDateInformation||{};
+          var range=(function(str){
+            if(!str||typeof str!=='string'||str.indexOf('-')<0)return null;
+            var parts=str.split('-');
+            if(parts.length!==2||!/^\d{8}$/.test(parts[0]))return null;
+            var openEnd=!/^\d{8}$/.test(parts[1])||/^9{4}/.test(parts[1]);
+            return { begin:parts[0], end: openEnd?null:parts[1] };
+          })(dt.coordinationOfBenefits);
+          var isPlanWide = b.code==='1' || (b.serviceTypeCodes||[]).indexOf('30')>-1;
+          var coverageBegin = range ? fmtDate(range.begin) : (isPlanWide ? fmtDate(PD.begin) : null);
+          var coverageEnd = range ? (range.end?fmtDate(range.end):'Open ended')
+                            : (isPlanWide ? (PD.end?fmtDate(PD.end):'Open ended') : null);
           return '<dl class="contact">'+
             box('Name',e.entityName||e.entityIdentifier)+
             box('Type',title(e.entityIdentifier||''))+
             box('Relationship',title(e.entityRelationship||''))+
+            (e.entityIdentificationValue?box(idLabel||'Identifier',e.entityIdentificationValue,true):'')+
+            (dt.dateOfLastUpdate?box('Last updated',fmtDate(dt.dateOfLastUpdate)):'')+
+            (coverageBegin?box('Coverage period',coverageBegin+' – '+(coverageEnd||'—')):'')+
             (ad.address1?'<div style="grid-column:span 2"><dt>Address</dt><dd>'+
               esc([ad.address1,ad.city,ad.state,ad.postalCode].filter(Boolean).join(', '))+'</dd></div>':'')+
             (phones.length?'<div><dt>Contact</dt><dd>'+phones.map(function(c){
