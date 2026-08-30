@@ -115,8 +115,13 @@
 
       build1500()+
 
-      /* ── review: what the payer would object to ── */
+      /* ── review: what the payer would object to ──
+         Reached only when Save finds something to fix (see cfSave below) —
+         there is no longer a manual Next/Back pair in the footer, so this
+         link is the way out of it. */
       '<section class="cf-sec" data-sec="review" id="cfReview" hidden>'+
+        '<button type="button" class="cf-back-link" id="cfBackToForm">'+
+          '<svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Back to form</button>'+
         '<div class="cf-issues" id="cf_issues"></div>'+
         '<div class="cf-preview" id="cf_preview"></div>'+
       '</section>'+
@@ -125,10 +130,8 @@
 
     '<div class="cf-foot">'+
       '<button class="cf-btn ghost" id="cfCancel">Cancel</button>'+
-      '<button class="cf-btn" id="cfPrev"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Back</button>'+
       '<span class="sp"></span>'+
       '<button class="cf-btn" id="cfPrint"><svg viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 19H5a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2h-2"/><path d="M7 15h10v6H7z"/></svg>Print</button>'+
-      '<button class="cf-btn" id="cfNext">Next<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>'+
       '<button class="cf-btn pri" id="cfSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Save claim</button>'+
     '</div>';
   }
@@ -1147,8 +1150,7 @@
       else console.warn('ReviFlow claim form: no element #'+id+' to bind '+ev);
     };
 
-    on('cfNext', 'click', function(){ show(CUR === 'review' ? 'form' : 'review'); });
-    on('cfPrev', 'click', function(){ show('form'); });
+    on('cfBackToForm', 'click', function(){ show('form'); });
     on('cfClose', 'click', close);
     on('cfCancel', 'click', close);
 

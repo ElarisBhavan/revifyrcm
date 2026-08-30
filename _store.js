@@ -25,7 +25,7 @@
   /* Set in _config.js, which loads before this file. The fallback keeps the
      application working if that file is ever missing. */
   const DRIVER = (typeof window !== 'undefined' &&
-                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'api';
+                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'local';
   /* ───────────────────────────────────────────────────────────── */
   /* Bumped on every release. Printed to the console and shown in the page
      footer, so which build is actually loaded is never in doubt. */
@@ -1354,24 +1354,36 @@
       return { ok:true };
     },
 
-    /* ═══ CLAIMS ═══ */
-    /* ═══ CLAIMS ═══ */
+    /* ═══ CLAIMS ═══
+       claims()/claim()/claimForAppt()/setClaimStatus() used to read straight
+       from the local IndexedDB store with no DRIVER==='api' branch — the same
+       gap apptsForPatient() had (see the note on it below). saveClaim() DID
+       have an api branch, but only the "save the bytes" half of it; the
+       claim-number/status/history stamping below ran only on the local path,
+       so a claim created in api mode was saved with no claim_no and no
+       status at all. Together this is why submitting a claim showed the
+       normal "saved" toast (saveClaim really did write it) while claims.html
+       — and even the same patient's own Billing tab, straight after saving —
+       never showed it: every *read* of claims was still looking at the
+       browser's own empty local store. */
     async claims(filter){
-      let list = await rows(CLAIMS);
-      if(filter && filter.patient_ref) list = list.filter(c => c.patient_ref === filter.patient_ref);
-      if(filter && filter.appt_id)     list = list.filter(c => c.appt_id === filter.appt_id);
-      if(filter && filter.org_id)      list = list.filter(c => c.org_id === filter.org_id);
+      let list = DRIVER==='api' ? await dList('claim', {}) : await rows(CLAIMS);
+      if(filter && filter.patient_ref) list = list.filter(c => String(c.patient_ref) === String(filter.patient_ref));
+      if(filter && filter.appt_id)     list = list.filter(c => String(c.appt_id) === String(filter.appt_id));
+      if(filter && filter.org_id)      list = list.filter(c => String(c.org_id) === String(filter.org_id));
       if(filter && filter.provider_id)
         list = list.filter(c => String(c.provider_id) === String(filter.provider_id));
       return list.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
     },
-    async claim(id){ return (await rows(CLAIMS)).find(c => c.id === id) || null; },
+    async claim(id){
+      const list = DRIVER==='api' ? await dList('claim', {}) : await rows(CLAIMS);
+      return list.find(c => String(c.id) === String(id)) || null;
+    },
     async claimForAppt(apptId){
-      return (await rows(CLAIMS)).find(c => String(c.appt_id) === String(apptId)) || null;
+      const list = DRIVER==='api' ? await dList('claim', {}) : await rows(CLAIMS);
+      return list.find(c => String(c.appt_id) === String(apptId)) || null;
     },
     async saveClaim(c){
-      if(DRIVER==='api'){ try{ const j=await dSave('claim',arguments[0]); return { ok:true, id:j.id, ...(j.record||{}) }; }catch(e){ return { error:String(e.message||e) }; } }
-
       try{
         const me = getSession();
         if(c.id === undefined || c.id === null || c.id === '') delete c.id;
@@ -1395,18 +1407,28 @@
         }
         c.total = (c.lines || []).reduce((sum,l) => sum + (Number(l.charge)||0) * (Number(l.units)||1), 0);
         c.updated_at = new Date().toISOString();
+
+        if(DRIVER==='api'){
+          const j = await dSave('claim', c);
+          return { ok:true, id: j.id, claim_no: c.claim_no, ...(j.record||{}) };
+        }
         const id = await save_(CLAIMS, c);
         return { ok:true, id: c.id || id, claim_no: c.claim_no };
       }catch(err){ return { error:'Save failed: '+(err && err.message || err) }; }
     },
     async setClaimStatus(id, status, note){
-      const c = (await rows(CLAIMS)).find(x => x.id === id);
+      const list = DRIVER==='api' ? await dList('claim', {}) : await rows(CLAIMS);
+      const c = list.find(x => String(x.id) === String(id));
       if(!c) return { error:'Not found' };
       const me = getSession();
       c.status = status;
       c.history = [{ at:new Date().toISOString(), by:me?me.username:'system',
                      what:'status', detail:status + (note?' — '+note:'') }].concat(c.history||[]);
       c.updated_at = new Date().toISOString();
+      if(DRIVER==='api'){
+        try{ await dSave('claim', c); return { ok:true }; }
+        catch(e){ return { error:String(e.message||e) }; }
+      }
       await save_(CLAIMS, c);
       return { ok:true };
     },
