@@ -5,7 +5,7 @@
    ═══════════════════════════════════════════════════════════════ */
 (function(){
   var shown = false;
-  var EXPECT = '2026.08.15-a';
+  var EXPECT = '2026.08.30-elig-sync';
 
   /* Show which build is loaded. A mismatch means an old file or a cached page,
      which is by far the most common cause of a fault that "will not go away". */

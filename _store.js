@@ -25,11 +25,11 @@
   /* Set in _config.js, which loads before this file. The fallback keeps the
      application working if that file is ever missing. */
   const DRIVER = (typeof window !== 'undefined' &&
-                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'api';
+                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'local';
   /* ───────────────────────────────────────────────────────────── */
   /* Bumped on every release. Printed to the console and shown in the page
      footer, so which build is actually loaded is never in doubt. */
-  const BUILD = '2026.08.27-encounter-v2';
+  const BUILD = '2026.08.30-elig-sync';
   window.RF_BUILD = BUILD;
 
   const DB = 'reviflow', STORE = 'accounts', META = 'meta', VER = 13;
@@ -370,6 +370,19 @@
   }
   const dList = (kind, filter) => dapi(kind,'list',{ filter: filter||{} }).then(j => j.records || []);
   const dSave = (kind, rec)    => dapi(kind,'save',{ record: rec });
+
+  /* A saved eligibility check comes back from the server as a plain
+     app_records row (id, created_at, created_by, plus whatever pushElig
+     sent). Every reader above this file — the history list, the result
+     page — expects the same {id, n, d, res, meta, t} shape the local
+     (IndexedDB) driver has always produced, so normalise here rather than
+     teaching two drivers' worth of callers a second shape. */
+  function eligFromRecord(r){
+    return {
+      id: String(r.id), n: r.n, d: r.d, res: r.res, meta: r.meta || {},
+      t: r.created_at ? new Date(r.created_at).getTime() : Date.now()
+    };
+  }
   const dDel  = (kind, id)     => dapi(kind,'delete', null, id);
 
   /* ═══ public API ═══ */
@@ -758,8 +771,19 @@
       return { ok:true, id: pt.id || id };
     },
 
-    /* ═══ ELIGIBILITY HISTORY — 24 hours, scoped to the signed-in user ═══ */
+    /* ═══ ELIGIBILITY HISTORY — 24 hours, scoped to the signed-in user ═══
+       'api': saved to the shared database (kind 'elig' in app_records), so the
+       same 24-hour list follows the account into any browser or device that
+       signs in. The server-side query (netlify/functions/data.js) is what
+       actually restricts it to the caller's own checks — this file just
+       normalises the shape so nothing above this layer has to know which
+       driver is active.
+       'local': unchanged — IndexedDB, this browser only. */
     async eligHistory(){
+      if(DRIVER==='api'){
+        const rows = await dList('elig', {});
+        return rows.map(eligFromRecord).sort((a,b) => (b.t||0) - (a.t||0));
+      }
       const me = getSession();
       const key = 'elig:' + (me ? me.username : 'anon');
       const raw = (await meta(key)) || [];
@@ -769,6 +793,12 @@
       return live;
     },
     async pushElig(entry){
+      if(DRIVER==='api'){
+        const j = await dSave('elig', { n: entry.n, d: entry.d, res: entry.res || null,
+          meta: entry.meta || {} });
+        const list = await this.eligHistory();
+        return { list, id: String(j.id) };
+      }
       const me = getSession();
       const key = 'elig:' + (me ? me.username : 'anon');
       const raw = (await meta(key)) || [];
@@ -782,7 +812,7 @@
     /* the full 271 for one saved check */
     async eligResult(id){
       const list = await this.eligHistory();
-      return list.find(r => r.id === id) || null;
+      return list.find(r => String(r.id) === String(id)) || null;
     },
     async lastElig(){
       const list = await this.eligHistory();

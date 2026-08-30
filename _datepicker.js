@@ -39,6 +39,47 @@
            a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
   }
 
+  /* A native <input type="date"> refuses most pasted text outright — it only
+     accepts keystrokes into its own month/day/year segments, so a date
+     copied from a referral letter, a payer portal or a spreadsheet (in
+     practically any format) silently does nothing. Parsing it ourselves and
+     writing the value directly is the only reliable fix; commit() already
+     does the "set the value, fire input/change" half of this. Accepts the
+     common shapes this app's users actually paste: ISO (2026-08-30), US
+     slashes or dashes (08/30/2026, 8-30-2026), and a month name (Aug 30,
+     2026 / 30 Aug 2026). Two-digit years and day/month-first formats are
+     deliberately not guessed at — a wrong silent guess on a date of birth or
+     service is worse than leaving the field for the person to fill in. */
+  function parsePasted(text){
+    var s = String(text||'').trim().replace(/^["']|["']$/g,'');
+    if(!s) return null;
+
+    function make(y,m,day){
+      y = +y; m = +m; day = +day;
+      if(y < 100) return null;                 /* no two-digit-year guessing */
+      var d = new Date(y, m-1, day, 12, 0, 0);
+      /* new Date() rolls an out-of-range day/month over into the next one
+         (Feb 30 -> Mar 2) instead of rejecting it — check it round-trips. */
+      if(d.getFullYear()!==y || d.getMonth()!==m-1 || d.getDate()!==day) return null;
+      return isNaN(d) ? null : d;
+    }
+
+    var m;
+    if((m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/)))
+      return make(m[1], m[2], m[3]);                          /* 2026-08-30 */
+    if((m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/)))
+      return make(m[3], m[1], m[2]);                          /* 08/30/2026 (US) */
+
+    /* a month name makes the order unambiguous either way round, so this is
+       the one case worth handing to the platform's own parser — unlike a
+       bare numeric string, JS parses these as local time, not UTC. */
+    if(/[A-Za-z]{3,}/.test(s) && /\d{4}/.test(s)){
+      var d2 = new Date(s);
+      if(!isNaN(d2)) return make(d2.getFullYear(), d2.getMonth()+1, d2.getDate());
+    }
+    return null;
+  }
+
   var pop = null, active = null, view = null, opts = {};
 
   function build(){
@@ -250,6 +291,28 @@
       input.addEventListener('click', function(){ open(field); });
       input.addEventListener('keydown', function(e){
         if(e.key === 'Tab') close();
+      });
+
+      /* Copy-paste from another source (a referral letter, a payer portal, a
+         spreadsheet) — see parsePasted() above for why this can't be left to
+         the browser. Bounds are read straight off the input's own min/max
+         rather than through active/opts, since a paste can in principle land
+         here before the focus handler above has opened the calendar. */
+      input.addEventListener('paste', function(e){
+        var text = (e.clipboardData || window.clipboardData);
+        text = text ? text.getData('text') : '';
+        var d = parsePasted(text);
+        if(!d) return;                      /* not a date we recognise — let the browser try */
+        var min = parse(input.min), max = parse(input.max);
+        if((min && d < min) || (max && d > max)) return;   /* out of range — leave it alone, don't guess */
+        e.preventDefault();
+        var was = input.value;
+        input.value = iso(d);
+        if(input.value !== was){
+          input.dispatchEvent(new Event('input',{bubbles:true}));
+          input.dispatchEvent(new Event('change',{bubbles:true}));
+        }
+        if(active === field) paint();
       });
     });
   }
