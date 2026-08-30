@@ -33,11 +33,15 @@ const KINDS = {
      personal to whoever ran it (see the 'list' branch below), never shared
      practice-wide, so anyone who can run a check may also save one. */
   elig:          { write:['admin','supervisor','scheduler','provider','employee',
-                          'frontoffice','billing'] }
+                          'frontoffice','billing'] },
+  /* Payments — a remittance posted from a payer, or cash/card taken from a
+     patient at the desk. Missing from this map entirely is why every call the
+     Payments screen makes fails with "Unknown record type: payment". */
+  payment:       { write:['admin','supervisor','employee','frontoffice','billing'] }
 };
 
 /* PHI, and therefore logged in full. The rest is reference data. */
-const PHI = new Set(['patient','appt','encounter','claim','task','credentialing','history','elig']);
+const PHI = new Set(['patient','appt','encounter','claim','task','credentialing','history','elig','payment']);
 
 const low = v => String(v == null ? '' : v).toLowerCase();
 
@@ -90,6 +94,10 @@ function columns(kind, r){
     c.on_date = r.meta && r.meta.dos || null;
     c.status = r.meta && r.meta.status || null;
     c.search = [r.n, r.d].filter(Boolean).map(low).join(' ');
+  }else if(kind === 'payment'){
+    c.on_date = r.at ? String(r.at).slice(0,10) : null;
+    c.status = r.kind || null;               /* 'era' or 'patient' */
+    c.search = [r.payer, r.method, r.ref, r.taken_by].filter(Boolean).map(low).join(' ');
   }
   return c;
 }

@@ -12,11 +12,18 @@ const CORS = {
 };
 
 const Q = require('./_queue-store.js');
+const L = require('./_lib.js');
 
 const key = c => 'claim_' + String(c.id || c.claim_no || Date.now());
 
 exports.handler = async (event) => {
   if(event.httpMethod === 'OPTIONS') return { statusCode:204, headers:CORS, body:'' };
+
+  /* Every action here reads or writes claim data (patient name, payer,
+     amounts) with nothing else in front of it, so a signed-in session is
+     required the same as it is for /api/data and /api/claims. */
+  const me = await L.session(event).catch(()=>null);
+  if(!me) return { statusCode:401, headers:CORS, body: JSON.stringify({ error:'unauthenticated' }) };
 
   /* /api/claims-queue?diag=1 explains the state of the whole thing */
   if(event.httpMethod === 'GET' && (event.queryStringParameters||{}).diag){

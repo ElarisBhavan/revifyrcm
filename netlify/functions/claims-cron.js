@@ -4,6 +4,7 @@
    an automated claim and a hand-sent one are identical. */
 
 const { toStedi } = require('./claims.js');
+const L = require('./_lib.js');
 
 const STEDI_URL = process.env.STEDI_CLAIMS_URL ||
   'https://healthcare.us.stedi.com/2024-04-01/change/medicalnetwork/professionalclaims/v3/submission';
@@ -33,9 +34,41 @@ function isClaimResponse(d){
     (d.claimReference || d.errors || d.status || d.x12 || d.meta));
 }
 
+/* Write the outcome back onto the real claim (app_records, kind='claim'), not
+   just the queue's own copy. Without this the nightly run and "Send now"
+   silently drift from what the claims screen shows: a claim that was in fact
+   sent or rejected still reads "ready to submit" forever, and reopening it
+   shows none of the payer's reasons, because those lived only in the queue's
+   private history log. */
+async function syncClaim(sql, claimId, status, note, extra){
+  if(!sql || claimId == null) return;
+  try{
+    const rows = await sql`select data from app_records
+      where kind='claim' and id=${Number(claimId)} and deleted_at is null`;
+    if(!rows.length) return;
+    const rec = rows[0].data || {};
+    rec.status = status;
+    rec.history = [{ at:new Date().toISOString(), by:'system', what:'status',
+                     detail:status + (note?' — '+note:'') }].concat(rec.history||[]);
+    rec.updated_at = new Date().toISOString();
+    if(extra) Object.assign(rec, extra);
+    await sql`update app_records set data=${sql.json(rec)}, status=${status},
+      updated_at=now() where kind='claim' and id=${Number(claimId)}`;
+  }catch(e){ console.error('claims-cron: could not sync claim '+claimId, e.message); }
+}
+
 exports.handler = async (event) => {
   const forced = !!(event && (event.forced ||
     (event.queryStringParameters||{}).force === '1'));
+
+  /* The nightly wake-up carries no cookie — Netlify's own scheduler calls
+     this, not a browser — so only the human-triggered "Send now" path is
+     required to prove who it is. */
+  if(forced){
+    const me = await L.session(event).catch(()=>null);
+    if(!me) return { statusCode:401, body: JSON.stringify({ error:'unauthenticated' }) };
+  }
+
   const hour = localHour();
 
   if(!forced && hour !== HOUR){
@@ -43,6 +76,9 @@ exports.handler = async (event) => {
       skipped:true, reason:'not the submission hour',
       localHour:hour, submitAt:HOUR, timezone:TZ }) };
   }
+
+  let sql = null;
+  try{ sql = L.db(); }catch(e){ sql = null; }
 
   const key = apiKey();
   if(!key) return { statusCode:200, body: JSON.stringify({
@@ -112,6 +148,9 @@ exports.handler = async (event) => {
       const processed = isClaimResponse(data);
       const errs = (data.errors||[]).map(e =>
         (e.code?e.code+' ':'')+(e.description||e.message||''));
+      const rejItems = (data.errors||[]).map(e => ({
+        code: e.code || e.errorCode || undefined,
+        message: e.description || e.message || e.reason || '' }));
       const ref = (data.claimReference||{});
 
       if(processed && !errs.length && res.ok){
@@ -122,6 +161,13 @@ exports.handler = async (event) => {
         results.sent++;
         results.detail.push({ claim:claim.claim_no, outcome:'sent',
           reference: ref.rhclaimNumber || ref.correlationId || '' });
+        await syncClaim(sql, claim.id, 'submitted',
+          'Sent via ' + (forced ? 'manual run' : 'automatic nightly run') +
+          ' · batch ' + batch + (ref.rhclaimNumber||ref.correlationId
+            ? ' · ' + (ref.rhclaimNumber||ref.correlationId) : ''),
+          { stedi_claim_no: ref.rhclaimNumber || ref.correlationId || '',
+            correlationId: ref.correlationId || '', rejections: null,
+            submitted_at: new Date().toISOString() });
       }else if(processed){
         /* the payer looked at it and refused — retrying will not help */
         await s.set(bk, { ...entry, status:'rejected',
@@ -130,6 +176,9 @@ exports.handler = async (event) => {
           attempts:(entry.attempts||0)+1 });
         results.rejected++;
         results.detail.push({ claim:claim.claim_no, outcome:'rejected', errors:errs });
+        await syncClaim(sql, claim.id, 'rejected', errs.join(' · ').slice(0,300),
+          { stedi_claim_no: ref.rhclaimNumber || '', rejections: rejItems,
+            rejected_at: new Date().toISOString() });
       }else{
         await s.set(bk, { ...entry, status:'pending',
           attempts:(entry.attempts||0)+1,
