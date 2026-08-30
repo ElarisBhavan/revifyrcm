@@ -1368,6 +1368,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         '<td class="r"><span class="acts">'+
           '<button class="ib" data-edit="'+c.id+'" title="Edit claim">'+
             '<svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg></button>'+
+          '<button class="ib" data-delclaim="'+c.id+'" title="Delete claim">'+
+            '<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>'+
           '<button class="ib" title="Open claim">'+
             '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>'+
         '</span></td></tr>';
@@ -1705,6 +1707,37 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     var c=await RFStore.claim(+b.dataset.edit);
     if(c)editClaim(c);
     else toast('Claim not found','It may have been removed',true);
+  });
+
+  /* delete straight from a row — mainly for a blank or duplicate claim that
+     never should have been created (a double click on "Create claim", a
+     test run) rather than something a payer has genuinely adjudicated. The
+     warning gets sharper once a claim number or a payer reference exists,
+     since at that point deleting it here does not undo the transmission. */
+  document.addEventListener('click',async function(e){
+    var b=e.target.closest('[data-delclaim]');
+    if(!b)return;
+    e.stopPropagation();
+    var id=+b.dataset.delclaim;
+    var c=await RFStore.claim(id);
+    if(!c){ toast('Claim not found','It may already be gone',true); return; }
+    var filedLike=!!(c.stedi_claim_no||c.correlationId)||
+      ['submitted','pending','accepted','received','in-process','paid']
+        .indexOf(String(c.status||'').toLowerCase())>-1;
+    var msg='Delete claim '+(c.claim_no||'')+' for '+
+      (c.patient_last?c.patient_last+', '+c.patient_first:'this patient')+'?\n\n'+
+      (filedLike
+        ? 'This claim shows as '+(c.status||'submitted').toUpperCase()+
+          (c.stedi_claim_no?' with payer reference '+c.stedi_claim_no:'')+
+          '. Deleting it here only removes it from ReviFlow — it does not '+
+          'notify or unsubmit anything with the payer. Only do this for a '+
+          'claim that should never have been created (a duplicate, a test).'
+        : 'This cannot be undone.');
+    if(!confirm(msg))return;
+    var r=await RFStore.removeClaim(id);
+    if(!r.ok){ toast('Could not delete',r.error||'',true); return; }
+    await refresh();
+    toast('Claim deleted',(c.claim_no||'')+' removed');
   });
 
 
