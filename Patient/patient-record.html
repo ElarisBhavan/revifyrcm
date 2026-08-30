@@ -3154,6 +3154,21 @@ input,select,textarea{font:inherit}
         var r = await RFStore.saveClaim(c);
         if(!r.ok){ toast('Could not save', r.error||'', true); return; }
 
+        /* This encounter already had a claim — clicking "Create claim" again
+           (a slow connection tempting a second click, or just habit) did not
+           mint a second one; RFStore.saveClaim() handed back the claim that
+           was already there instead of writing anything. Reopen that one
+           rather than announcing a save that did not happen. */
+        if(r.existing){
+          var all0 = await RFStore.claims({});
+          CLAIMS = all0.filter(function(x){ return String(x.patient_ref)===String(P.id); });
+          paintBilling();
+          toast('This charge already has a claim', (r.claim_no||'')+' — opening it now');
+          RFClaimForm.close();
+          setTimeout(function(){ openClaimForm(r, { title: r.claim_no || 'Claim' }); }, 260);
+          return;
+        }
+
         if(!c.id) c.id = r.id;
         if(!c.claim_no) c.claim_no = r.claim_no;
 
@@ -3192,14 +3207,31 @@ input,select,textarea{font:inherit}
     var cv = ev.target.closest('[data-cview]');
 
     if(mk){
-      var e = await RFStore.encounter(+mk.dataset.mkclaim);
-      if(!e) return;
-      var draft = buildClaim(e);
-      if(!draft.payer){
-        toast('No insurance on file','Add a policy, or bill this charge as self pay',true);
-        return;
+      if(mk.disabled) return;   /* a click already in flight for this row */
+      var encId = mk.dataset.mkclaim;
+
+      /* The common case, closed before it ever reaches the server: the row
+         still shows "Create claim" because CLAIMS has not been refreshed
+         since an earlier click created one (the button swaps to the claim's
+         pill on the next paintBilling(), which this click may be racing).
+         Reopening the existing claim instead of building a new draft is what
+         makes a second click harmless rather than a second claim. */
+      var already = CLAIMS.filter(function(c){ return String(c.enc_id)===String(encId); })[0];
+      if(already){ openClaimForm(already, { title: already.claim_no || 'Claim' }); return; }
+
+      mk.disabled = true;
+      try{
+        var e = await RFStore.encounter(+encId);
+        if(!e) return;
+        var draft = buildClaim(e);
+        if(!draft.payer){
+          toast('No insurance on file','Add a policy, or bill this charge as self pay',true);
+          return;
+        }
+        openClaimForm(draft, { title:'Create claim' });
+      } finally {
+        mk.disabled = false;
       }
-      openClaimForm(draft, { title:'Create claim' });
       return;
     }
 
