@@ -28,11 +28,16 @@ const KINDS = {
   document:      { write:['admin','supervisor','scheduler','provider','employee',
                           'frontoffice','billing'] },
   /* Payer enrolments — ERA, EFT, eligibility. Practice level, not per clinician. */
-  payerenrolment:{ write:['admin','supervisor','employee','frontoffice','billing'] }
+  payerenrolment:{ write:['admin','supervisor','employee','frontoffice','billing'] },
+  /* Eligibility checks — the 271 a user pulled, kept for 24 hours. Always
+     personal to whoever ran it (see the 'list' branch below), never shared
+     practice-wide, so anyone who can run a check may also save one. */
+  elig:          { write:['admin','supervisor','scheduler','provider','employee',
+                          'frontoffice','billing'] }
 };
 
 /* PHI, and therefore logged in full. The rest is reference data. */
-const PHI = new Set(['patient','appt','encounter','claim','task','credentialing','history']);
+const PHI = new Set(['patient','appt','encounter','claim','task','credentialing','history','elig']);
 
 const low = v => String(v == null ? '' : v).toLowerCase();
 
@@ -81,6 +86,10 @@ function columns(kind, r){
     c.search = [r.title, r.assignee].filter(Boolean).map(low).join(' ');
   }else if(kind === 'credentialing'){
     c.provider_id = r.provider_id != null ? Number(r.provider_id) : null;
+  }else if(kind === 'elig'){
+    c.on_date = r.meta && r.meta.dos || null;
+    c.status = r.meta && r.meta.status || null;
+    c.search = [r.n, r.d].filter(Boolean).map(low).join(' ');
   }
   return c;
 }
@@ -136,7 +145,15 @@ exports.handler = async (event) => {
       const f = body.filter || {};
       let rows;
 
-      if(f.patient_ref != null){
+      /* Eligibility history is personal, not practice-wide — never let a
+         filter widen it to someone else's checks — and self-expiring, the
+         same 24-hour window the local (IndexedDB) driver has always used. */
+      if(kind === 'elig'){
+        rows = await sql`select data from app_records
+          where kind='elig' and created_by=${me.username} and deleted_at is null
+            and created_at > now() - interval '1 day'
+          order by created_at desc limit 30`;
+      }else if(f.patient_ref != null){
         rows = await sql`select data from app_records
           where kind=${kind} and patient_ref=${Number(f.patient_ref)}
             and deleted_at is null order by id`;
