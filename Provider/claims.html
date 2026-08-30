@@ -1364,7 +1364,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         '<td>'+esc(c.payer||'—')+'</td>'+
         '<td>'+esc(c.provider_name||'—')+'</td>'+
         '<td class="r" style="font-family:var(--mono);font-weight:600">'+money(c.total)+'</td>'+
-        '<td><span class="claimed '+(c.status||'submitted')+'">'+(c.status||'submitted').toUpperCase()+'</span></td>'+
+        '<td><span class="claimed '+(c.status||'draft')+'">'+(c.status||'draft').toUpperCase()+'</span></td>'+
         '<td class="r"><span class="acts">'+
           '<button class="ib" data-edit="'+c.id+'" title="Edit claim">'+
             '<svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg></button>'+
@@ -1401,7 +1401,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     var m=c.cms||{},L=c.lines||[];
     var dx=(c.dx||[]);
     return '<div class="paper form" style="position:relative">'+
-      '<span class="stamp">'+(c.status||'submitted').toUpperCase()+'</span>'+
+      '<span class="stamp">'+(c.status||'draft').toUpperCase()+'</span>'+
       '<div class="frm-h"><b>HEALTH INSURANCE CLAIM FORM</b>'+
         '<small>APPROVED BY NUCC 02/12 · '+esc(c.claim_no)+' · '+fmtD(c.created_at)+'</small></div>'+
       '<div class="fbox">'+
@@ -1456,7 +1456,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   function ub04(c){
     var u=c.ub||{},L=c.lines||[],dx=(c.dx||[]);
     return '<div class="paper form" style="position:relative">'+
-      '<span class="stamp">'+(c.status||'submitted').toUpperCase()+'</span>'+
+      '<span class="stamp">'+(c.status||'draft').toUpperCase()+'</span>'+
       '<div class="frm-h"><b>UB-04 · CMS-1450</b>'+
         '<small>'+esc(c.claim_no)+' · TYPE OF BILL '+esc(u.tob||'—')+' · '+fmtD(c.created_at)+'</small></div>'+
       '<div class="fbox">'+
@@ -1727,7 +1727,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     var msg='Delete claim '+(c.claim_no||'')+' for '+
       (c.patient_last?c.patient_last+', '+c.patient_first:'this patient')+'?\n\n'+
       (filedLike
-        ? 'This claim shows as '+(c.status||'submitted').toUpperCase()+
+        ? 'This claim shows as '+(c.status||'draft').toUpperCase()+
           (c.stedi_claim_no?' with payer reference '+c.stedi_claim_no:'')+
           '. Deleting it here only removes it from ReviFlow — it does not '+
           'notify or unsubmit anything with the payer. Only do this for a '+
