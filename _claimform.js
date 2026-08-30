@@ -20,6 +20,18 @@
   var SEC = 'payer';
   var BUILT = false;
 
+  /* Set the moment "Edit claim" opens a filed claim back up (see applyLock()
+     and the cfSave handler below) — a snapshot of everything except the
+     submission-type fields that the edit itself changes, so Save can tell a
+     real edit from a click that reopened the claim and closed it again
+     without touching anything. */
+  var EDIT_SNAPSHOT = null;
+  function snapshotForEdit(){
+    var copy = JSON.parse(JSON.stringify(C||{}));
+    delete copy.frequency; delete copy.orig_ref;
+    return JSON.stringify(copy);
+  }
+
   var esc = function(v){
     return String(v==null?'':v).replace(/[&<>"]/g,function(c){
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});
@@ -574,6 +586,7 @@
 
       C = JSON.parse(JSON.stringify(claim || {}));
       OPTS = opts || {};
+      EDIT_SNAPSHOT = null;
       C.dx = (C.dx && C.dx.length) ? C.dx : [''];
       C.lines = C.lines || [];
       C.send_method = C.send_method || 'electronic';
@@ -758,10 +771,8 @@
       if(el) el.checked = true;
     });
 
-    if(OPTS.saveLabel){
-      $('cfSave').innerHTML='<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>'+
-        esc(OPTS.saveLabel);
-    }
+    /* the save button's label (Save claim / Edit claim) is set by applyLock()
+       below, which runs on every fill() and already knows about OPTS.saveLabel */
     safe(applySend,'applySend'); safe(applyFreq,'applyFreq');
     safe(applyRel,'applyRel'); safe(applyOtherIns,'applyOtherIns');
     safe(paintDx1500,'paintDx1500'); safe(paintLines1500,'paintLines1500');
@@ -890,8 +901,9 @@
             '<path d="M8 10.5V7.5a4 4 0 018 0v3"/></svg>'+
             '<span><b>This claim has gone to the payer</b>'+
             'It cannot be changed, because the payer holds a copy and a remittance '+
-            'has to reconcile against it. To change something, set the submission '+
-            'type below to <b>7 — Corrected</b>, or <b>8 — Void</b> to cancel it.</span>'
+            'has to reconcile against it. Click <b>Edit claim</b> below to open it '+
+            'for a correction, or set the submission type to <b>8 — Void</b> to '+
+            'cancel it.</span>'
           : '<svg viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10" rx="2.5"/>'+
             '<path d="M8 10.5V7.5a4 4 0 018 0"/></svg>'+
             '<span><b>Open for a '+($('cf_freq').value==='8'?'void':'correction')+'</b>'+
@@ -900,11 +912,19 @@
       }
     }
 
+    /* Filed and not yet reopened: the button becomes "Edit claim" — clicking
+       it is what reopens the fields (see the cfSave handler), rather than
+       just disabling Save and pointing someone at a dropdown. Once it is
+       reopened (an amending frequency), the button is "Save claim" again,
+       same as an ordinary edit. */
     var save = $('cfSave');
     if(save){
-      save.disabled = locked;
-      save.title = locked
-        ? 'Set the submission type to 7 or 8 to change this claim' : '';
+      save.disabled = false;
+      save.dataset.mode = locked ? 'edit' : 'save';
+      save.title = '';
+      save.innerHTML = locked
+        ? '<svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Edit claim'
+        : '<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>'+esc(OPTS.saveLabel||'Save claim');
     }
   }
 
@@ -1309,11 +1329,30 @@
 
     on('cfSave', 'click', async function(){
       var btn = this;
+
+      /* "Edit claim" — this same button, relabelled by applyLock() while the
+         claim is filed and untouched. Clicking it opens the claim for a
+         correction (frequency 7) rather than saving anything; Save proper
+         only happens on the next click, once it is unlocked. */
+      if(btn.dataset.mode === 'edit'){
+        safe(function(){
+          read();
+          EDIT_SNAPSHOT = snapshotForEdit();
+          var freqEl = $('cf_freq');
+          if(freqEl) freqEl.value = '7';
+          C.frequency = '7';
+          applyFreq(); applyLock();
+        }, 'cfSave edit');
+        notify('Claim opened for editing',
+          'Make the correction, then Save to submit it as a corrected claim');
+        return;
+      }
+
       /* The button is disabled while locked, but a disabled button is a
          courtesy rather than a guarantee — check the state itself too. */
       if(isFiled(C) && !amending()){
         notify('This claim has already been filed',
-          'Set the submission type to 7 or 8 to change it');
+          'Click Edit claim to open it for a correction or void');
         return;
       }
       var issues = [];
@@ -1328,9 +1367,22 @@
         return !errs.length;
       }, 'cfSave validate');
       if(validateOk !== true) return;
+
+      /* Edit claim was clicked, but nothing on the form actually changed —
+         submitting this would only relabel an identical claim as a
+         "corrected" one and waste a submission on the payer's side. read()
+         already ran inside validate() above, so C reflects the form as it
+         stands right now. */
+      if(EDIT_SNAPSHOT !== null && amending() && snapshotForEdit() === EDIT_SNAPSHOT){
+        notify('No changes were made',
+          'Edit a field before saving, or Cancel to leave the claim as it was');
+        return;
+      }
+
       btn.disabled = true;
       try{
         if(OPTS.onSave) await OPTS.onSave(C);
+        EDIT_SNAPSHOT = null;
       }catch(err){
         console.error('ReviFlow claim form: onSave failed', err);
         notify('Could not save', 'Something went wrong saving this claim — your entries are still on screen');
