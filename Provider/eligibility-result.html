@@ -106,6 +106,22 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .pgrid dd{font-size:13.4px;font-weight:500;line-height:1.5}
 .pgrid dd.mono{font-family:var(--mono);font-size:12.6px}
 
+/* ── requesting provider / coordination-of-benefits split ── */
+.provsplit{display:grid;grid-template-columns:1fr 1fr;gap:16px 28px}
+.provsplit .cob{border-left:1px solid var(--line);padding-left:28px}
+.provsplit .cob .subhead2{margin-top:0}
+.provsplit .cob .pgrid{grid-template-columns:1fr;gap:10px}
+.cobrow+.cobrow{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line-2)}
+@media (max-width:900px){
+  .provsplit{grid-template-columns:minmax(0,1fr)}
+  .provsplit .cob{border-left:none;padding-left:0;padding-top:16px;margin-top:4px;border-top:1px dashed var(--line-2)}
+}
+@media print{
+  .provsplit{grid-template-columns:1fr 1fr!important;gap:8pt!important}
+  .provsplit .cob{border-left:1px solid #999!important;padding-left:10pt!important}
+  .provsplit .cob .subhead2{font-size:6.8pt!important;margin-bottom:5pt!important}
+}
+
 /* ── network filter ── */
 .filter{margin-left:auto;display:flex;gap:4px;padding:3px;border-radius:99px;background:var(--paper-2);border:1px solid var(--line)}
 .filter button{padding:6px 14px;border-radius:99px;font-size:12px;font-weight:600;color:var(--muted);transition:all .32s var(--ease)}
@@ -200,7 +216,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
   .pgrid,.contact{grid-template-columns:minmax(0,1fr)}
   .mbadges{margin-left:0;align-items:flex-start}
   .tblwrap{overflow-x:auto}
-  .tbl{min-width:620px}
+  .tbl{min-width:700px}
   .snav{top:43px}
 }
 @media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation-duration:.01ms!important}.rv{opacity:1;transform:none}}
@@ -275,7 +291,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 .mfoot .sp{flex:1}
 .hbtn svg{transition:none}
 .hbtn:hover{transform:none}
-@media (max-width:1000px){.tbl{min-width:760px}}
+@media (max-width:1000px){.tbl{min-width:860px}}
 
 /* ══════════ PRINT ══════════ */
 .printhead,.printfoot{display:none}
@@ -534,6 +550,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 <nav class="snav">
   <div class="snin" id="snav">
     <a href="#member" class="on">Member</a>
+    <a href="#subscriber">Subscriber</a>
     <a href="#provider">Provider</a>
     <a href="#maximums">Maximums &amp; deductibles</a>
     <a href="#benefits">Benefit detail</a>
@@ -620,6 +637,10 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 (function(){
   var $=function(i){return document.getElementById(i);};
   var DATA=null;
+  /* which care setting the cost summary / benefit table / accumulators
+     show — carried over from the Type field on the eligibility check form,
+     but switchable here too. */
+  var SVCTYPE='Outpatient';
 
   function esc(v){return String(v==null?'':v).replace(/[&<>"]/g,function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -696,6 +717,100 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     });
   }
 
+  /* place of service, per benefit line — Stedi has shown this under a few
+     different shapes depending on the payer, so probe defensively rather
+     than trust one exact key name */
+  function posOf(b){
+    var raw=b.placesOfService||b.placeOfService||b.placesOfServiceInformation||
+            b.pos||b.placeOfServiceInformation||null;
+    function label(p){
+      if(p==null)return '';
+      if(typeof p==='string'||typeof p==='number')return String(p);
+      return [p.code||p.placeOfServiceCode,p.name||p.description||p.placeOfServiceName]
+        .filter(Boolean).join(' — ');
+    }
+    if(Array.isArray(raw)&&raw.length)return raw.map(label).filter(Boolean).join(', ');
+    if(raw&&typeof raw==='object'){var l=label(raw);if(l)return l;}
+    if(b.placeOfServiceCode||b.placeOfServiceName)
+      return [b.placeOfServiceCode,b.placeOfServiceName].filter(Boolean).join(' — ');
+    return '';
+  }
+
+  /* Outpatient vs inpatient vs "applies either way" — the payer usually
+     says so directly, either through a known service-type code or in the
+     benefit's own description. A handful of codes are well known (48/50
+     hospital, A7/A8 psychiatric, CE/CF mental health); everything else
+     falls back to reading the words the payer sent. */
+  var INPATIENT_STC={'48':1,'A7':1,'CE':1,'51':1};
+  var OUTPATIENT_STC={'50':1,'A8':1,'CF':1,'52':1};
+  function svcTypeOf(b){
+    var codes=b.serviceTypeCodes||[];
+    var isIn=codes.some(function(c){return INPATIENT_STC[c];});
+    var isOut=codes.some(function(c){return OUTPATIENT_STC[c];});
+    if(!isIn||!isOut){
+      var text=[b.name,b.planCoverage,(b.serviceTypes||[]).join(' '),
+        (b.additionalInformation||[]).map(function(a){return a.description;}).join(' ')
+      ].filter(Boolean).join(' ');
+      if(!isIn)isIn=/\binpatient\b/i.test(text);
+      if(!isOut)isOut=/\boutpatient\b/i.test(text);
+    }
+    if(isIn&&!isOut)return 'Inpatient';
+    if(isOut&&!isIn)return 'Outpatient';
+    return 'general';   /* unscoped — shown no matter which type is selected */
+  }
+  function matchesType(b){
+    var t=svcTypeOf(b);
+    return t==='general'||t===SVCTYPE;
+  }
+
+  /* Coordination of benefits — a standard 271 can carry this as a benefit
+     line with EB01 code 'R' ("Other or Additional Payor"), so no separate
+     COB call is needed to surface what the payer already sent. */
+  function cobInfo(N){
+    var lines=(N.benefits||[]).filter(function(b){return b.code==='R';});
+    if(!lines.length)return null;
+    var rows=[];
+    lines.forEach(function(b){
+      var ents=(b.benefitsRelatedEntities||b.benefitsRelatedEntity||[]);
+      if(ents.length){
+        ents.forEach(function(e){
+          rows.push({
+            name:e.entityName||e.entityIdentifier||b.name||'Other payer',
+            type:title(e.entityRelationship||e.entityIdentifier||''),
+            idNum:e.entityIdentification||e.npi||e.memberId||null
+          });
+        });
+      }else{
+        rows.push({name:b.name||b.planCoverage||'Other or additional payer',type:'',idNum:null});
+      }
+    });
+    return rows;
+  }
+
+  /* one pass, used both on load and whenever the network or care-setting
+     toggle changes, so the two stay in agreement */
+  function refreshRows(net){
+    var shown=0,total=0;
+    document.querySelectorAll('#benefits tbody tr').forEach(function(tr){
+      total++;
+      var rn=tr.dataset.net||'';
+      var rt=tr.dataset.type||'general';
+      var netKeep=(net==='all')||!rn||rn===net;
+      var typeKeep=(rt==='general')||rt===SVCTYPE;
+      var keep=netKeep&&typeKeep;
+      tr.hidden=!keep;
+      if(keep)shown++;
+    });
+    var cnt=document.querySelector('#benefits .cnt');
+    if(cnt&&total){
+      cnt.textContent = shown===total
+        ? total+' LINE'+(total===1?'':'S')+' · '+SVCTYPE.toUpperCase()
+        : shown+' OF '+total+' · '+(net==='all'?'ALL NETWORKS':net.toUpperCase())+' · '+SVCTYPE.toUpperCase();
+    }
+    var none=document.getElementById('benNone');
+    if(none)none.hidden=shown>0;
+  }
+
   function box(label,val,mono){
     return '<div><dt>'+esc(label)+'</dt><dd'+(mono?' class="mono"':'')+'>'+
       (val==null||val===''?'<span class="none">Not reported</span>':esc(val))+'</dd></div>';
@@ -704,7 +819,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
 
   /* Stamped so a stale copy of this file is visible in the console. */
-  var RESULT_BUILD='2026.08.19-c';
+  var RESULT_BUILD='2026.08.30-a';
   console.info('%cReviFlow eligibility result '+RESULT_BUILD+
     ' · planDates '+(typeof planDates==='function'?'present':'MISSING'),
     'color:#0A5C46;font-weight:700');
@@ -715,36 +830,54 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
      the earliest start and the latest end across all of them, so a plan is not
      shown as open-ended just because one field was empty. */
   function planDates(N){
-    var begins=[], ends=[];
-
-    function push(o){
-      if(!o) return;
+    /* dates arrive as YYYYMMDD or YYYY-MM-DD; compare on digits alone */
+    var key = function(v){ return String(v).replace(/\D/g,''); };
+    function fields(o){
+      if(!o) return {begin:null,end:null};
       var b = o.planBegin || o.planBeginDate || o.eligibilityBegin ||
               o.eligibilityBeginDate || o.benefitBegin || o.periodStart ||
-              o.startDate || o.effectiveDate || o.plan;
+              o.startDate || o.effectiveDate;
       var e = o.planEnd || o.planEndDate || o.eligibilityEnd ||
               o.eligibilityEndDate || o.benefitEnd || o.periodEnd ||
               o.endDate || o.expirationDate || o.terminationDate;
-      if(b) begins.push(String(b));
-      if(e) ends.push(String(e));
+      return { begin: b?String(b):null, end: e?String(e):null };
+    }
+    function ok(f){ return f && f.begin && key(f.begin).length>=8; }
+
+    /* 1 · "Health benefit plan coverage" (code 1 / STC 30) is the one line
+       a payer means to describe the WHOLE plan rather than a single
+       service — the most reliable source, and it must not be diluted by
+       narrower, service-specific date ranges reported elsewhere in the
+       same response. */
+    var planWide=(N.benefits||[]).filter(function(b){
+      return b.code==='1' || (b.serviceTypeCodes||[]).indexOf('30')>-1;
+    });
+    for(var i=0;i<planWide.length;i++){
+      var f=fields(planWide[i].benefitsDateInformation||planWide[i]);
+      if(ok(f)) return { begin:f.begin, end:f.end };
     }
 
-    push(N.plan);
-    push(N.plan && N.plan.planDateInformation);
-    push(N.raw && N.raw.planDateInformation);
-    (N.status||[]).forEach(function(st){
-      push(st); push(st.planDateInformation);
-    });
-    (N.benefits||[]).forEach(function(b){
-      push(b.benefitsDateInformation);
-      /* a date sitting directly on the benefit line counts too */
-      if(b.planBegin || b.planEnd || b.benefitBegin || b.benefitEnd) push(b);
-    });
-    push(N.person && N.person.planDateInformation);
-    push(N.subscriber && N.subscriber.planDateInformation);
+    /* 2 · an explicit statement at the plan or status level, when the
+       payer provides one directly rather than through a benefit line */
+    var topSources=[
+      N.raw && N.raw.planDateInformation,
+      N.plan && N.plan.planDateInformation,
+      N.plan
+    ].concat((N.status||[]).map(function(st){ return st.planDateInformation || st; }));
+    for(var j=0;j<topSources.length;j++){
+      var f2=fields(topSources[j]);
+      if(ok(f2)) return { begin:f2.begin, end:f2.end };
+    }
 
-    /* dates arrive as YYYYMMDD or YYYY-MM-DD; compare on digits alone */
-    var key = function(v){ return String(v).replace(/\D/g,''); };
+    /* 3 · last resort — any benefit-level date, earliest begin / latest
+       end, so a plan is not shown as open-ended just because nothing
+       scoped to the whole plan was reported */
+    var begins=[], ends=[];
+    (N.benefits||[]).forEach(function(b){
+      var f=fields(b.benefitsDateInformation||b);
+      if(f.begin) begins.push(f.begin);
+      if(f.end) ends.push(f.end);
+    });
     var pick = function(list, latest){
       var best = null;
       list.forEach(function(v){
@@ -755,7 +888,6 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       });
       return best;
     };
-
     return { begin: pick(begins, false), end: pick(ends, true) };
   }
 
@@ -815,6 +947,27 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         box('Group name',p.groupDescription||N.subscriber.groupDescription||pick(N,'plan.groupDescription'))+
       '</dl></section>');
 
+    /* ── subscriber details — a full block of its own, distinct from the
+       one-line "Subscriber" fact shown in the member banner above ── */
+    var sub=N.subscriber||{};
+    if(sub.firstName||sub.lastName||sub.memberId){
+      var sa=sub.address||{};
+      out.push('<section class="card rv" id="subscriber">'+
+        '<div class="chead"><span class="ico"><svg viewBox="0 0 24 24">'+
+          '<path d="M12 12a4 4 0 100-8 4 4 0 000 8z"/><path d="M4 21a8 8 0 0116 0"/></svg></span>'+
+          '<h2>Subscriber details</h2></div>'+
+        '<div class="cbody"><dl class="pgrid">'+
+          box('First name',sub.firstName)+
+          box('Middle name',sub.middleName)+
+          box('Last name',sub.lastName)+
+          box('Member ID',sub.memberId,true)+
+          box('Date of birth',fmtDate(sub.dateOfBirth))+
+          box('Gender',title(sub.gender||sub.genderCode))+
+          (sa.address1?'<div style="grid-column:span 2"><dt>Address</dt><dd>'+
+            esc([sa.address1,sa.city,sa.state,sa.postalCode].filter(Boolean).join(', '))+'</dd></div>':'')+
+        '</dl></div></section>');
+    }
+
     /* ── errors, when the payer rejected ── */
     if(N.errors.length){
       out.push('<section class="card rv err">'+
@@ -830,22 +983,42 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         '</dl></div></section>');
     }
 
-    /* ── requesting provider ── */
+    /* ── requesting provider, split with coordination-of-benefits on the right ── */
     var pr=N.provider;
-    if(pr && (pr.providerName||pr.organizationName||pr.npi)){
-      var pa=pr.address||{};
+    var hasProvider=pr && (pr.providerName||pr.organizationName||pr.npi);
+    var cob=cobInfo(N);
+    if(hasProvider||cob){
+      var pa=(pr&&pr.address)||{};
       out.push('<section class="card rv" id="provider">'+
         '<div class="chead"><span class="ico"><svg viewBox="0 0 24 24">'+
           '<path d="M4 21V7l8-4 8 4v14"/><path d="M12 10v6M9 13h6"/></svg></span>'+
           '<h2>Requesting provider</h2></div>'+
-        '<div class="cbody"><dl class="pgrid">'+
-          box('Name',pr.organizationName||[pr.firstName,pr.lastName].filter(Boolean).join(' ')||pr.providerName)+
-          box('NPI',pr.npi,true)+
-          box('Entity type',title(pr.entityIdentifier||pr.providerTypeCode||''))+
-          box('Provider code',title(pr.providerCode||''))+
-          (pa.address1?'<div style="grid-column:span 2"><dt>Address</dt><dd>'+
-            esc([pa.address1,pa.city,pa.state,pa.postalCode].filter(Boolean).join(', '))+'</dd></div>':'')+
-        '</dl></div></section>');
+        '<div class="cbody"><div class="provsplit">'+
+          '<div>'+
+            (hasProvider
+              ? '<dl class="pgrid">'+
+                  box('Name',pr.organizationName||[pr.firstName,pr.lastName].filter(Boolean).join(' ')||pr.providerName)+
+                  box('NPI',pr.npi,true)+
+                  box('Entity type',title(pr.entityIdentifier||pr.providerTypeCode||''))+
+                  box('Provider code',title(pr.providerCode||''))+
+                  (pa.address1?'<div style="grid-column:span 2"><dt>Address</dt><dd>'+
+                    esc([pa.address1,pa.city,pa.state,pa.postalCode].filter(Boolean).join(', '))+'</dd></div>':'')+
+                '</dl>'
+              : '<p class="none">No requesting provider reported.</p>')+
+          '</div>'+
+          '<div class="cob">'+
+            '<div class="subhead2">Other or additional payer information</div>'+
+            (cob&&cob.length
+              ? cob.map(function(c){
+                  return '<div class="cobrow"><dl class="pgrid">'+
+                    box('Payer / entity',c.name)+
+                    (c.type?box('Relationship',c.type):'')+
+                    (c.idNum?box('Identifier',c.idNum,true):'')+
+                  '</dl></div>';
+                }).join('')
+              : '<p class="none">No additional payer information provided.</p>')+
+          '</div>'+
+        '</div></div></section>');
     }
 
     /* ── summary of what the visit will cost ── */
@@ -854,6 +1027,10 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         '<div class="chead"><span class="ico"><svg viewBox="0 0 24 24">'+
           '<path d="M12 3v18M7 8h7a2.5 2.5 0 010 5H9a2.5 2.5 0 000 5h8"/></svg></span>'+
           '<h2>Cost summary</h2>'+
+          '<div class="filter" id="typefilter">'+
+            '<button'+(SVCTYPE==='Outpatient'?' class="on"':'')+' data-t="Outpatient">Outpatient</button>'+
+            '<button'+(SVCTYPE==='Inpatient'?' class="on"':'')+' data-t="Inpatient">Inpatient</button>'+
+          '</div>'+
           '<div class="filter" id="netfilter">'+
             '<button data-n="all">All networks</button>'+
             '<button class="on" data-n="In network">In network</button>'+
@@ -883,12 +1060,12 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
           '<h2>Benefit detail</h2>'+
           '<span class="cnt">'+rest.length+' LINE'+(rest.length===1?'':'S')+'</span></div>'+
         '<div class="tblwrap"><table class="tbl"><thead><tr>'+
-          '<th style="width:30%">Benefit</th><th>Service types</th><th>Network</th>'+
+          '<th style="width:26%">Benefit</th><th>Service types</th><th>Place of service</th><th>Network</th>'+
           '<th>Level</th><th>Period</th><th class="r">Amount</th>'+
         '</tr></thead><tbody>'+
         rest.map(function(b,i){
-          var svc=servicesOf(b);
-          return '<tr data-net="'+esc(netOf(b)||'')+'" style="animation-delay:'+Math.min(.5,i*.03)+'s">'+
+          var svc=servicesOf(b), pos=posOf(b), btype=svcTypeOf(b);
+          return '<tr data-net="'+esc(netOf(b)||'')+'" data-type="'+esc(btype)+'" style="animation-delay:'+Math.min(.5,i*.03)+'s">'+
             '<td><b>'+esc(b.name||title(b.code))+'</b>'+
               (b.planCoverage?'<div class="sub">'+esc(b.planCoverage)+'</div>':'')+
               (b.insuranceTypeCode||b.insuranceType?'<div class="sub">'+
@@ -902,6 +1079,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
                   return '<span>'+esc(x)+'</span>';}).join('')+
                 (svc.length>4?'<span class="more">+'+(svc.length-4)+'</span>':'')+'</div>'
               : '<span class="none">—</span>')+'</td>'+
+            '<td>'+(pos?'<span class="sub" style="font-size:11.8px">'+esc(pos)+'</span>':'<span class="none">—</span>')+'</td>'+
             '<td>'+(netOf(b)?'<span class="tag '+(/^In/.test(netOf(b))?'net':'out')+'">'+
               netOf(b)+'</span>':'<span class="none">—</span>')+'</td>'+
             '<td>'+(levelOf(b)||'<span class="none">—</span>')+'</td>'+
@@ -998,6 +1176,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       return N.benefits.filter(function(b){
         if(b.code!==code)return false;
         if(net!=='all'&&netOf(b)&&netOf(b)!==net)return false;
+        if(!matchesType(b))return false;
         return strict ? stcMatches(b,stc) : true;
       });
     }
@@ -1012,10 +1191,21 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       return {list:any,scoped:false};
     }
 
+    /* when the whole plan was requested (stc==='30'), stcMatches lets every
+       line through — so once a care-setting is selected, a line reported
+       specifically for that setting (Outpatient/Inpatient) must win over a
+       plan-wide figure that merely wasn't excluded, not just whichever
+       line happened to come first */
+    function typeRank(b){ return svcTypeOf(b)===SVCTYPE ? 0 : 1; }
+
     function cell(label,code,opts){
       opts=opts||{};
       var set=pickSet(code);
-      var list=set.list.slice().sort(opts.prefer||preferIndividual);
+      var base=opts.prefer||preferIndividual;
+      var list=set.list.slice().sort(function(a,b){
+        var tr=typeRank(a)-typeRank(b);
+        return tr||base(a,b);
+      });
       if(!list.length){
         return '<div class="scell"><dt>'+label+'</dt>'+
           '<dd class="none">Not reported</dd>'+
@@ -1075,11 +1265,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     label=label||'All service types';
 
     var scopedCount=N.benefits.filter(function(b){
-      return stcMatches(b,stc)&&(net==='all'||!netOf(b)||netOf(b)===net);}).length;
+      return stcMatches(b,stc)&&(net==='all'||!netOf(b)||netOf(b)===net)&&matchesType(b);}).length;
 
     var hasFamily=N.benefits.some(function(b){
       return /family|employee and/i.test(String(levelOf(b)||''))&&
-             (net==='all'||!netOf(b)||netOf(b)===net); });
+             (net==='all'||!netOf(b)||netOf(b)===net)&&matchesType(b); });
 
     return '<div class="sumhead"><b>'+esc(label)+'</b>'+
         (stc?'<span class="stcchip">'+esc(stc)+'</span>':'')+
@@ -1087,7 +1277,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
           '<button data-l="individual"'+(LEVEL==='individual'?' class="on"':'')+'>Individual</button>'+
           '<button data-l="family"'+(LEVEL==='family'?' class="on"':'')+'>Family</button>'+
         '</span>':'')+
-        '<span>'+(net==='all'?'All networks':esc(net))+' · '+scopedCount+' line'+
+        '<span>'+esc(SVCTYPE)+' · '+(net==='all'?'All networks':esc(net))+' · '+scopedCount+' line'+
         (scopedCount===1?'':'s')+'</span></div>'+
       '<div class="sumgrid">'+
         cell('Copay','B')+
@@ -1099,8 +1289,10 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
   /* accumulator cards, filtered by network */
   function accHTML(acc,net){
-    var rows=acc.filter(function(b){return net==='all'||netOf(b)===net;});
-    if(!rows.length)return '<p class="none" style="padding:20px">Nothing reported for this network.</p>';
+    var rows=acc.filter(function(b){
+      return (net==='all'||netOf(b)===net)&&matchesType(b);
+    });
+    if(!rows.length)return '<p class="none" style="padding:20px">Nothing reported for this network and care setting.</p>';
 
     var byName={};
     rows.forEach(function(b){
@@ -1157,6 +1349,14 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     DATA=raw;
     var N=normalise(raw);
 
+    /* the Type chosen on the check form (Outpatient by default) carries
+       over so the summary opens already showing the right care setting */
+    var wantType=(rec&&rec.meta&&rec.meta.svctype)||null;
+    if(!wantType){
+      try{ wantType=sessionStorage.getItem('rf_last_svctype'); }catch(e){}
+    }
+    if(wantType==='Inpatient'||wantType==='Outpatient') SVCTYPE=wantType;
+
     /* top strip, from the response itself */
     $('sDos').textContent=fmtDate(
       pick(raw,'encounter.dateOfService')||
@@ -1180,21 +1380,10 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     $('content').hidden=false;
 
     /* the summary opens on in-network, so the table agrees from the start */
+    refreshRows('In network');
     (function(){
-      var shown=0,total=0;
-      document.querySelectorAll('#benefits tbody tr').forEach(function(tr){
-        total++;
-        var rn=tr.dataset.net||'';
-        var keep=!rn||rn==='In network';
-        tr.hidden=!keep;
-        if(keep)shown++;
-      });
-      var cnt=document.querySelector('#benefits .cnt');
-      if(cnt&&total)cnt.textContent=shown+' OF '+total+' · IN NETWORK';
       var ac=document.getElementById('accCnt');
-      if(ac)ac.textContent='IN NETWORK';
-      var none=document.getElementById('benNone');
-      if(none)none.hidden=shown>0;
+      if(ac)ac.textContent='IN NETWORK · '+SVCTYPE.toUpperCase();
     })();
 
     /* reveal on scroll */
@@ -1215,10 +1404,28 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       if(sb)sb.innerHTML=summaryHTML(N,net);
     });
 
+    var acc=N.benefits.filter(function(b){return ['C','G'].indexOf(b.code)>-1;});
+
+    /* outpatient or inpatient */
+    var tf=$('typefilter');
+    if(tf){
+      tf.addEventListener('click',function(e){
+        var b=e.target.closest('button');if(!b)return;
+        SVCTYPE=b.dataset.t;
+        tf.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});
+        var net=(document.querySelector('#netfilter button.on')||{dataset:{n:'In network'}}).dataset.n;
+        var sb=$('sumBox');
+        if(sb)sb.innerHTML=summaryHTML(N,net);
+        $('accs').innerHTML=accHTML(acc,net);
+        var ac0=$('accCnt');
+        if(ac0)ac0.textContent=(net==='all'?'ALL NETWORKS':net.toUpperCase())+' · '+SVCTYPE.toUpperCase();
+        refreshRows(net);
+      });
+    }
+
     /* network filter */
     var nf=$('netfilter');
     if(nf){
-      var acc=N.benefits.filter(function(b){return ['C','G'].indexOf(b.code)>-1;});
       nf.addEventListener('click',function(e){
         var b=e.target.closest('button');if(!b)return;
         var net=b.dataset.n;
@@ -1227,24 +1434,10 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         var sb=$('sumBox');
         if(sb)sb.innerHTML=summaryHTML(N,net);
         var ac=$('accCnt');
-        if(ac)ac.textContent=(net==='all'?'ALL NETWORKS':net.toUpperCase());
+        if(ac)ac.textContent=(net==='all'?'ALL NETWORKS':net.toUpperCase())+' · '+SVCTYPE.toUpperCase();
 
         /* the same choice filters the benefit detail table */
-        var shown=0,total=0;
-        document.querySelectorAll('#benefits tbody tr').forEach(function(tr){
-          total++;
-          var rn=tr.dataset.net||'';
-          /* lines with no network flag stay visible — they apply either way */
-          var keep=(net==='all')||!rn||rn===net;
-          tr.hidden=!keep;
-          if(keep)shown++;
-        });
-        var cnt=document.querySelector('#benefits .cnt');
-        if(cnt)cnt.textContent=(net==='all'
-          ? total+' LINE'+(total===1?'':'S')
-          : shown+' OF '+total+' · '+net.toUpperCase());
-        var none=document.getElementById('benNone');
-        if(none)none.hidden=shown>0;
+        refreshRows(net);
       });
     }
 

@@ -89,8 +89,6 @@ input,select{font:inherit}
   background-repeat:no-repeat;background-position:right 12px center}
 .ctrl input[type="date"]{cursor:pointer;padding-right:38px}
 .ctrl input[type="date"]::-webkit-calendar-picker-indicator{position:absolute;right:10px;width:18px;height:18px;opacity:0;cursor:pointer}
-.calico{position:absolute;right:12px;width:16px;height:16px;stroke:var(--muted);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;pointer-events:none;transition:stroke .3s ease}
-.ctrl:focus-within .calico{stroke:var(--accent)}
 .hint{font-size:11px;color:var(--dim);margin-top:5px}
 .err{display:none;font-size:11.3px;color:var(--danger);margin-top:5px}
 .err.show{display:block}
@@ -437,7 +435,6 @@ select:disabled{opacity:.6;cursor:not-allowed}
           <span>Date of birth <u>*</u></span>
           <div class="ctrl">
             <input type="date" id="dob" min="1900-01-01" max="2100-12-31" required>
-            <svg class="calico" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
           </div>
           <p class="err" id="e-dob">Select a date of birth.</p>
         </label>
@@ -492,7 +489,6 @@ select:disabled{opacity:.6;cursor:not-allowed}
           <span>Date of service <u>*</u></span>
           <div class="ctrl">
             <input type="date" id="dos" min="1900-01-01" max="2100-12-31" required>
-            <svg class="calico" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
           </div>
           <p class="hint">Defaults to today</p>
           <p class="err" id="e-dos">Select a date of service.</p>
@@ -527,16 +523,14 @@ select:disabled{opacity:.6;cursor:not-allowed}
         </label>
 
         <label class="f c6">
-          <span>Specialty</span>
+          <span>Type <u>*</u></span>
           <div class="ctrl">
-            <select id="specialty">
-              <option value="">Select specialty</option>
-              <option>Family medicine</option><option>Internal medicine</option>
-              <option>Cardiology</option><option>Endocrinology</option>
-              <option>Orthopedics</option><option>Obstetrics and gynecology</option>
-              <option>Pediatrics</option><option>Behavioral health</option>
+            <select id="svctype" required>
+              <option value="Outpatient">Outpatient</option>
+              <option value="Inpatient">Inpatient</option>
             </select>
           </div>
+          <p class="hint">Defaults to Outpatient</p>
         </label>
 
         <label class="f c6">
@@ -860,11 +854,6 @@ select:disabled{opacity:.6;cursor:not-allowed}
         if(npi)npi.value=(p.npi||'').replace(/\D/g,'');
         var tax=document.getElementById('taxid');
         if(tax)tax.value=String(p.tax_id||(org&&org.tax_id)||'').replace(/\D/g,'');
-        var spec=document.getElementById('specialty');
-        if(spec&&p.specialty){
-          [].slice.call(spec.options).forEach(function(o){
-            if(o.textContent.trim().toLowerCase()===p.specialty.trim().toLowerCase())spec.value=o.value;});
-        }
         var cpt=document.getElementById('cpt');
         if(cpt){
           var set=(CFG.cptSet||p.favourite_cpt||'');
@@ -1096,11 +1085,16 @@ select:disabled{opacity:.6;cursor:not-allowed}
       hint.style.display='';
     }
 
-    try{sessionStorage.setItem('rf_last_271',JSON.stringify(data));}catch(e){}
+    var svctype=(document.getElementById('svctype')&&document.getElementById('svctype').value)||'Outpatient';
+    try{
+      sessionStorage.setItem('rf_last_271',JSON.stringify(data));
+      sessionStorage.setItem('rf_last_svctype',svctype);
+    }catch(e){}
     pushHist(name||'Member', document.getElementById('dob').value, data,
       {status:(status&&status.status)||(errs&&errs.length?'Rejected':'Returned'),
        payer:document.getElementById('payer').value,
        dos:document.getElementById('dos').value,
+       svctype:svctype,
        ms:ms}).then(function(id){
       var link=document.getElementById('rwho');
       if(link&&id)link.setAttribute('href','eligibility-result.html?e='+encodeURIComponent(id));
@@ -1169,7 +1163,7 @@ select:disabled{opacity:.6;cursor:not-allowed}
   /* ── CLEAR FORM — delegated so binding can never be missed ── */
   var FIELDS=['payer','facility','provider','claimtype','npi','taxid',
               'memberid','mfirst','mlast','suffix','dob','gender','relationship','sfirst','slast',
-              'dos','pos','category','specialty','cpt'];
+              'dos','pos','category','svctype','cpt'];
 
   function clearForm(){
     FIELDS.forEach(function(id){
