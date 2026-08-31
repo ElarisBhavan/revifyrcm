@@ -1016,7 +1016,7 @@
         '<label class="cf-f s3"><span>From</span>'+
           '<input class="l_from" type="date" min="1900-01-01" max="2100-12-31" value="'+esc(l.from||C.dos||'')+'"></label>'+
         '<label class="cf-f s3"><span>To</span>'+
-          '<input class="l_to" type="date" min="1900-01-01" max="2100-12-31" value="'+esc(l.to||l.from||C.dos||'')+'"></label>'+
+          '<input class="l_to" type="date" min="1900-01-01" max="2100-12-31" value="'+esc(l.from||C.dos||'')+'"></label>'+
         '<label class="cf-f s3"><span>Place of service</span>'+
           '<select class="l_pos">'+posOpts+'</select></label>'+
         '<label class="cf-f s3"><span>Unit type</span>'+
