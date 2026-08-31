@@ -809,23 +809,44 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       var total=+c.total||0;
       d.filed++;
       d.billed+=total;
-      var st=String(c.status||'submitted').toLowerCase();
+      var st=String(c.status||'draft').toLowerCase();
       if(st==='rejected')d.rejected++;
       else if(st==='denied'){ d.denied++; d.deniedAmt+=total; }
-      else if(st==='paid'){ d.paid_ct++; d.paid+=total; d.allowed+=total; }
+      /* The payer's actual paid amount (recorded on the claim the moment a
+         status check reports one — see claims.html's "Check status" flow)
+         is what belongs here. Falling back to the full claim total, as this
+         used to always do, overstated every paid claim by whatever the
+         payer adjusted off — the same total this dashboard's "Payment
+         summary" then treated as fully collected on top of any separate
+         patient copay, inflating "Collected" past what was actually taken
+         in. */
+      else if(st==='paid'){ d.paid_ct++;
+        d.paid+=(c.paid_amount!=null?+c.paid_amount:total); }
       else d.outstanding+=total;
 
       var key=c.payer||'Not recorded';
       var pt=payerTotals[key]=payerTotals[key]||
         {name:key,id:c.payer_id||'',claims:0,billed:0,paid:0,denied:0,outstanding:0};
       pt.claims++; pt.billed+=total;
-      if(st==='paid')pt.paid+=total;
+      if(st==='paid')pt.paid+=(c.paid_amount!=null?+c.paid_amount:total);
       else if(st==='denied')pt.denied+=total;
       else pt.outstanding+=total;
     });
 
     PAYERS=Object.keys(payerTotals).map(function(k){return payerTotals[k];})
       .sort(function(a,b){return b.billed-a.billed;}).slice(0,10);
+
+    /* "Allowed" (payment summary funnel) used to be set to the exact same
+       number as "paid" — both were the claim's total, added the instant its
+       status said 'paid' — so the funnel's "still open" figure (allowed minus
+       collected) worked out to minus-the-copay the moment any front-desk
+       copay was collected: a permanently negative, meaningless dollar amount.
+       Contractual write-offs are the one real, already-posted adjustment this
+       data has, so billed minus those is used instead. */
+    Object.keys(DAYS).forEach(function(k){
+      var day=DAYS[k];
+      day.allowed=Math.max(0,day.billed-day.wroteOff);
+    });
 
     /* patient and insurance balances, for the outstanding figure */
     var patBal=0, insBal=0;
