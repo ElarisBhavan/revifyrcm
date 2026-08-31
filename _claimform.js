@@ -20,18 +20,6 @@
   var SEC = 'payer';
   var BUILT = false;
 
-  /* Set the moment "Edit claim" opens a filed claim back up (see applyLock()
-     and the cfSave handler below) — a snapshot of everything except the
-     submission-type fields that the edit itself changes, so Save can tell a
-     real edit from a click that reopened the claim and closed it again
-     without touching anything. */
-  var EDIT_SNAPSHOT = null;
-  function snapshotForEdit(){
-    var copy = JSON.parse(JSON.stringify(C||{}));
-    delete copy.frequency; delete copy.orig_ref;
-    return JSON.stringify(copy);
-  }
-
   var esc = function(v){
     return String(v==null?'':v).replace(/[&<>"]/g,function(c){
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});
@@ -476,7 +464,7 @@
           return '<div class="svcr">'+
             '<span class="svcn">'+(i+1)+'</span>'+
             '<span data-l="Dates"><input type="date" data-ln="'+i+'" data-f="dos" '+
-              'value="'+esc(l.from||l.dos||C.dos||'')+'" min="1900-01-01" max="2100-12-31"></span>'+
+              'value="'+esc(l.dos||l.from||C.dos||'')+'" min="1900-01-01" max="2100-12-31"></span>'+
             '<span data-l="Place"><input type="text" data-ln="'+i+'" data-f="pos" '+
               'value="'+esc(l.pos||C.pos||'')+'" maxlength="2" placeholder="11"></span>'+
             '<span data-l="EMG"><input type="text" data-ln="'+i+'" data-f="emg" '+
@@ -546,7 +534,7 @@
         }else if(f==='units'){
           l.units=Math.max(1, parseInt(v,10)||1);
         }else if(f==='dos'){
-          l.from=v; l.dos=v;
+          l.dos=v; l.from=v; delete l.to;
         }else if(f==='cpt'||f==='pos'||f==='emg'){
           l[f]=v.trim().toUpperCase();
         }else{
@@ -586,7 +574,6 @@
 
       C = JSON.parse(JSON.stringify(claim || {}));
       OPTS = opts || {};
-      EDIT_SNAPSHOT = null;
       C.dx = (C.dx && C.dx.length) ? C.dx : [''];
       C.lines = C.lines || [];
       C.send_method = C.send_method || 'electronic';
@@ -631,6 +618,11 @@
   /* ── a line carries up to four diagnosis pointers ── */
   function normaliseLines(){
     C.lines.forEach(function(l){
+      /* Service lines use a single DOS by default. Migrate legacy From/To
+         records to one DOS and never retain an end date. */
+      l.dos = l.dos || l.from || l.to || C.dos || '';
+      l.from = l.dos;
+      delete l.to;
       if(!l.dxptrs || !l.dxptrs.length){
         /* migrate the single pointer older claims carry */
         l.dxptrs = l.dxptr ? [String(l.dxptr)] : ['1'];
@@ -771,8 +763,10 @@
       if(el) el.checked = true;
     });
 
-    /* the save button's label (Save claim / Edit claim) is set by applyLock()
-       below, which runs on every fill() and already knows about OPTS.saveLabel */
+    if(OPTS.saveLabel){
+      $('cfSave').innerHTML='<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>'+
+        esc(OPTS.saveLabel);
+    }
     safe(applySend,'applySend'); safe(applyFreq,'applyFreq');
     safe(applyRel,'applyRel'); safe(applyOtherIns,'applyOtherIns');
     safe(paintDx1500,'paintDx1500'); safe(paintLines1500,'paintLines1500');
@@ -901,9 +895,8 @@
             '<path d="M8 10.5V7.5a4 4 0 018 0v3"/></svg>'+
             '<span><b>This claim has gone to the payer</b>'+
             'It cannot be changed, because the payer holds a copy and a remittance '+
-            'has to reconcile against it. Click <b>Edit claim</b> below to open it '+
-            'for a correction, or set the submission type to <b>8 — Void</b> to '+
-            'cancel it.</span>'
+            'has to reconcile against it. To change something, set the submission '+
+            'type below to <b>7 — Corrected</b>, or <b>8 — Void</b> to cancel it.</span>'
           : '<svg viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10" rx="2.5"/>'+
             '<path d="M8 10.5V7.5a4 4 0 018 0"/></svg>'+
             '<span><b>Open for a '+($('cf_freq').value==='8'?'void':'correction')+'</b>'+
@@ -912,19 +905,11 @@
       }
     }
 
-    /* Filed and not yet reopened: the button becomes "Edit claim" — clicking
-       it is what reopens the fields (see the cfSave handler), rather than
-       just disabling Save and pointing someone at a dropdown. Once it is
-       reopened (an amending frequency), the button is "Save claim" again,
-       same as an ordinary edit. */
     var save = $('cfSave');
     if(save){
-      save.disabled = false;
-      save.dataset.mode = locked ? 'edit' : 'save';
-      save.title = '';
-      save.innerHTML = locked
-        ? '<svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Edit claim'
-        : '<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>'+esc(OPTS.saveLabel||'Save claim');
+      save.disabled = locked;
+      save.title = locked
+        ? 'Set the submission type to 7 or 8 to change this claim' : '';
     }
   }
 
@@ -1013,10 +998,8 @@
           '<input class="l_charge" inputmode="decimal" value="'+(l.charge||0)+'"></label>'+
         '<label class="cf-f s3"><span>Units</span>'+
           '<input class="l_units" type="number" min="1" value="'+(l.units||1)+'"></label>'+
-        '<label class="cf-f s3"><span>From</span>'+
-          '<input class="l_from" type="date" min="1900-01-01" max="2100-12-31" value="'+esc(l.from||C.dos||'')+'"></label>'+
-        '<label class="cf-f s3"><span>To</span>'+
-          '<input class="l_to" type="date" min="1900-01-01" max="2100-12-31" value="'+esc(l.to||l.from||C.dos||'')+'"></label>'+
+        '<label class="cf-f s3"><span>Date of service</span>'+
+          '<input class="l_dos" type="date" min="1900-01-01" max="2100-12-31" value="'+esc(l.dos||l.from||C.dos||'')+'"></label>'+
         '<label class="cf-f s3"><span>Place of service</span>'+
           '<select class="l_pos">'+posOpts+'</select></label>'+
         '<label class="cf-f s3"><span>Unit type</span>'+
@@ -1293,7 +1276,7 @@
       read();
       C.lines = C.lines || [];
       C.lines.push({ cpt:'', mod:'', mod2:'', dxptrs:C.dx && C.dx[0] ? ['1'] : [],
-                     charge:0, units:1, unit_type:'UN', from:C.dos||'', pos:C.pos||'' });
+                     charge:0, units:1, unit_type:'UN', dos:C.dos||'', from:C.dos||'', pos:C.pos||'' });
       paintLines1500();
       var rows = $('cf_svclines').querySelectorAll('.svcr');
       var last = rows[rows.length-1];
@@ -1329,30 +1312,11 @@
 
     on('cfSave', 'click', async function(){
       var btn = this;
-
-      /* "Edit claim" — this same button, relabelled by applyLock() while the
-         claim is filed and untouched. Clicking it opens the claim for a
-         correction (frequency 7) rather than saving anything; Save proper
-         only happens on the next click, once it is unlocked. */
-      if(btn.dataset.mode === 'edit'){
-        safe(function(){
-          read();
-          EDIT_SNAPSHOT = snapshotForEdit();
-          var freqEl = $('cf_freq');
-          if(freqEl) freqEl.value = '7';
-          C.frequency = '7';
-          applyFreq(); applyLock();
-        }, 'cfSave edit');
-        notify('Claim opened for editing',
-          'Make the correction, then Save to submit it as a corrected claim');
-        return;
-      }
-
       /* The button is disabled while locked, but a disabled button is a
          courtesy rather than a guarantee — check the state itself too. */
       if(isFiled(C) && !amending()){
         notify('This claim has already been filed',
-          'Click Edit claim to open it for a correction or void');
+          'Set the submission type to 7 or 8 to change it');
         return;
       }
       var issues = [];
@@ -1367,22 +1331,9 @@
         return !errs.length;
       }, 'cfSave validate');
       if(validateOk !== true) return;
-
-      /* Edit claim was clicked, but nothing on the form actually changed —
-         submitting this would only relabel an identical claim as a
-         "corrected" one and waste a submission on the payer's side. read()
-         already ran inside validate() above, so C reflects the form as it
-         stands right now. */
-      if(EDIT_SNAPSHOT !== null && amending() && snapshotForEdit() === EDIT_SNAPSHOT){
-        notify('No changes were made',
-          'Edit a field before saving, or Cancel to leave the claim as it was');
-        return;
-      }
-
       btn.disabled = true;
       try{
         if(OPTS.onSave) await OPTS.onSave(C);
-        EDIT_SNAPSHOT = null;
       }catch(err){
         console.error('ReviFlow claim form: onSave failed', err);
         notify('Could not save', 'Something went wrong saving this claim — your entries are still on screen');

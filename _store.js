@@ -25,7 +25,7 @@
   /* Set in _config.js, which loads before this file. The fallback keeps the
      application working if that file is ever missing. */
   const DRIVER = (typeof window !== 'undefined' &&
-                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'api';
+                  ((window.RF_CONFIG && window.RF_CONFIG.driver) || window.RF_DRIVER)) || 'local';
   /* ───────────────────────────────────────────────────────────── */
   /* Bumped on every release. Printed to the console and shown in the page
      footer, so which build is actually loaded is never in doubt. */
@@ -1387,31 +1387,6 @@
       try{
         const me = getSession();
         if(c.id === undefined || c.id === null || c.id === '') delete c.id;
-
-        /* One claim per encounter. A "Create claim" click that fires twice —
-           a slow connection tempting a second click, the button clicked
-           again before the page has repainted, two tabs open on the same
-           chart — used to mint a second, blank claim every time, because
-           nothing here or on the calling page's button checked whether one
-           already existed before treating this as a brand new row. Billing's
-           own check (comparing against the CLAIMS already loaded on the
-           page) closes the common case before this function is ever called;
-           this is the backstop that closes it even when two calls race each
-           other, because it is the one place that can see what the server
-           already has at the moment of the write.
-           A fresh draft (built from the encounter every time "Create claim"
-           is clicked) is not an edit of the existing claim — it does not
-           carry its claim number, status or history, and blindly saving it
-           over that id would reset an already-submitted claim back to
-           'draft'. So this hands back the existing claim untouched rather
-           than writing anything; the caller reopens it exactly as if it had
-           clicked Edit on the row that was already there. */
-        if(!c.id && c.enc_id != null && c.enc_id !== ''){
-          const existing = DRIVER==='api' ? await dList('claim', {}) : await rows(CLAIMS);
-          const dupe = existing.find(x => String(x.enc_id) === String(c.enc_id));
-          if(dupe) return { ok:true, id: dupe.id, claim_no: dupe.claim_no, existing:true, ...dupe };
-        }
-
         if(!c.patient_ref && !c.patient_last) return { error:'The claim needs a patient' };
         if(!c.lines || !c.lines.length)       return { error:'Add at least one service line' };
 
@@ -1430,6 +1405,14 @@
           c.history = [{ at:c.created_at, by:c.created_by, what:'created',
                          detail:'Claim built and ready to submit' }];
         }
+        /* Service lines use a single date of service. Normalize legacy
+           From/To records before persisting so an old end date cannot leak
+           back into the claim form or CMS-1500 output. */
+        (c.lines || []).forEach(l => {
+          l.dos = l.dos || l.from || l.to || c.dos || '';
+          l.from = l.dos;
+          delete l.to;
+        });
         c.total = (c.lines || []).reduce((sum,l) => sum + (Number(l.charge)||0) * (Number(l.units)||1), 0);
         c.updated_at = new Date().toISOString();
 
