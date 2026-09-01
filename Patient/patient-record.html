@@ -725,6 +725,7 @@ input,select,textarea{font:inherit}
   <div class="tabs" id="tabs">
     <button class="tab on" data-t="overview">Overview</button>
     <button class="tab" data-t="insurance">Insurance<span class="n" id="nIns">0</span></button>
+    <button class="tab" data-t="appts">Appointments<span class="n" id="nAppt">0</span></button>
     <button class="tab" data-t="enc">Encounters<span class="n" id="nEnc">0</span></button>
     <button class="tab" data-t="billing">Billing<span class="n" id="nBil">0</span></button>
     <button class="tab" data-t="files">Files<span class="n" id="nFil">0</span></button>
@@ -800,6 +801,36 @@ input,select,textarea{font:inherit}
         <span class="sub" id="verifySub">—</span>
       </div>
       <div id="verifyList"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ APPOINTMENTS ═══════════ -->
+  <section class="pane" data-p="appts">
+    <div class="card" style="animation-delay:.05s">
+      <div class="chead">
+        <span class="ci"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span>
+        <div><h2>Appointments</h2><p>Past, current and upcoming visits on the schedule.</p></div>
+        <span class="sub" id="apptSub">—</span>
+        <span class="sub">
+          <button class="btn pri sm" id="addRecur" data-write>
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Set recurring appointment</button>
+        </span>
+      </div>
+      <div class="cbody">
+        <div class="tw">
+          <table class="tbl">
+            <thead><tr>
+              <th style="width:13%">Date</th><th style="width:9%">Time</th><th>Provider</th>
+              <th style="width:12%">Type</th><th style="width:13%">Status</th><th style="width:13%">Booked</th><th class="r" style="width:60px"></th>
+            </tr></thead>
+            <tbody id="apptRows"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="apptEmpty" hidden>
+          <svg viewBox="0 0 24 24" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><br>
+          <b>No appointments yet</b>Book one from the schedule, or set up a recurring plan above.
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1109,6 +1140,45 @@ input,select,textarea{font:inherit}
     <button class="btn sec" data-close>Cancel</button>
     <span class="sp"></span>
     <button class="btn pri" id="insSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Save policy</button>
+  </div>
+</div>
+
+<!-- RECURRING APPOINTMENT -->
+<div class="modal wide" id="mRecur" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span>
+    <div><h3>Set recurring appointment</h3><p>Books a series of visits automatically, spaced by the cadence below.</p></div>
+    <button class="mx" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody">
+    <div class="grid3">
+      <label class="f"><span>Provider <u>*</u></span><select id="r_prov"></select></label>
+      <label class="f"><span>Visit type</span>
+        <select id="r_kind"><option value="office">Office visit</option><option value="video">Telehealth</option></select></label>
+      <label class="f"><span>Duration (minutes)</span>
+        <select id="r_dur"><option value="15">15</option><option value="20" selected>20</option>
+          <option value="30">30</option><option value="45">45</option><option value="60">60</option></select></label>
+      <label class="f"><span>Starting from <u>*</u></span><input type="date" id="r_start" min="1900-01-01" max="2100-12-31"></label>
+      <label class="f"><span>Time <u>*</u></span><input type="time" id="r_time" value="09:00"></label>
+      <label class="f"><span>Number of visits <u>*</u></span><input type="text" id="r_count" inputmode="numeric" value="6" placeholder="6"></label>
+      <label class="f full"><span>Cadence <u>*</u></span>
+        <select id="r_cad">
+          <option value="weekly">Once a week (every 7 days)</option>
+          <option value="twice">Twice a week (every 3–4 days, alternating)</option>
+          <option value="custom">Custom — every N days</option>
+        </select></label>
+      <label class="f" id="r_customWrap" hidden><span>Repeat every <u>*</u></span>
+        <input type="text" id="r_every" inputmode="numeric" placeholder="e.g. 10" style="max-width:90px;display:inline-block">
+        <span style="font-size:12.5px;color:var(--muted)">days</span></label>
+      <label class="f full"><span>Reason / notes</span><input type="text" id="r_reason" placeholder="Follow-up, therapy, etc."></label>
+    </div>
+    <p id="r_preview" style="margin:4px 2px 0;font-size:12.5px;color:var(--muted)"></p>
+    <div id="r_result" style="margin-top:8px"></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn sec" data-close>Cancel</button>
+    <span class="sp"></span>
+    <button class="btn pri" id="recurSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Book series</button>
   </div>
 </div>
 
@@ -1600,6 +1670,7 @@ input,select,textarea{font:inherit}
       ['overview',            paintOverview],
       ['insurance',           paintInsurance],
       ['verification list',   paintVerify],
+      ['appointments',        paintAppointments],
       ['encounters',          paintEncounters],
       ['billing',             paintBilling],
       ['files',               paintFiles],
@@ -3140,6 +3211,22 @@ input,select,textarea{font:inherit}
      The editor itself lives in _claimform.js and is shared with the claims
      list, so a claim is edited in one place and the screens cannot drift. */
 
+  /* A claim saved as draft/ready here used to never reach the automatic-
+     submission queue at all — only re-saving it from the Claims screen did —
+     even though this screen's own toast says "Open Claims to submit it to
+     the payer", implying the nightly job already has it. Queuing it the
+     moment it is ready here, the same way Claims does, is what makes that
+     true. */
+  async function enqueueClaim(c){
+    try{
+      var r=await fetch('/api/claims-queue',{method:'POST',
+        headers:{'Content-Type':'application/json'},credentials:'same-origin',
+        body:JSON.stringify({claim:c})});
+      if(r.status===404||r.status===503)return false;
+      return r.ok;
+    }catch(e){ return false; }
+  }
+
   function openClaimForm(claim, opts){
     opts = opts || {};
     RFClaimForm.open(claim, {
@@ -3177,6 +3264,12 @@ input,select,textarea{font:inherit}
           await RFStore.setClaimStatus(c.id, 'ready',
             (c.frequency==='7' ? 'Corrected claim prepared' : 'Void prepared')+
             ' · replaces '+(c.orig_ref||'the original'));
+          c.status='ready';
+        }
+
+        /* ready means ready to go out tonight */
+        if(['ready','draft'].indexOf(String(c.status||'draft').toLowerCase())>-1){
+          await enqueueClaim(c);
         }
 
         await RFStore.logHistory(P.id,'claim_saved',
@@ -3663,6 +3756,186 @@ input,select,textarea{font:inherit}
       $('hisList').scrollIntoView({behavior:'smooth',block:'start'}); }
   });
 
+
+  /* ══════════ APPOINTMENTS ══════════ */
+  var APPT_KINDL={office:'Office visit',video:'Telehealth'};
+
+  function apptPill(a){
+    var st=a.status||'Scheduled';
+    if(st==='Cancelled')return '<span class="pill bad"><i></i>CANCELLED</span>';
+    if(st==='No show')  return '<span class="pill warn"><i></i>NO SHOW</span>';
+    if(st==='Checked in')return '<span class="pill ok"><i></i>CHECKED IN</span>';
+    return '<span class="pill info"><i></i>'+esc(st.toUpperCase())+'</span>';
+  }
+
+  function paintAppointments(){
+    var n=$('nAppt'); if(n)n.textContent=APPTS.length;
+    $('apptSub').textContent=APPTS.length?(APPTS.length+' APPOINTMENT'+(APPTS.length===1?'':'S')):'';
+    $('apptEmpty').hidden=APPTS.length>0;
+    if(!APPTS.length){ $('apptRows').innerHTML=''; return; }
+
+    var t=today();
+    /* APPTS already comes back newest-first from RFStore.apptsForPatient — but
+       "newest" there means latest date, which buries near-term upcoming visits
+       under far-future ones. Group instead: upcoming (today forward) ascending
+       so the very next visit leads, then past visits most-recent-first. */
+    var upcoming=APPTS.filter(function(a){return a.date>=t;})
+      .sort(function(a,b){return a.date.localeCompare(b.date)||a.start-b.start;});
+    var past=APPTS.filter(function(a){return a.date<t;})
+      .sort(function(a,b){return b.date.localeCompare(a.date)||b.start-a.start;});
+
+    function rowsFor(list,label){
+      if(!list.length)return '';
+      var head='<tr><td colspan="7" style="padding:10px 8px 4px;border:0;'+
+        'font-size:10.6px;font-weight:700;letter-spacing:.06em;color:var(--dim)">'+
+        esc(label)+'</td></tr>';
+      return head+list.map(function(a){
+        var prov=PROVS.filter(function(x){return String(x.id)===String(a.provider_id);})[0];
+        var isToday=a.date===t;
+        return '<tr>'+
+          '<td><b>'+fmtShort(a.date)+'</b>'+(isToday?' <span class="pill info" style="margin-left:4px">TODAY</span>':'')+'</td>'+
+          '<td class="mono">'+esc(hhmm(a.start))+'</td>'+
+          '<td>'+esc(prov?prov.full_name:'—')+'</td>'+
+          '<td>'+esc(APPT_KINDL[a.kind]||a.kind||'Office visit')+
+            (a.series_label?'<div style="font-size:9.8px;margin-top:2px;color:var(--muted)">'+esc(a.series_label)+'</div>':'')+'</td>'+
+          '<td>'+apptPill(a)+'</td>'+
+          '<td style="font-size:11.4px;color:var(--muted)">'+
+            (a.booked_mode==='A'?'Auto-scheduled':(esc(a.booked_by||'—')))+'</td>'+
+          '<td class="r"><span class="acts">'+
+            (a.status!=='Cancelled'?'<button class="ib del" data-write data-apptcancel="'+a.id+'" title="Cancel appointment">'+
+              '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>':'')+
+          '</span></td></tr>';
+      }).join('');
+    }
+
+    $('apptRows').innerHTML=rowsFor(upcoming,'Upcoming')+rowsFor(past,'Past');
+  }
+
+  document.addEventListener('click',async function(e){
+    var btn=e.target.closest('[data-apptcancel]');
+    if(!btn)return;
+    if(!confirm('Cancel this appointment? This does not remove it from the chart.'))return;
+    var id=btn.getAttribute('data-apptcancel');
+    var a=APPTS.filter(function(x){return String(x.id)===String(id);})[0];
+    if(!a)return;
+    var r=await RFStore.saveAppt(Object.assign({},a,{id:id,status:'Cancelled'}));
+    if(r&&r.error){toast('Could not cancel',r.error,true);return;}
+    await reload();paintAll();
+    toast('Appointment cancelled',fmtShort(a.date)+' · '+hhmm(a.start));
+  });
+
+  /* recurring booking */
+  function recurOccurrences(startDate,cadence,every,count){
+    var dates=[],cur=new Date(startDate+'T12:00:00');
+    for(var i=0;i<count;i++){
+      var step;
+      if(cadence==='weekly')step=7;
+      else if(cadence==='twice')step=(i%2===0)?3:4;
+      else step=Math.max(1,+every||1);
+      cur=new Date(cur.getTime()+step*86400000);
+      dates.push(cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0'));
+    }
+    return dates;
+  }
+
+  function cadenceLabel(cadence,every){
+    if(cadence==='weekly')return 'Weekly series';
+    if(cadence==='twice')return 'Twice-weekly series';
+    return 'Every '+(Math.max(1,+every||1))+'-day series';
+  }
+
+  function updateRecurPreview(){
+    var cad=$('r_cad').value;
+    $('r_customWrap').hidden=cad!=='custom';
+    var start=$('r_start').value,count=Math.max(1,parseInt($('r_count').value,10)||0);
+    if(!start||!count){$('r_preview').textContent='';return;}
+    var dates=recurOccurrences(start,cad,$('r_every').value,Math.min(count,3));
+    var extra=count>3?' … ('+count+' total)':'';
+    $('r_preview').textContent='First visits: '+dates.map(fmtShort).join(', ')+extra;
+  }
+
+  $('addRecur').addEventListener('click',function(){
+    $('r_prov').innerHTML=PROVS.map(function(pr){
+      return '<option value="'+pr.id+'">'+esc(pr.full_name)+(pr.title?', '+esc(pr.title):'')+'</option>';
+    }).join('')||'<option value="">No providers on file</option>';
+    if(P.provider_ref)$('r_prov').value=String(P.provider_ref);
+    /* start counting from the patient's most recent appointment on file
+       (upcoming or past) so a new plan continues on from where they last
+       left off; otherwise, start from today. */
+    var mostRecent=APPTS.slice().sort(function(a,b){
+      return (b.date+String(b.start).padStart(4,'0')).localeCompare(a.date+String(a.start).padStart(4,'0'));
+    })[0];
+    $('r_start').value=(mostRecent&&mostRecent.date>=today())?mostRecent.date:today();
+    $('r_time').value=mostRecent
+      ? String(Math.floor(mostRecent.start/60)).padStart(2,'0')+':'+String(mostRecent.start%60).padStart(2,'0')
+      : '09:00';
+    $('r_dur').value=mostRecent?String(mostRecent.dur||20):'20';
+    $('r_kind').value=(mostRecent&&mostRecent.kind)||'office';
+    $('r_count').value='6';
+    $('r_cad').value='weekly';
+    $('r_every').value='';
+    $('r_reason').value='';
+    $('r_result').innerHTML='';
+    updateRecurPreview();
+    openM('mRecur');
+  });
+  ['r_cad','r_start','r_count','r_every'].forEach(function(id){
+    $(id).addEventListener('input',updateRecurPreview);
+    $(id).addEventListener('change',updateRecurPreview);
+  });
+
+  $('recurSave').addEventListener('click',async function(){
+    var provId=$('r_prov').value,start=$('r_start').value,time=$('r_time').value,
+        dur=+$('r_dur').value||20,kind=$('r_kind').value,cad=$('r_cad').value,
+        every=$('r_every').value,count=parseInt($('r_count').value,10)||0,
+        reason=$('r_reason').value.trim();
+    if(!provId){toast('Choose a provider',null,true);return;}
+    if(!start){toast('Choose a starting date',null,true);return;}
+    if(!time){toast('Choose a time',null,true);return;}
+    if(!count||count<1){toast('Enter how many visits to book',null,true);return;}
+    if(count>52){toast('That’s a lot of visits','Try 52 or fewer at a time',true);return;}
+    if(cad==='custom'&&(!every||+every<1)){toast('Enter the number of days between visits',null,true);return;}
+
+    var dates=recurOccurrences(start,cad,every,count);
+    var startMin=(function(){var p=time.split(':');return (+p[0])*60+(+p[1]);})();
+    var seriesId='rec'+Date.now();
+    var label=cadenceLabel(cad,every);
+
+    this.disabled=true;
+    var booked=0,skipped=[];
+    for(var i=0;i<dates.length;i++){
+      var rec={
+        provider_id:+provId,date:dates[i],start:startMin,dur:dur,
+        patient_ref:P.id,patient_first:P.first_name,patient_last:P.last_name,
+        member_id:P.member_id||(P.insurances&&P.insurances[0]&&P.insurances[0].member_id)||'',
+        dob:P.dob,kind:kind,is_new:false,reason:reason,status:'Scheduled',
+        series_id:seriesId,series_label:label,
+        booked_mode:'A',
+        booked_by:(SESS&&(SESS.name||SESS.username))||'Recurring plan',
+        booked_at:new Date().toISOString()
+      };
+      var r=await RFStore.saveAppt(rec);
+      if(r&&r.ok)booked++;
+      else skipped.push(fmtShort(dates[i])+' ('+((r&&r.error)||'could not book')+')');
+    }
+    this.disabled=false;
+
+    await reload();paintAll();
+    if(booked){
+      closeM();
+      toast('Recurring plan booked',
+        booked+' visit'+(booked===1?'':'s')+' scheduled'+
+        (skipped.length?' · '+skipped.length+' skipped (conflicts)':''));
+    }
+    if(skipped.length){
+      $('r_result').innerHTML='<div class="empty" style="padding:10px 4px;text-align:left">'+
+        '<b style="color:var(--coral)">'+skipped.length+' visit'+(skipped.length===1?'':'s')+' could not be booked:</b><br>'+
+        skipped.map(esc).join('<br>')+'</div>';
+    }
+    if(!booked){
+      toast('Nothing was booked','Every date in that range had a conflict',true);
+    }
+  });
 
   /* ══════════ INSURANCE ══════════ */
   var RANKL={'1':'Primary','2':'Secondary','3':'Tertiary'};

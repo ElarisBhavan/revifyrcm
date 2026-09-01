@@ -43,6 +43,30 @@ const KINDS = {
 /* PHI, and therefore logged in full. The rest is reference data. */
 const PHI = new Set(['patient','appt','encounter','claim','task','credentialing','history','elig','payment']);
 
+/* Patient "Internal ID": first 3 letters of the first name + first 3 of the
+   last name, uppercased, plus a 2-digit number — e.g. Isaac Acosta -> "ISAACO47".
+   A name under 3 letters just contributes what it has (no padding), matching
+   how short names have always been tolerated here. The 2-digit suffix is
+   drawn at random and checked against every internal_id already in use, so
+   two patients who'd otherwise land on the same letters (common surnames
+   especially) never end up with the identical ID — this ID doubles as a
+   patient portal login credential, so a silent collision would be a real
+   mix-up, not just a cosmetic one. */
+async function genPatientId(sql, first, last){
+  const base = (String(first||'').replace(/[^A-Za-z]/g,'').slice(0,3) +
+                String(last||'').replace(/[^A-Za-z]/g,'').slice(0,3)).toUpperCase() || 'PT';
+  for(let attempt = 0; attempt < 25; attempt++){
+    const candidate = base + String(Math.floor(10 + Math.random()*89));
+    const clash = await sql`select 1 from app_records
+      where kind='patient' and data->>'internal_id' = ${candidate} limit 1`;
+    if(!clash.length) return candidate;
+  }
+  /* 25 random 2-digit draws all taken is astronomically unlikely for a real
+     practice, but never loop forever — fall back to something guaranteed
+     unique rather than give up and leave the patient without an ID. */
+  return base + '-' + Date.now().toString(36).slice(-4).toUpperCase();
+}
+
 const low = v => String(v == null ? '' : v).toLowerCase();
 
 /* what to pull out of a record so it can be indexed */
@@ -227,10 +251,14 @@ exports.handler = async (event) => {
            generation at all when a chart was created as a booking shell from
            the schedule. That's why the same patient could show a different
            ID on the dashboard than on their own chart, or no ID at all.
-           Assigning it here, once, from the real database id, makes it a
-           single source of truth that is always present and never collides. */
+           Assigning it here, once, as the name-based ID the practice actually
+           wants (first 3 of first name + first 3 of last name + a 2-digit
+           number checked for uniqueness), makes it a single source of truth
+           that is always present, in the right format, and never collides.
+           Existing patients keep whatever ID they already have — this only
+           applies going forward, to new charts. */
         if(kind === 'patient' && !rec.internal_id){
-          rec.internal_id = 'PT-' + String(id).padStart(6,'0');
+          rec.internal_id = await genPatientId(sql, rec.first_name, rec.last_name);
         }
       }
       rec.updated_at = new Date().toISOString();

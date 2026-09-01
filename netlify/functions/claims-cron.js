@@ -129,6 +129,37 @@ exports.handler = async (event) => {
       continue;
     }
 
+    /* The queue only ever holds a snapshot taken the moment a claim was
+       marked ready. Nothing obliges the page that queued it to also dequeue
+       it — a submit-by-hand a minute later, a browser closed before the
+       request finishes, a claim voided from the chart — so trust the real
+       claim's current status, not the copy sitting here, before sending
+       anything to a payer. This is what actually guarantees only a claim
+       that is still draft/ready goes out at the scheduled time; it also
+       picks up any edit made to the claim after it was queued. */
+    if(sql && entry.claim.id != null){
+      try{
+        const live = await sql`select data from app_records
+          where kind='claim' and id=${Number(entry.claim.id)} and deleted_at is null`;
+        if(!live.length){
+          await s.del(bk);
+          results.skipped++;
+          results.detail.push({ claim:entry.claim.claim_no,
+            outcome:'removed from the queue — the claim no longer exists' });
+          continue;
+        }
+        const liveStatus = String(live[0].data.status || 'draft').toLowerCase();
+        if(['draft','ready'].indexOf(liveStatus) === -1){
+          await s.del(bk);
+          results.skipped++;
+          results.detail.push({ claim:entry.claim.claim_no,
+            outcome:'removed from the queue — already '+liveStatus });
+          continue;
+        }
+        entry.claim = live[0].data;
+      }catch(e){ /* the guard itself failing is not a reason to block a real send */ }
+    }
+
     const claim = entry.claim;
     const payload = toStedi(claim);
     const idem = String(claim.claim_no || claim.control || bk)

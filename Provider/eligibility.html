@@ -533,7 +533,12 @@ select:disabled{opacity:.6;cursor:not-allowed}
           <p class="hint">Defaults to Outpatient</p>
         </label>
 
-  
+        <label class="f c6">
+          <span>CPT code</span>
+          <div class="ctrl"><input type="text" id="cpt" maxlength="5" placeholder="99213"></div>
+          <p class="hint" id="cptHint">Optional — narrows the response to one procedure.
+            Not every payer supports this; if the check fails, clear it and try again.</p>
+        </label>
       </div>
     </section>
 

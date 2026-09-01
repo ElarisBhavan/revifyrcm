@@ -51,11 +51,33 @@ exports.handler = async (event) => {
 
     if(event.httpMethod === 'GET'){
       const keys = await s.list();
+      /* A claim leaves "pending" for good the moment it is actually sent,
+         rejected, or removed — by hand, from a page that never told this
+         queue about it. Rather than let a stale entry keep inflating
+         "queued for tonight" until the next scheduled run happens to pass
+         over it, check the claim it points at and drop the entry here too
+         when that claim has already moved on. Best-effort: if the database
+         is not reachable this simply shows what the queue itself believes. */
+      let sql = null;
+      try{ sql = L.db(); }catch(e){ sql = null; }
       const out = [];
       for(const k of keys){
         if(String(k).charAt(0) === '_') continue;
         const v = await s.get(k);
-        if(v && v.claim) out.push({ key:k, queued_at:v.queued_at, status:v.status,
+        if(!v || !v.claim) continue;
+        if(sql && v.status==='pending' && v.claim.id != null){
+          try{
+            const live = await sql`select data from app_records
+              where kind='claim' and id=${Number(v.claim.id)} and deleted_at is null`;
+            const liveStatus = live.length
+              ? String(live[0].data.status||'draft').toLowerCase() : null;
+            if(!live.length || ['draft','ready'].indexOf(liveStatus)===-1){
+              await s.del(k);
+              continue;
+            }
+          }catch(e){ /* can't confirm — leave it, the nightly run will settle it */ }
+        }
+        out.push({ key:k, queued_at:v.queued_at, status:v.status,
                          claim_no:v.claim.claim_no, payer:v.claim.payer,
                          total:v.claim.total,
                          attempts:v.attempts||0, last_error:v.last_error });

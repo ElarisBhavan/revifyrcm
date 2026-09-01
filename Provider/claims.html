@@ -1199,6 +1199,20 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     }catch(e){ return false; }
   }
 
+  /* Once a claim has actually gone out — by hand from this screen, or come
+     back adjudicated — it no longer belongs in "queued for tonight". Without
+     this the queue kept the entry from when the claim was first marked
+     ready, so the nightly job (and the "queued" count) never found out it
+     had already been sent, and would have submitted it to the payer a
+     second time. */
+  async function dequeue(id){
+    if(id==null)return;
+    try{
+      await fetch('/api/claims-queue?key=claim_'+encodeURIComponent(id),
+        {method:'DELETE',credentials:'same-origin'});
+    }catch(e){}
+  }
+
   async function paintAuto(){
     var bar=$('autoBar');
     try{
@@ -1613,19 +1627,6 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
           'Stedi builds the interchange headers itself. Only set it if Stedi '+
           'issued you a submitter identification, or if a payer asks for one.');
       }
-      if(r.ok&&info.usage==='P'){
-        var lb=document.createElement('div');
-        lb.className='epwarn amber';
-        lb.innerHTML='<svg viewBox="0 0 24 24" stroke-linecap="round">'+
-          '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>'+
-          '<span><b>Live submission mode · this is a notice, not an error</b><small>'+
-          'Claims submitted here are transmitted to real payers for payment. '+
-          'To rehearse, set a claim\'s payer to the <b>Stedi Test Payer</b> '+
-          '(payer ID <code>STEDITEST</code>) — those are processed and '+
-          'acknowledged without reaching an insurer.</small></span>';
-        var lh=document.querySelector('.wrap')||document.body;
-        lh.insertBefore(lb,lh.firstChild);
-      }
       if(r.ok&&info.key){
         var k=info.key;
         console.info('ReviFlow: Stedi key present · '+k.length+' characters · '+
@@ -1736,7 +1737,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     if(!confirm(msg))return;
     var r=await RFStore.removeClaim(id);
     if(!r.ok){ toast('Could not delete',r.error||'',true); return; }
-    await refresh();
+    await dequeue(id);
+    await refresh();await paintAuto();
     toast('Claim deleted',(c.claim_no||'')+' removed');
   });
 
@@ -1893,7 +1895,10 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
           await RFStore.saveClaim(VIEW);
           if(mapped&&mapped!==VIEW.status)
             await RFStore.setClaimStatus(VIEW.id,mapped,'From the payer · '+VIEW.payer_status);
-          await refresh();
+          /* a claim the payer can answer a status check about is already
+             out — it has no business still sitting in "queued for tonight" */
+          await dequeue(VIEW.id);
+          await refresh();await paintAuto();
         }
         toast('Status received',
           first?(statusTone((first.claim.claimStatus||{}).statusCategoryCode)[0]):'No matching claim');
@@ -1957,7 +1962,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         logManual(VIEW,'sent',trace,null);
         await RFStore.setClaimStatus(VIEW.id,'submitted',
           'Sent through Stedi'+(trace?' · '+trace:''));
-        closeM();await refresh();
+        await dequeue(VIEW.id);
+        closeM();await refresh();await paintAuto();
         if(j._meta&&j._meta.idempotencyRetry){
           console.warn('ReviFlow: Stedi refused the idempotency key header and '+
             'accepted the claim without it. Duplicate protection is off for this '+
@@ -1997,7 +2003,8 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
           list.map(function(e){return (e.code||'')+' '+(e.message||'');}));
         await RFStore.setClaimStatus(VIEW.id,'rejected',
           list.map(function(e){return (e.code||'')+' '+(e.message||'');}).join(' · ').slice(0,300));
-        closeM();await refresh();
+        await dequeue(VIEW.id);
+        closeM();await refresh();await paintAuto();
         toast('Claim rejected',
           list.length?(list[0].code||'')+' '+(list[0].message||''):'See the banner',true);
         console.error('Stedi claim errors:',j.claimErrors);
