@@ -16,6 +16,31 @@ const L = require('./_lib.js');
 
 const key = c => 'claim_' + String(c.id || c.claim_no || Date.now());
 
+/* claims.html used to just print a hardcoded "9:00 PM" for when the nightly
+   run happens, no matter what CLAIMS_CRON_HOUR/CLAIMS_TZ were actually set
+   to on the server. A practice outside the default America/Chicago timezone
+   (or one that changed the hour) saw a submission time that was simply
+   wrong, with no way to tell — which is exactly the kind of mismatch that
+   looks like "it didn't send" when really it just hasn't reached the real
+   cutoff yet. claims-cron.js resolves the same two env vars; this mirrors
+   that so the banner can show the truth instead of a guess. */
+const CRON_TZ   = process.env.CLAIMS_TZ || 'America/Chicago';
+const CRON_HOUR = parseInt(process.env.CLAIMS_CRON_HOUR || '21', 10);
+
+function cronHourLabel(hour, tz){
+  const h = ((hour % 24) + 24) % 24;
+  const ap = h >= 12 ? 'PM' : 'AM';
+  let h12 = h % 12; if(h12 === 0) h12 = 12;
+  let abbr = '';
+  try{
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' })
+      .formatToParts(new Date());
+    const tzPart = parts.find(p => p.type === 'timeZoneName');
+    abbr = tzPart ? tzPart.value : '';
+  }catch(e){ /* an invalid CLAIMS_TZ just drops the abbreviation, not the whole page */ }
+  return h12 + ':00 ' + ap + (abbr ? ' ' + abbr : '');
+}
+
 exports.handler = async (event) => {
   if(event.httpMethod === 'OPTIONS') return { statusCode:204, headers:CORS, body:'' };
 
@@ -83,9 +108,26 @@ exports.handler = async (event) => {
                          attempts:v.attempts||0, last_error:v.last_error });
       }
       out.sort((a,b) => String(a.queued_at).localeCompare(String(b.queued_at)));
+
+      /* claims-cron.js records every real pass (sent, rejected, failed AND
+         empty ones alike) under '_lastrun' — unlike '_runs', which skips
+         empty passes as noise. That makes it the one reliable way to answer
+         "did the scheduled function actually run tonight" from this banner,
+         instead of a practice having to go dig through Netlify's own
+         function logs. A wake-up that fired but was outside the submission
+         hour never reaches that code at all, so this can genuinely be null
+         even after the schedule has been live for days — which itself is a
+         useful signal that Netlify's Scheduled Functions were never wired up. */
+      const lastRun = await s.get('_lastrun').catch(()=>null);
+
       return { statusCode:200, headers:CORS, body: JSON.stringify({
         ok:true, count:out.length, pending:out.filter(x=>x.status==='pending').length,
-        items:out }) };
+        items:out,
+        cronHour:CRON_HOUR, cronTz:CRON_TZ, cronLabel:cronHourLabel(CRON_HOUR, CRON_TZ),
+        lastRun: lastRun ? { ran_at:lastRun.ran_at, trigger:lastRun.trigger,
+          sent:lastRun.sent, rejected:lastRun.rejected, failed:lastRun.failed,
+          skipped:lastRun.skipped } : null
+      }) };
     }
 
     if(event.httpMethod === 'POST'){
