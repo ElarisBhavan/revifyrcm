@@ -201,12 +201,25 @@ exports.handler = async (event) => {
           where kind=${kind} and status=${f.set} and deleted_at is null order by id`;
       }else if(f.q){
         const q = '%' + low(f.q) + '%';
+        /* Newest first, because a LIMIT here means some matches get dropped
+           once a practice has more than 200 of a given kind — and dropping
+           the oldest is the right call: whoever is searching almost always
+           wants the record they just touched, not one from years ago. */
         rows = await sql`select data from app_records
           where kind=${kind} and search like ${q} and deleted_at is null
-          order by id limit 200`;
+          order by id desc limit 200`;
       }else{
+        /* This used to read "order by id limit 2000" — ascending, so once a
+           practice passed 2000 records of one kind, the OLDEST 2000 came
+           back and everything newer silently never loaded, in the app or
+           anywhere else that calls this with no filter. The rows were never
+           gone, and the delete flow was never involved — the query was
+           quietly serving the wrong page of history. Sorting newest-first
+           means a cap here always drops old records, never ones just
+           created, which is what actually matters for a claims list, a
+           roster, an appointment book — anything this branch serves. */
         rows = await sql`select data from app_records
-          where kind=${kind} and deleted_at is null order by id limit 2000`;
+          where kind=${kind} and deleted_at is null order by id desc limit 2000`;
       }
 
       await log(sql, event, me, 'list', kind, null, f.patient_ref,
