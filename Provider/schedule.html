@@ -63,10 +63,13 @@ input{font:inherit}
 .nbtn:hover{border-color:var(--green);background:#fff;transform:translateY(-1px)}
 .dtitle{font-family:'Sora',sans-serif;font-size:clamp(16px,1.7vw,21px);font-weight:600;letter-spacing:-.036em;white-space:nowrap}
 .dtitle em{font-style:normal;color:var(--dim);font-weight:400}
-.dpick{position:relative;display:flex;align-items:center}
+/* The calendar icon itself comes from the shared _datepicker.js widget (see
+   _datepicker.css's .rfdp-open) — this used to also draw its own SVG icon on
+   top, which is what showed up as a second, duplicate calendar icon next to
+   the shared one. .dpick now just fixes the width of the small icon-only
+   button the shared widget renders into, instead of drawing anything itself. */
+.dpick{width:38px;height:32px}
 .dpick input{width:38px;height:32px;padding:0;border-radius:9px;border:1px solid var(--line-2);background:rgba(255,255,255,.75);cursor:pointer;color:transparent}
-.dpick input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
-.dpick svg{position:absolute;left:11px;width:16px;height:16px;stroke:var(--muted);fill:none;stroke-width:1.9;pointer-events:none}
 .dpick:hover input{border-color:var(--green)}
 .seg{display:flex;gap:2px;padding:3px;border-radius:99px;background:rgba(255,255,255,.75);border:1px solid var(--line-2)}
 .seg button{padding:6px 14px;border-radius:99px;font-size:12px;font-weight:600;color:var(--muted);transition:all .3s var(--e)}
@@ -463,9 +466,9 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   <div class="tin">
     <button class="today" id="todayBtn">Today</button>
     <button class="nbtn" id="prev" aria-label="Previous day"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
-    <button class="nbtn" id="next" aria-label="Next day"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
     <span class="dtitle" id="dTitle">—</span>
-    <label class="dpick"><input type="date" id="date" aria-label="Pick a date"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></label>
+    <button class="nbtn" id="next" aria-label="Next day"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+    <div class="dpick"><input type="date" id="date" aria-label="Pick a date"></div>
     <span class="sp"></span>
     <div class="legend" id="legend">
       <button class="lg est" data-k="est"><i></i>Established</button>
@@ -1795,10 +1798,12 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         };
       });
 
-      var t=document.querySelector('.dtitle');
+      /* sits after the date picker so the toolbar reads left to right as
+         Today / prev / date / next / jump-to-date, then this facility tag */
+      var t=document.querySelector('.dpick');
       if(t&&SCOPE_LABEL){
         var tag=document.createElement('span');
-        tag.style.cssText='margin-left:10px;font-family:var(--mono);font-size:10px;'+
+        tag.style.cssText='margin-left:2px;font-family:var(--mono);font-size:10px;'+
           'padding:5px 10px;border-radius:99px;background:var(--green-s);color:var(--green-d);font-weight:700';
         tag.textContent=SCOPE_LABEL.toUpperCase();
         t.after(tag);
