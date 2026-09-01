@@ -444,22 +444,11 @@ select:disabled{opacity:.6;cursor:not-allowed}
               <option value="idfnln">Member ID, First name, Last name</option>
               <option value="fnlndob">First name, Last name, DOB</option>
               <option value="iddob">Member ID, DOB</option>
+              <option value="idfnlndob">Member ID, First name, Last name, DOB</option>
             </select>
           </div>
           <p class="hint">Not every payer needs the same fields — this sets which ones below are required.</p>
         </label>
-
-        <div class="f c12" id="discoverRow">
-          <span>Don't know the payer, or think it's wrong on file?</span>
-          <div class="ctrl" style="gap:10px;flex-wrap:wrap">
-            <button type="button" class="ghost" id="discoverBtn" style="padding:10px 18px;font-size:13px;flex:none">
-              Run insurance discovery
-            </button>
-            <span id="discoverStatus" class="hint" style="margin:0"></span>
-          </div>
-          <p class="hint">Searches for coverage using the member's name/DOB and the rendering provider's NPI from above — works even without picking a payer first, or if the one on file turns out to be wrong.</p>
-          <div id="discoverPanel" style="display:none;margin-top:10px"></div>
-        </div>
 
         <label class="f c3">
           <span>Member ID <u id="req-memberid">*</u></span>
@@ -484,7 +473,7 @@ select:disabled{opacity:.6;cursor:not-allowed}
           <div class="ctrl"><input type="text" id="suffix" maxlength="6" placeholder="Jr"></div>
         </label>
 
-        <label class="f c6">
+        <label class="f c3">
           <span>Date of birth <u id="req-dob">*</u></span>
           <div class="ctrl">
             <input type="date" id="dob" min="1900-01-01" max="2100-12-31">
@@ -492,7 +481,7 @@ select:disabled{opacity:.6;cursor:not-allowed}
           <p class="err" id="e-dob">Select a date of birth.</p>
         </label>
 
-        <label class="f c6">
+        <label class="f c3">
           <span>Gender</span>
           <div class="ctrl">
             <select id="gender">
@@ -503,7 +492,7 @@ select:disabled{opacity:.6;cursor:not-allowed}
           </div>
         </label>
 
-        <label class="f c4">
+        <label class="f c4" style="grid-column:1 / span 4">
           <span>Relationship to subscriber <u>*</u></span>
           <div class="ctrl">
             <select id="relationship" required>
@@ -685,7 +674,8 @@ select:disabled{opacity:.6;cursor:not-allowed}
   var SEARCH_BY={
     idfnln:['memberid','mfirst','mlast'],
     fnlndob:['mfirst','mlast','dob'],
-    iddob:['memberid','dob']
+    iddob:['memberid','dob'],
+    idfnlndob:['memberid','mfirst','mlast','dob']
   };
   var SEARCH_BY_FIELDS=['memberid','mfirst','mlast','dob'];
   function applySearchBy(){
@@ -708,146 +698,143 @@ select:disabled{opacity:.6;cursor:not-allowed}
   document.getElementById('searchby').addEventListener('change',applySearchBy);
   applySearchBy();
 
-  /* ── insurance discovery: find coverage without a payer picked, or when
-     the one on file is wrong. Uses the provider's NPI plus the member's
-     name/DOB — never the payer dropdown. ── */
-  (function(){
-    var btn=document.getElementById('discoverBtn');
-    var panel=document.getElementById('discoverPanel');
-    var status=document.getElementById('discoverStatus');
-    if(!btn)return;
-
-    function esc(s){
-      return String(s==null?'':s).replace(/[&<>"]/g,function(c){
-        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+  /* ── insurance discovery: no separate button. If the payer selected in
+     Section 1 is one your team has named something like "Not sure" (any
+     payer whose name contains "not sure"/"unsure"/"unknown"), clicking
+     Check eligibility below runs Stedi's insurance discovery instead of a
+     normal eligibility check — searching by the provider's NPI and the
+     member's name/DOB rather than a specific payer. Results render in the
+     same result panel, each with a button to apply that payer/member ID
+     once you've picked the right one. ── */
+  function escHtml(s){
+    return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+    });
+  }
+  function isUnsurePayer(){
+    var pel=document.getElementById('payer'),o=pel&&pel.selectedOptions&&pel.selectedOptions[0];
+    return !!(o&&/not\s*sure|unsure|unknown/i.test(o.textContent));
+  }
+  function applyDiscoveryItem(item){
+    if(!item)return false;
+    var payerName=((item.payer&&item.payer.name)||'').toLowerCase();
+    var pel=document.getElementById('payer'),matched=false;
+    if(pel&&payerName){
+      [].slice.call(pel.options).some(function(o){
+        if(o.value&&!/not\s*sure|unsure|unknown/i.test(o.textContent)&&
+           o.textContent.toLowerCase().indexOf(payerName)>-1){
+          pel.value=o.value; matched=true; return true;
+        }
+        return false;
       });
     }
-    function setStatus(msg,isErr){
-      status.textContent=msg||'';
-      status.style.color=isErr?'var(--danger)':'';
+    var mem=item.subscriber&&item.subscriber.memberId;
+    if(mem){
+      var mi=document.getElementById('memberid');
+      if(mi){mi.value=mem; clear('memberid');}
     }
-    function reset(){
-      btn.disabled=false; btn.textContent='Run insurance discovery';
+    return matched;
+  }
+  function renderDiscoveryResult(body){
+    run.classList.remove('busy');
+    var res=document.getElementById('result'),
+        pill=document.getElementById('rPill'),grid=document.getElementById('rGrid'),
+        hint=document.getElementById('rHint'),who=document.getElementById('rwho'),tid=document.getElementById('rtid');
+    hint.style.display='none';
+    who.removeAttribute('href'); who.style.pointerEvents='none';
+    who.childNodes[0].nodeValue=[document.getElementById('mfirst').value,document.getElementById('mlast').value]
+      .filter(Boolean).join(' ').toUpperCase()||'Member';
+    tid.textContent=(body._meta&&body._meta.ms!=null)?body._meta.ms+' ms':'—';
+
+    if(body.error){
+      pill.className='pill bad'; pill.innerHTML='<i></i>Discovery error';
+      grid.innerHTML='<div style="grid-column:1/-1"><dt>DETAIL</dt><dd style="font-size:13px;font-weight:500">'+
+        escHtml(body.hint||body.detail||body.error)+'</dd></div>';
+      res.classList.add('show'); res.scrollIntoView({behavior:'smooth',block:'center'});
+      return;
     }
 
-    function renderItems(items){
-      if(!items||!items.length){
-        panel.innerHTML='<p class="dnote">No coverage found for these details. Double-check the '+
-          'spelling and date of birth, or add the member’s ZIP code and try again.</p>';
-        panel.style.display='';
-        return;
-      }
-      panel.innerHTML=items.map(function(it,i){
+    var items=body.items||[];
+    if(body.errors&&body.errors.length){
+      pill.className='pill bad'; pill.innerHTML='<i></i>'+escHtml(body.errors[0].description||'Discovery issue');
+    }else if(!items.length){
+      pill.className='pill warn'; pill.innerHTML='<i></i>No coverage found';
+    }else{
+      pill.className='pill'; pill.innerHTML='<i></i>Found '+body.coveragesFound+' possible match'+(body.coveragesFound===1?'':'es');
+    }
+
+    if(!items.length){
+      grid.innerHTML='<div style="grid-column:1/-1"><dt>DETAIL</dt><dd style="font-size:13px;font-weight:500">'+
+        'No coverage found for these details. Double-check the spelling and date of birth, or try again with '+
+        'a ZIP code on file.</dd></div>';
+    }else{
+      grid.innerHTML=items.map(function(it,i){
         var conf=(it.confidence&&it.confidence.level)||'';
         var payer=(it.payer&&it.payer.name)||'Unknown payer';
         var plan=(it.planInformation&&(it.planInformation.groupNumber||it.planInformation.planNumber))||'';
         var member=(it.subscriber&&it.subscriber.memberId)||'';
         var dob=(it.subscriber&&it.subscriber.dateOfBirth)||'';
-        return '<div class="dcard">'+
-          '<div class="dhead"><b>'+esc(payer)+'</b>'+
+        return '<div class="dcard" style="grid-column:1/-1">'+
+          '<div class="dhead"><b>'+escHtml(payer)+'</b>'+
           (conf?'<span class="conf '+(conf==='HIGH'?'high':'review')+'">'+
             (conf==='HIGH'?'HIGH CONFIDENCE':'NEEDS REVIEW')+'</span>':'')+
           '</div>'+
           (member||plan||dob?'<dl>'+
-            (member?'<span>Member ID <b>'+esc(member)+'</b></span>':'')+
-            (plan?'<span>Group/plan <b>'+esc(plan)+'</b></span>':'')+
-            (dob?'<span>DOB on file <b>'+esc(dob)+'</b></span>':'')+
+            (member?'<span>Member ID <b>'+escHtml(member)+'</b></span>':'')+
+            (plan?'<span>Group/plan <b>'+escHtml(plan)+'</b></span>':'')+
+            (dob?'<span>DOB on file <b>'+escHtml(dob)+'</b></span>':'')+
           '</dl>':'')+
           '<button type="button" class="use" data-i="'+i+'">Use this result</button>'+
         '</div>';
       }).join('');
-      panel.style.display='';
-      [].slice.call(panel.querySelectorAll('.use')).forEach(function(b){
-        b.addEventListener('click',function(){ applyDiscovery(items[+b.getAttribute('data-i')]); });
+      [].slice.call(grid.querySelectorAll('.use')).forEach(function(b){
+        b.addEventListener('click',function(){
+          var matched=applyDiscoveryItem(items[+b.getAttribute('data-i')]);
+          pill.innerHTML='<i></i>'+(matched?'Payer applied above':'Payer not in your list — add it in Admin → Payers');
+        });
       });
     }
-
-    function applyDiscovery(item){
-      if(!item)return;
-      var payerName=((item.payer&&item.payer.name)||'').toLowerCase();
-      var pel=document.getElementById('payer'),matched=false;
-      if(pel&&payerName){
-        [].slice.call(pel.options).some(function(o){
-          if(o.value&&o.textContent.toLowerCase().indexOf(payerName)>-1){
-            pel.value=o.value; matched=true; return true;
-          }
-          return false;
-        });
-      }
-      var mem=item.subscriber&&item.subscriber.memberId;
-      if(mem){
-        var mi=document.getElementById('memberid');
-        if(mi){mi.value=mem; clear('memberid');}
-      }
-      setStatus(matched
-        ? 'Applied — payer selected above'+(mem?', member ID filled in':'')+'.'
-        : 'Found "'+((item.payer&&item.payer.name)||'this payer')+'", but it isn’t in your payer list yet — '+
-          'add it in Admin → Payers, then pick it above.'+(mem?' Member ID was filled in.':''));
+    res.classList.add('show');
+    res.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  function pollDiscovery(id,attempt){
+    if(attempt>12){
+      renderDiscoveryResult({error:'Still processing',hint:'Stedi is taking longer than usual — try again in a moment.'});
+      return;
     }
-
-    function finish(body){
-      reset();
-      if(body.error){ setStatus(body.hint||body.detail||body.error,true); return; }
-      if(body.errors&&body.errors.length){
-        setStatus(body.errors[0].description||'The check came back with an issue.',true);
-      }else{
-        setStatus(body.coveragesFound
-          ? 'Found '+body.coveragesFound+' possible match'+(body.coveragesFound===1?'':'es')+'.'
-          : '');
-      }
-      renderItems(body.items);
-    }
-
-    function poll(id,attempt){
-      if(attempt>12){ setStatus('Still processing — try again in a moment.',true); reset(); return; }
-      setTimeout(function(){
-        fetch('/api/insurance-discovery?id='+encodeURIComponent(id))
-          .then(function(r){return r.json();})
-          .then(function(body){
-            if(body.status==='PENDING'){ poll(id,attempt+1); return; }
-            finish(body);
-          })
-          .catch(function(){ setStatus('Lost the connection while checking — try again.',true); reset(); });
-      },2500);
-    }
-
-    btn.addEventListener('click',function(){
-      var npi=document.getElementById('npi').value.trim();
-      var mfirst=document.getElementById('mfirst').value.trim();
-      var mlast=document.getElementById('mlast').value.trim();
-      var missing=[];
-      if(!mfirst)missing.push('mfirst');
-      if(!mlast)missing.push('mlast');
-      if(!/^\d{10}$/.test(npi))missing.push('npi');
-      if(missing.length){
-        missing.forEach(function(id){ fail(id); });
-        setStatus('Fill in the member’s first and last name, and a valid 10-digit provider NPI, before running discovery.',true);
-        return;
-      }
-
-      panel.style.display='none'; panel.innerHTML='';
-      setStatus('Searching…');
-      btn.disabled=true; btn.textContent='Searching…';
-
-      var body={ provider:{npi:npi}, subscriber:{firstName:mfirst,lastName:mlast} };
-      var dob=document.getElementById('dob').value;
-      if(dob)body.subscriber.dateOfBirth=ymd(dob);
-      var dos=document.getElementById('dos').value;
-      if(dos)body.encounter={dateOfService:ymd(dos)};
-
-      fetch('/api/insurance-discovery',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    setTimeout(function(){
+      fetch('/api/insurance-discovery?id='+encodeURIComponent(id))
         .then(function(r){return r.json();})
-        .then(function(out){
-          if(out.status==='PENDING'&&out.discoveryId){
-            setStatus('Still searching — this can take a few seconds…');
-            poll(out.discoveryId,0);
-            return;
-          }
-          finish(out);
+        .then(function(body){
+          if(body.status==='PENDING'){ pollDiscovery(id,attempt+1); return; }
+          renderDiscoveryResult(body);
         })
-        .catch(function(){ reset(); setStatus('Could not reach the discovery service.',true); });
-    });
-  })();
+        .catch(function(){ renderDiscoveryResult({error:'Lost the connection while checking — try again.'}); });
+    },2500);
+  }
+  function runDiscoveryFlow(){
+    run.classList.add('busy');
+    document.getElementById('result').classList.remove('show');
+    var body={
+      provider:{npi:document.getElementById('npi').value.trim()},
+      subscriber:{
+        firstName:document.getElementById('mfirst').value.trim(),
+        lastName:document.getElementById('mlast').value.trim()
+      }
+    };
+    var dob=document.getElementById('dob').value;
+    if(dob)body.subscriber.dateOfBirth=ymd(dob);
+    var dos=document.getElementById('dos').value;
+    if(dos)body.encounter={dateOfService:ymd(dos)};
+
+    fetch('/api/insurance-discovery',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){return r.json();})
+      .then(function(out){
+        if(out.status==='PENDING'&&out.discoveryId){ pollDiscovery(out.discoveryId,0); return; }
+        renderDiscoveryResult(out);
+      })
+      .catch(function(){ renderDiscoveryResult({error:'Could not reach the discovery service.'}); });
+  }
 
   /* ── 24-hour history, scoped to the signed-in user ── */
   async function renderHist(){
@@ -1321,7 +1308,19 @@ select:disabled{opacity:.6;cursor:not-allowed}
       if(id==='npi')ok=/^\d{10}$/.test(el.value);
       if(!ok){var bad=fail(id); if(!first)first=bad;}
     });
+
+    var discoveryMode=isUnsurePayer();
+    if(discoveryMode){
+      /* Stedi's discovery check always needs the member's first/last name
+         and a valid NPI, whatever "Search by" happens to be set to */
+      ['mfirst','mlast','npi'].forEach(function(id){
+        var el=document.getElementById(id),ok=id==='npi'?/^\d{10}$/.test(el.value):!!el.value.trim();
+        if(!ok){var bad=fail(id); if(!first)first=bad;}
+      });
+    }
+
     if(first){first.focus();first.scrollIntoView({behavior:'smooth',block:'center'});return;}
+    if(discoveryMode){ runDiscoveryFlow(); return; }
 
     run.classList.add('busy');
     document.getElementById('result').classList.remove('show');
