@@ -102,7 +102,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     </label>
     <select class="sel" id="fRole">
       <option value="all">All roles</option><option value="admin">Admin</option>
-      <option value="supervisor">Supervisor</option><option value="provider">Provider</option>
+      <option value="supervisor">Practice Manager</option><option value="provider">Provider</option>
       <option value="scheduler">Scheduler</option><option value="employee">Employee</option>
     </select>
     <select class="sel" id="fStatus"><option value="all">All statuses</option><option value="active">Active</option><option value="disabled">Disabled</option></select>
@@ -141,10 +141,10 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     <label class="f full" style="margin-bottom:4px"><span>Create login for <u>*</u></span>
       <select id="fFor">
         <option value="">Select account type</option>
-        <option value="provider">Provider</option>
-        <option value="employee">Employee</option>
+        <option value="supervisor">Practice Manager</option>
+        <option value="admin">Administrator</option>
       </select>
-      <p style="font-size:10.6px;color:var(--dim);margin-top:6px" id="forHint">Providers see clinical screens. Employees work the billing and front-office queues.</p>
+      <p style="font-size:10.6px;color:var(--dim);margin-top:6px" id="forHint">A Practice Manager runs the organization day to day, including adding providers and billing/front-office staff. Providers and Billing/Scheduler accounts are created from Teams by a Practice Manager, not here.</p>
     </label>
 
     <label class="f full" style="margin-bottom:4px"><span>Select organization <u>*</u></span>
@@ -255,13 +255,15 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 (function(){
   var $=function(i){return document.getElementById(i);};
   var ACCOUNTS=[],ORGS=[],PROVS=[],editing=null,linkedProvider=null,filt={q:'',role:'all',status:'all',org:'all'};
+  var ME=null, IS_SITE_OWNER=false;
 
+  /* Provider and Billing/Scheduler logins are no longer created here at
+     all — only a Practice Manager can add those, from Teams in their own
+     organization. This console only ever creates the two organization-
+     running roles: a Practice Manager, or another Administrator. */
   var ROLES={
-    provider:[['provider','Provider — individual'],
-              ['supervisor','Supervisor / Practice Manager']],
-    employee:[['employee','Employee — billing / coding'],
-              ['scheduler','Scheduler / Front office'],
-              ['admin','Administrator']]
+    supervisor:[['supervisor','Practice Manager']],
+    admin:[['admin','Administrator']]
   };
 
   function toast(t,s){$('tT').textContent=t;$('tS').textContent=s||'';
@@ -272,11 +274,26 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     await RFStore.ready();
     var s=RFSession.require(['admin']);
     if(!s)return;
+    ME=s;
+    /* An administrator with no organization of their own is the one
+       "site owner" login used to set up a new practice — its first
+       Practice Manager or Administrator — and, unlike every other admin
+       account, isn't confined to a single organization. */
+    IS_SITE_OWNER = (ME.org_id==null || ME.org_id==='');
+    if(!IS_SITE_OWNER){
+      document.querySelector('.ptop p').textContent=
+        'Accounts created here are written to the database immediately and can sign in straight away. '+
+        'Scoped to '+'your organization'+' — Providers and Billing/Scheduler are added by your Practice Manager, from Teams.';
+    }
     await refresh();
+    /* Old links (e.g. from the Providers screen) may still carry
+       ?provider=<id> from before Provider logins moved to the practice
+       manager's Teams screen — there is nothing left for an administrator
+       to do with it here now, so just explain that instead of opening a
+       modal that no longer has a Provider option to select. */
     var pid=new URLSearchParams(location.search).get('provider');
     if(pid){
-      var pv=PROVS.filter(function(x){return String(x.id)===pid;})[0];
-      if(pv)fillFromProvider(pv);
+      toast('Providers are added by the practice manager','Ask them to add this person from Teams');
     }
   })();
 
@@ -301,57 +318,16 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   var orgName=function(id){var o=ORGS.filter(function(x){return x.id===id;})[0];return o?o.name:'—';};
 
 
-  /* prefill the modal straight from a provider record */
-  function fillFromProvider(p){
-    blank();
-    linkedProvider=p.id;
-    $('fFor').value='provider';$('fFor').dispatchEvent(new Event('change'));
-    $('fRoleSel').value='provider';$('fRoleSel').dispatchEvent(new Event('change'));
-    $('fOrg').value=p.org_id||'';
-    $('fOrg').dispatchEvent(new Event('change'));
-    $('fLink').value=String(p.id);
-    $('linkWrap').style.display='';
-    $('fName').value=p.full_name||'';
-    $('fTitle').value=p.title||p.specialty||'';
-    $('fEmail').value=p.email||'';$('fPhone').value=p.phone||'';
-    $('fPid').value=p.code||'';
-    $('fName').dispatchEvent(new Event('input'));
-    $('mTitle').textContent='Create login for '+p.full_name;
-    $('mSub').textContent=(p.specialty||'Provider')+' · NPI '+(p.npi||'—')+' · '+orgName(p.org_id);
-    $('saveBtn').innerHTML='<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Create login';
-    $('fUser').disabled=false;$('fFor').disabled=false;
-    open('mEdit');
-  }
-
-  /* someone a practice manager added who has no provider record */
-  function fillFromRequest(r){
-    blank();
-    linkedProvider=null;
-    $('fFor').value='staff';$('fFor').dispatchEvent(new Event('change'));
-    $('fRoleSel').value=r.role||'employee';
-    $('fRoleSel').dispatchEvent(new Event('change'));
-    $('fOrg').value=r.org_id||'';
-    $('fOrg').dispatchEvent(new Event('change'));
-    $('fName').value=r.full_name||'';
-    $('fTitle').value=r.title||r.team||'';
-    $('fEmail').value=r.email||'';$('fPhone').value=r.phone||'';
-    if(r.suggested_username){
-      $('fUser').value=r.suggested_username;
-      $('fUser').dataset.touched='1';
-    }else{
-      $('fName').dispatchEvent(new Event('input'));
-    }
-    pendingReq=r.id;
-    $('mTitle').textContent='Create login for '+r.full_name;
-    $('mSub').textContent=(r.team||r.role)+' · requested by '+(r.requested_name||'a practice manager')+
-      ' · '+orgName(r.org_id);
-    $('saveBtn').innerHTML='<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Create login';
-    $('fUser').disabled=false;$('fFor').disabled=false;
-    open('mEdit');
-  }
+  /* Provider and Billing/Scheduler logins are no longer finished from this
+     console — a practice manager creates those directly, from Teams — so
+     there is no "fill the create-login modal from a pending person" flow
+     here any more. pendingReq stays around (always null) only because a
+     couple of older code paths below still check it defensively. */
   var pendingReq=null;
 
   var ROLEC={admin:'vio',supervisor:'info',provider:'ok',scheduler:'warn',employee:'off'};
+  var ROLE_LABELS={supervisor:'Practice Manager',admin:'Administrator',
+    provider:'Provider',employee:'Employee — billing / coding',scheduler:'Scheduler / Front office'};
   var SCOPEL={all:'Everything',facility:'Facility',self:'Own data'};
   function fmt(d){return d?new Date(d).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'Never';}
 
@@ -434,10 +410,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
           '<td><span class="pill off">—</span></td>'+
           '<td class="mono" style="color:var(--dim)">Never</td>'+
           '<td><span class="nologin"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>NO LOGIN</span></td>'+
+          /* Provider and Billing/Scheduler logins are issued by the practice
+             manager now, from Teams — not from here, so there is nothing for
+             an administrator to click for this row anymore. */
           '<td class="r"><div class="acts">'+
-            '<button class="ib alert" data-make="'+(a.provider_id_ref||'')+'" '+
-              'data-req="'+(a._req?a._req.id:'')+'" title="Create a login for this person">'+
-              '<svg viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg></button>'+
+            '<span class="pill info" style="cursor:help" title="Ask your practice manager to add this person from Teams">Ask practice manager</span>'+
           '</div></td></tr>';
       }
       return '<tr style="animation-delay:'+Math.min(.4,i*.03)+'s">'+
@@ -488,7 +465,9 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       ROLES[t].map(function(r){return '<option value="'+r[0]+'">'+r[1]+'</option>';}).join('');
     sel.value=ROLES[t][0][0];
     sel.dispatchEvent(new Event('change'));
-    $('forHint').textContent = t==='provider'
+    $('forHint').textContent = t==='supervisor'
+      ? 'Practice Manager — the only role that can add providers, billing and other staff under this organization.'
+      : t==='provider'
       ? 'Signs in at the main address and lands on the clinical workspace.'
       : 'Signs in at the main address and lands on the workspace for their role.';
   });
@@ -523,12 +502,21 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
   function blank(){
     ['fName','fTitle','fEmail','fPhone','fUser','fPid','fPw'].forEach(function(id){$(id).value='';});
-    $('fFor').value='';$('fRoleSel').innerHTML='<option value="">Select account type first</option>';
-    $('fOrg').value='';$('fLink').innerHTML='<option value="">Not linked</option>';
+    $('fFor').value='';$('fRoleSel').disabled=false;
+    $('fRoleSel').innerHTML='<option value="">Select account type first</option>';
+    $('fLink').innerHTML='<option value="">Not linked</option>';
     $('linkWrap').style.display='none';linkedProvider=null;
     $('fScope').value='self';$('fMfa').checked=false;
     $('pidWrap').style.display='none';
     delete $('fUser').dataset.touched;
+    /* an administrator scoped to one organization only ever creates
+       accounts under that organization — lock the field instead of
+       letting them pick one that the server will ignore anyway */
+    if(!IS_SITE_OWNER && ME && ME.org_id){
+      $('fOrg').value=String(ME.org_id);$('fOrg').disabled=true;
+    }else{
+      $('fOrg').value='';$('fOrg').disabled=false;
+    }
   }
   $('newBtn').addEventListener('click',function(){
     editing=null;blank();
@@ -573,28 +561,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         tg=e.target.closest('[data-toggle]'),dl=e.target.closest('[data-del]'),
         cp=e.target.closest('[data-copy]');
 
-    var mk=e.target.closest('[data-make]'),rk=e.target.closest('[data-rmk]');
-    if(mk){
-      editing=null;pendingReq=null;
-      var pv=mk.dataset.make?PROVS.filter(function(x){
-        return String(x.id)===mk.dataset.make;})[0]:null;
-      if(pv){
-        var rq0=REQS.filter(function(r){return String(r.provider_ref)===String(pv.id);})[0];
-        fillFromProvider(pv);
-        if(rq0){
-          pendingReq=rq0.id;
-          if(rq0.suggested_username){
-            $('fUser').value=rq0.suggested_username;$('fUser').dataset.touched='1';
-          }
-          $('mSub').textContent=($('mSub').textContent||'')+
-            ' · requested by '+(rq0.requested_name||'a practice manager');
-        }
-        return;
-      }
-      var rq=REQS.filter(function(r){return r.id===mk.dataset.req;})[0];
-      if(rq){fillFromRequest(rq);}
-      return;
-    }
+    var rk=e.target.closest('[data-rmk]');
     if(rk){
       var acc0=ACCOUNTS.filter(function(x){return String(x.id)===rk.dataset.rmk;})[0];
       if(!acc0)return;
@@ -619,17 +586,25 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       var a=ACCOUNTS.filter(function(x){return String(x.id)===ed.dataset.edit;})[0];
       if(!a)return;
       editing=a.id;
-      var type=(a.role==='provider'||a.role==='supervisor')?'provider':'employee';
-      $('fFor').value=type;$('fFor').disabled=true;
-      $('fRoleSel').innerHTML=ROLES[type].map(function(r){return '<option value="'+r[0]+'">'+r[1]+'</option>';}).join('');
-      $('fRoleSel').value=a.role;
+      /* Editing shows the account's actual role, whatever it is — an
+         organization Administrator can still see and edit an existing
+         Provider or Billing/Scheduler account even though this console no
+         longer offers those as a starting category (ROLES only has
+         supervisor/admin now). The role itself is locked here rather than
+         built from ROLES[type], which would only have an entry for the
+         two categories this console can still create fresh. */
+      $('fFor').value=(ROLES[a.role]?a.role:'');$('fFor').disabled=true;
+      $('fRoleSel').innerHTML='<option value="'+a.role+'">'+(ROLE_LABELS[a.role]||a.role)+'</option>';
+      $('fRoleSel').value=a.role;$('fRoleSel').disabled=true;
       $('mTitle').textContent='Edit login';
       $('mSub').textContent=a.username+' · created '+fmt(a.created_at);
       $('fName').value=a.full_name||'';$('fTitle').value=a.title||'';
       $('fEmail').value=a.email||'';$('fPhone').value=a.phone||'';
       $('fUser').value=a.username;$('fUser').disabled=true;
       $('fScope').value=a.scope||'self';$('fPid').value=a.provider_id||'';
-      $('fOrg').value=a.org_id||'';$('fOrg').dispatchEvent(new Event('change'));
+      $('fOrg').value=a.org_id||'';
+      $('fOrg').dispatchEvent(new Event('change'));
+      $('fOrg').disabled=!IS_SITE_OWNER;
       $('fLink').value=a.provider_ref||'';
       $('linkWrap').style.display=a.role==='provider'?'':'none';
       $('fMfa').checked=!!a.mfa_enabled;$('fPw').value='';
@@ -680,7 +655,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
   $('saveBtn').addEventListener('click',async function(){
     var name=$('fName').value.trim(),role=$('fRoleSel').value;
-    if(!$('fFor').value&&!editing){toast('Pick an account type','Choose Provider or Employee first');$('fFor').focus();return;}
+    if(!$('fFor').value&&!editing){toast('Pick an account type','Choose Practice Manager, Provider, or Other first');$('fFor').focus();return;}
     if(!name){toast('Missing name','Enter the person\u2019s full name');$('fName').focus();return;}
     if(!role){toast('Missing role','Choose a role');$('fRoleSel').focus();return;}
 

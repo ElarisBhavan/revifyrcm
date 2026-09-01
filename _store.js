@@ -314,7 +314,8 @@
       name: a.display_name || a.full_name,
       first: a.first_name || n.first, last: a.last_name || n.last,
       title:a.title, initials:a.initials, pid:a.provider_id, scope:a.scope,
-      org_id:a.org_id||null, provider_ref:a.provider_ref||null, at:Date.now()
+      org_id:a.org_id||null, provider_ref:a.provider_ref||null, access:a.access||null,
+      at:Date.now()
     };
   };
   const setSession = a => {
@@ -532,9 +533,31 @@
       if(!/^[a-z0-9._-]{3,40}$/.test(username)) return { error:'Username may use letters, numbers, dot, dash and underscore only' };
       if(await this.find(username)) return { error:'That username is already taken' };
 
+      /* mirrors the server-side rule in admin-users.js: only a practice
+         manager or an administrator creates logins at all, a practice
+         manager only ever a provider/employee/scheduler, and never outside
+         their own organisation. A caller with no session (the very first
+         seed-data account, or a page that doesn't track sessions) is let
+         through unchanged, matching this driver's pre-existing behaviour. */
+      const me = getSession();
+      if(me){
+        if(!['admin','supervisor'].includes(me.role))
+          return { error:'Only a practice manager or administrator can create a login' };
+        if(me.role === 'supervisor'){
+          if(!['provider','employee','scheduler'].includes(data.role))
+            return { error:'A practice manager can only add a provider, billing or front-office account' };
+          data.org_id = me.org_id;
+        }else if(me.org_id){
+          /* an org-scoped administrator: same two rules the server applies —
+             only the organization-running roles, only their own org */
+          if(!['admin','supervisor'].includes(data.role))
+            return { error:'An administrator may add a practice manager or another administrator, not a ' + data.role + ' account.' };
+          data.org_id = me.org_id;
+        }
+      }
+
       const pw = data.password || tempPassword();
       const secret = data.mfa_enabled ? randomSecret() : null;
-      const me = getSession();
       const nm = splitName(data.full_name);
       const row = {
         username, password_hash: await hashPassword(pw),
@@ -550,6 +573,7 @@
         org_id: data.org_id || null,
         provider_ref: data.provider_ref || null,
         scope: data.scope || (data.role==='admin'?'all':data.role==='provider'?'self':'facility'),
+        access: data.access || null,
         status:'active', must_change: data.must_change !== false,
         mfa_enabled:false, mfa_secret:secret,
         failed_attempts:0, locked_until:null, last_login:null,
@@ -2643,10 +2667,22 @@
       }
     },
 
+    /* 'api': the grant is a real column on the account row (see schema.sql),
+       set through the same admin/users endpoint every other account edit
+       goes through — so it follows the person to any device, not just the
+       browser a practice manager happened to be using.
+       'local': unchanged — IndexedDB, this browser only. */
     async setAccess(username, access){
       const me = getSession();
-      if(!me || !['supervisor','scheduler','admin'].includes(me.role))
+      if(!me || !['supervisor','admin'].includes(me.role))
         return { error:'Only a practice manager or administrator can change access' };
+      if(DRIVER==='api'){
+        try{
+          const a = (await this.list()).find(x => x.username === username);
+          if(!a) return { error:'Account not found' };
+          return await this.update(a.id, { access });
+        }catch(err){ return { error:String(err && err.message || err) }; }
+      }
       const a = (await all()).find(x => x.username === username);
       if(a){
         a.access = access;
@@ -2660,7 +2696,18 @@
       if(i > -1){ list[i].access = access; await setMeta('team_requests', list); }
       return { ok:true };
     },
+    /* Only ever called for someone ELSE's account (the "edit access" flow
+       in Teams) — a signed-in user's own effective access comes straight off
+       their session (see can(), below), never through here, so this never
+       needs to work for a plain provider/scheduler/employee caller. */
     async getAccess(username){
+      if(DRIVER==='api'){
+        try{
+          const a = (await this.list()).find(x => x.username === username);
+          if(a && a.access) return a.access;
+          return this.roleDefaults(a ? a.role : (getSession() || {}).role);
+        }catch(err){ return this.roleDefaults((getSession()||{}).role); }
+      }
       const a = (await all()).find(x => x.username === username);
       if(a && a.access) return a.access;
       const list = (await meta('team_requests')) || [];
@@ -2674,24 +2721,35 @@
       if(me.role === 'admin' || me.role === 'supervisor') return 'edit';
       if(me.role === 'provider') return this.providerAccess()[section] || 'none';
 
-      const acc = await this.getAccess(me.username);
-      /* an account with no stored grant falls back to what its role needs */
+      /* the session already carries this account's own grant (set at login,
+         or by the periodic "who am I" refresh) — reading it here, rather
+         than through getAccess(), means a provider/scheduler/employee
+         checking their OWN access never needs the admin/practice-manager
+         account list, which their role isn't allowed to fetch. */
+      const acc = me.access;
       if(!acc || !Object.keys(acc).length) return this.roleDefaults(me.role)[section] || 'none';
       return acc[section] || 'none';
     },
 
+    /* Adding a team member now issues the real login immediately — a
+       practice manager no longer submits a request for an administrator to
+       finish, because an administrator can no longer create a Provider or
+       Billing/Scheduler account at all (see admin-users.js). Only a
+       practice manager (role 'supervisor') may call this. */
     async addTeamMember(data){
       try{
         const me = getSession();
         if(!me) return { error:'Not signed in' };
-        if(!['supervisor','scheduler','admin'].includes(me.role))
-          return { error:'Only a practice manager or administrator can add team members' };
+        if(me.role !== 'supervisor')
+          return { error:'Only a practice manager can add team members' };
         if(!data.full_name) return { error:'A name is required' };
         if(!data.role)      return { error:'Choose what they do' };
-        if(data.role === 'supervisor')
-          return { error:'A practice manager can only be created from the admin console' };
+        if(!['provider','employee','scheduler'].includes(data.role))
+          return { error:'A practice manager can only add a provider, billing or front-office account' };
 
-        const orgId = data.org_id || me.org_id;
+        /* A practice manager can only ever add people under their own
+           organization — any client-supplied org_id is ignored. */
+        const orgId = me.org_id;
         if(!orgId) return { error:'No organisation is linked to your account' };
 
         const n = splitName(data.full_name);
@@ -2721,10 +2779,29 @@
           providerId = r.id;
         }
 
-        /* the request an administrator will action */
-        const list = (await meta('team_requests')) || [];
+        const access = data.role === 'provider' ? this.providerAccess()
+                     : (data.access || this.defaultAccess());
+        const username = (data.username || suggestUsername(data.full_name)).trim().toLowerCase();
+
+        /* the real login, active right away — no separate administrator
+           step. create() enforces the same "practice manager may only add
+           provider/employee/scheduler, only in their own organization" rule
+           server-side, so this is never the only line of defense. */
+        const created = await this.create({
+          username, full_name: data.full_name, role: data.role,
+          title: data.title || '', email: data.email || '', phone: data.phone || '',
+          org_id: orgId, provider_ref: providerId, access,
+          scope: data.role === 'provider' ? 'self' : 'facility',
+          password: data.password || undefined
+        });
+        if(created.error) return created;
+
+        /* a lightweight history record — who added whom, and when — kept
+           for the same place Admin → Logins already shows a team's roster
+           from. Marked active immediately since the login already exists;
+           best-effort, since losing this would only cost some history, not
+           the account itself. */
         const req = {
-          id: 'tr_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36),
           org_id: orgId,
           full_name: data.full_name,
           first_name: n.first, last_name: n.last,
@@ -2732,23 +2809,38 @@
           title: data.title || '', email: data.email || '', phone: data.phone || '',
           specialty: data.specialty || '', npi: data.npi || '',
           provider_ref: providerId,
-          suggested_username: data.username || suggestUsername(data.full_name),
-          access: data.role === 'provider' ? this.providerAccess()
-                  : (data.access || this.defaultAccess()),
-          status: 'pending',
+          suggested_username: username, issued_username: username,
+          access,
+          status: 'active',
           requested_by: me.username,
           requested_name: me.name || me.username,
-          requested_at: new Date().toISOString()
+          requested_at: new Date().toISOString(),
+          issued_at: new Date().toISOString()
         };
-        list.unshift(req);
-        await setMeta('team_requests', list.slice(0,300));
-        return { ok:true, id:req.id, provider_ref:providerId, username:req.suggested_username };
+        try{
+          if(DRIVER==='api'){ await dSave('teamreq', req); }
+          else{
+            const list = (await meta('team_requests')) || [];
+            req.id = 'tr_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+            list.unshift(req);
+            await setMeta('team_requests', list.slice(0,300));
+          }
+        }catch(e){ /* history only — the login itself already succeeded */ }
+
+        return { ok:true, id: created.account ? created.account.id : null,
+                 provider_ref: providerId, username,
+                 tempPassword: created.tempPassword, mfa: created.mfa };
       }catch(err){ return { error:'Save failed: '+(err && err.message || err) }; }
     },
 
     async teamRequests(orgId){
-      const list = (await meta('team_requests')) || [];
-      const accts = await all();
+      let list;
+      if(DRIVER==='api'){
+        list = (await dList('teamreq', {})).map(r => ({ ...r, id:String(r.id) }));
+      }else{
+        list = (await meta('team_requests')) || [];
+      }
+      const accts = await this.list();
       /* a request is fulfilled once an account exists for it */
       const out = list.map(r => {
         const acct = accts.find(a =>
@@ -2762,17 +2854,29 @@
     },
 
     async markTeamRequest(id, patch){
-      const list = (await meta('team_requests')) || [];
-      const i = list.findIndex(r => r.id === id);
-      if(i < 0) return { error:'Not found' };
-      list[i] = { ...list[i], ...patch };
-      await setMeta('team_requests', list);
-      return { ok:true };
+      try{
+        if(DRIVER==='api'){
+          await dSave('teamreq', { id:Number(id), ...patch });
+          return { ok:true };
+        }
+        const list = (await meta('team_requests')) || [];
+        const i = list.findIndex(r => r.id === id);
+        if(i < 0) return { error:'Not found' };
+        list[i] = { ...list[i], ...patch };
+        await setMeta('team_requests', list);
+        return { ok:true };
+      }catch(err){ return { error:String(err && err.message || err) }; }
     },
     async removeTeamRequest(id){
-      const list = ((await meta('team_requests')) || []).filter(r => r.id !== id);
-      await setMeta('team_requests', list);
-      return { ok:true };
+      try{
+        if(DRIVER==='api'){
+          await dDel('teamreq', id);
+          return { ok:true };
+        }
+        const list = ((await meta('team_requests')) || []).filter(r => r.id !== id);
+        await setMeta('team_requests', list);
+        return { ok:true };
+      }catch(err){ return { error:String(err && err.message || err) }; }
     },
 
     /* ═══ LOGIN AND LOGOUT HISTORY ═══ */

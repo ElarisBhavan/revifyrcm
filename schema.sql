@@ -38,6 +38,11 @@ CREATE TABLE IF NOT EXISTS accounts (
 );
 CREATE INDEX IF NOT EXISTS accounts_username_idx ON accounts (LOWER(username));
 CREATE INDEX IF NOT EXISTS accounts_org_idx      ON accounts (org_id);
+-- Per-section view/edit/none grants for a Provider or Billing/Scheduler
+-- account, set by whoever added them (a practice manager) or changed later
+-- from Teams. Absent (NULL) means "use the role's usual defaults" — an
+-- account is never locked out just because nobody has visited this yet.
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS access JSONB;
 
 -- the last few hashes, so a rotation cannot reuse a recent password
 CREATE TABLE IF NOT EXISTS password_history (

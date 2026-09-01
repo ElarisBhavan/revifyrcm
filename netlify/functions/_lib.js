@@ -74,7 +74,7 @@ async function readSession(event){
   const sql = db();
   const [row] = await sql`
     SELECT s.*, a.username, a.role, a.full_name, a.title, a.initials,
-           a.provider_id, a.provider_ref, a.org_id, a.scope, a.status, a.must_change
+           a.provider_id, a.provider_ref, a.org_id, a.scope, a.status, a.must_change, a.access
     FROM sessions s JOIN accounts a ON a.id = s.account_id
     WHERE s.token_hash = ${sha256(raw)} LIMIT 1`;
   if(!row) return null;
@@ -90,7 +90,8 @@ async function readSession(event){
     session_id: row.id, id: row.account_id, username: row.username, role: row.role,
     name: row.full_name, title: row.title, initials: row.initials,
     pid: row.provider_id, provider_ref: row.provider_ref,
-    org_id: row.org_id, scope: row.scope, mustChange: row.must_change
+    org_id: row.org_id, scope: row.scope, mustChange: row.must_change,
+    access: row.access || null
   };
 }
 async function revokeSession(id, by, reason){

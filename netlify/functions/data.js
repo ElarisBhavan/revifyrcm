@@ -37,7 +37,12 @@ const KINDS = {
   /* Payments — a remittance posted from a payer, or cash/card taken from a
      patient at the desk. Missing from this map entirely is why every call the
      Payments screen makes fails with "Unknown record type: payment". */
-  payment:       { write:['admin','supervisor','employee','frontoffice','billing'] }
+  payment:       { write:['admin','supervisor','employee','frontoffice','billing'] },
+  /* A team member request — someone a practice manager has asked to be added
+     to their organisation, pending an administrator issuing the login. Only
+     a practice manager (supervisor) or an administrator may create or edit
+     one; nobody else can add staff under an organisation they don't run. */
+  teamreq:       { write:['admin','supervisor'] }
 };
 
 /* PHI, and therefore logged in full. The rest is reference data. */
@@ -122,6 +127,9 @@ function columns(kind, r){
     c.on_date = r.at ? String(r.at).slice(0,10) : null;
     c.status = r.kind || null;               /* 'era' or 'patient' */
     c.search = [r.payer, r.method, r.ref, r.taken_by].filter(Boolean).map(low).join(' ');
+  }else if(kind === 'teamreq'){
+    c.status = r.status || 'pending';
+    c.search = [r.full_name, r.role, r.email, r.requested_by].filter(Boolean).map(low).join(' ');
   }
   return c;
 }

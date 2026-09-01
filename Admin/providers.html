@@ -239,8 +239,11 @@
         '<td>'+(acct
           ? '<span class="pill ok">'+acct.username+'</span>'
           : (p.added_by_team
-              ? '<a href="logins.html?provider='+p.id+'" class="pill warn" style="text-decoration:none">'+
-                '⚠ Added by practice · needs a password</a>'
+              /* Provider logins are issued by the practice manager, from
+                 Teams — an administrator can no longer create one, so this
+                 is informational rather than a link into that flow. */
+              ? '<span class="pill warn" style="cursor:help" title="Ask your practice manager to finish adding this person, from Teams">'+
+                '⚠ Added by practice · needs a password</span>'
               : '<span class="pill off">Not created</span>'))+'</td>'+
         '<td class="r"><div class="acts">'+
           '<button class="ib" data-edit="'+p.id+'" title="Edit"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16z"/></svg></button>'+

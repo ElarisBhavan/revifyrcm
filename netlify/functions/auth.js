@@ -329,6 +329,7 @@ async function finish(acct, event){
     ok:true,
     account:{ id:acct.id, username:acct.username, role:acct.role, name:acct.full_name,
               title:acct.title, initials:acct.initials, pid:acct.provider_id,
-              provider_ref:acct.provider_ref, org_id:acct.org_id, scope:acct.scope }
+              provider_ref:acct.provider_ref, org_id:acct.org_id, scope:acct.scope,
+              access:acct.access||null }
   },{ 'Set-Cookie': L.cookie(raw) });
 }

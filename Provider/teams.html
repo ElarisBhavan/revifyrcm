@@ -470,7 +470,7 @@ tr:hover .pnode.done{transform:scale(1.18)}
     <span class="pi"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.6"/><path d="M2 21c0-3.9 3.2-6.4 7-6.4s7 2.5 7 6.4"/><circle cx="18" cy="7" r="2.8"/><path d="M17 21c0-2.9 1.3-5 4-5"/></svg></span>
     <div>
       <h1 id="headTitle">Teams</h1>
-      <p id="headSub">Add people to your practice. An administrator issues the password once the record is in.</p>
+      <p id="headSub">See who's on your team and how far along their login is.</p>
     </div>
     <div class="stamp">
       <button class="btn pri" id="addBtn"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add team member</button>
@@ -546,11 +546,14 @@ tr:hover .pnode.done{transform:scale(1.18)}
     <div class="fg">
       <label class="f"><span>Full name <u>*</u></span><input type="text" id="t_name" placeholder="Bhavan Kalyan">
         <p class="fnote" id="t_hint">The username is suggested from this.</p></label>
-      <label class="f"><span>Suggested username</span><input type="text" id="t_user" placeholder="b.kalyan"></label>
+      <label class="f"><span>Username</span><input type="text" id="t_user" placeholder="b.kalyan"></label>
       <label class="f"><span>Job title</span><input type="text" id="t_title" placeholder="MD"></label>
       <label class="f"><span>Email</span><input type="email" id="t_email"></label>
       <label class="f"><span>Phone</span><input type="tel" id="t_phone"></label>
       <label class="f"><span>Team or department</span><input type="text" id="t_team" placeholder="Front office"></label>
+      <label class="f full" id="pwWrap"><span>Temporary password</span>
+        <input type="text" id="t_pw" placeholder="Leave blank to generate a strong one">
+        <p class="fnote">Shown once after saving. They'll be asked to change it at first sign-in.</p></label>
     </div>
 
     <div id="clinBlock">
@@ -583,15 +586,33 @@ tr:hover .pnode.done{transform:scale(1.18)}
 
     <div class="hint" style="margin-top:15px">
       <svg viewBox="0 0 24 24" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
-      <span id="flowNote">Adding a provider puts them straight into the admin console under your organisation.
-        An administrator then issues a temporary password.</span>
+      <span id="flowNote">Adds the login straight away, under your organisation — no separate administrator step.</span>
     </div>
   </div>
   <div class="mfoot">
     <button class="btn sec" data-close>Cancel</button>
     <span class="sp"></span>
-    <button class="btn pri" id="addSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Add and request a login</button>
+    <button class="btn pri" id="addSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Add and create login</button>
   </div>
+</div>
+
+<div class="modal" id="mCred" role="dialog" aria-modal="true">
+  <div class="mhead">
+    <span class="mi"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>
+    <div><h3>Login created</h3><p>Share this once, through a channel they already trust.</p></div>
+    <button class="mx" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="mbody">
+    <div class="fg">
+      <label class="f"><span>Username</span><input type="text" id="credUser" readonly></label>
+      <label class="f"><span>Temporary password</span><input type="text" id="credPw" readonly></label>
+    </div>
+    <div style="margin-top:14px;padding:12px 14px;border-radius:11px;background:rgba(201,138,24,.09);
+      border:1px solid rgba(201,138,24,.3);font-size:12px;line-height:1.5;color:#7A5507">
+      This password will not be shown again. Use "Reset password" from Teams if it's lost.
+    </div>
+  </div>
+  <div class="mfoot"><span class="sp"></span><button class="btn pri" data-close>Done</button></div>
 </div>
 
 <div class="toast" id="toast"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg><span><b id="tT">—</b><small id="tS"></small></span></div>
@@ -600,7 +621,7 @@ tr:hover .pnode.done{transform:scale(1.18)}
 <script>
 (function(){
   var $=function(i){return document.getElementById(i);};
-  var ME=null, ORG=null, PROVS=[], REQS=[], ACCTS=[], ROLE='provider';
+  var ME=null, ORG=null, PROVS=[], REQS=[], ACCTS=[], ROLE='provider', CAN_ADD=false;
   var filt={q:'',role:'all',state:'all'};
 
   var ROLEL={provider:'Provider',supervisor:'Practice manager',
@@ -616,6 +637,15 @@ tr:hover .pnode.done{transform:scale(1.18)}
     $('toast').classList.add('on');clearTimeout(toast._t);
     toast._t=setTimeout(function(){$('toast').classList.remove('on');},3800);}
 
+  /* shown once, right after a login is created — the password is never
+     retrievable again after this closes */
+  function showCreds(name,username,tempPassword){
+    $('credUser').value=username;
+    $('credPw').value=tempPassword||'(unchanged — you set this password yourself)';
+    closeM();setTimeout(function(){openM('mCred');},260);
+    toast(name+' added','Username '+username);
+  }
+
   var scrim=$('scrim');
   function openM(id){scrim.classList.add('on');$(id).classList.add('on');document.body.style.overflow='hidden';}
   function closeM(){scrim.classList.remove('on');
@@ -630,11 +660,28 @@ tr:hover .pnode.done{transform:scale(1.18)}
     ME=(window.RFSession?RFSession.require(['supervisor','scheduler','admin']):RFStore.getSession());
     if(!ME)return;
 
+    /* Only a practice manager (supervisor) or an administrator may add
+       someone to the team — a scheduler/front-office login can still see
+       the roster below, but "Add team member" is hidden for them. */
+    /* Only a practice manager adds people now — an administrator can view
+       the roster (the page-level require() above still allows admin/
+       scheduler in) but can no longer create a provider or billing/
+       front-office login, from here or from the admin console. */
+    CAN_ADD = ME.role==='supervisor';
+    if(!CAN_ADD){
+      $('addBtn').style.display='none';
+    }
+
     var orgs=await RFStore.orgs(), all=await RFStore.providers();
-    var mine=all.filter(function(x){return x.id===ME.provider_ref;})[0]
+    /* IDs round-trip through the API driver as strings (large ints are
+       serialised as text), while the local driver keeps them as numbers —
+       String() on both sides so a practice manager or scheduler with no
+       provider record of their own (the normal case) still resolves to
+       their organisation instead of landing on "No organisation linked". */
+    var mine=all.filter(function(x){return String(x.id)===String(ME.provider_ref);})[0]
            ||all.filter(function(x){return (x.full_name||'')===ME.name;})[0]||null;
     var myOrg=(mine&&mine.org_id)||ME.org_id||null;
-    ORG=orgs.filter(function(o){return o.id===myOrg;})[0]||null;
+    ORG=orgs.filter(function(o){return String(o.id)===String(myOrg);})[0]||null;
 
     if(!ORG){
       document.querySelector('.wrap').innerHTML='<div class="card" style="opacity:1;transform:none">'+
@@ -644,8 +691,9 @@ tr:hover .pnode.done{transform:scale(1.18)}
         'Ask an administrator to set the organisation on your login.</div></div>';
       return;
     }
-    $('headSub').textContent=ORG.name+' · add people to your practice. '+
-      'An administrator issues the password once the record is in.';
+    $('headSub').textContent=CAN_ADD
+      ? ORG.name+' · add people to your practice and create their login directly.'
+      : ORG.name+' · see who\'s on your team and how far along their login is.';
     await refresh();
   })();
 
@@ -713,7 +761,7 @@ tr:hover .pnode.done{transform:scale(1.18)}
     var cards=[
       ['Team members',list.length,'var(--navy-s,#E4EFF4)','var(--navy,#12566F)','across this practice'],
       ['Logins active',withLogin,'var(--green-s)','var(--green-d)','able to sign in'],
-      ['Awaiting a login',pending,'var(--amber-s)','var(--amber)','with the administrator'],
+      ['Awaiting a login',pending,'var(--amber-s)','var(--amber)','with the practice manager'],
       ['Providers',list.filter(function(x){return x.role==='provider'||x.role==='supervisor';}).length,
         'var(--violet-s)','var(--violet)','clinical staff']
     ];
@@ -769,7 +817,7 @@ tr:hover .pnode.done{transform:scale(1.18)}
         '<td>'+(x.account
           ? '<span class="pill ok"><i></i>'+esc(x.account.username)+'</span>'+
             (x.account.must_change?'<div style="margin-top:3px"><span class="pill warn">temp password</span></div>':'')
-          : '<span class="pill warn blink"><i></i>Awaiting administrator</span>')+'</td>'+
+          : '<span class="pill warn blink"><i></i>Awaiting practice manager</span>')+'</td>'+
         '<td class="r"><span class="acts">'+
           (x.role!=='provider'&&x.role!=='supervisor'
             ? '<button class="ib" data-access="'+esc(x.key)+'" title="Change section access">'+
@@ -845,9 +893,9 @@ tr:hover .pnode.done{transform:scale(1.18)}
     $('accBlock').style.display=clinical?'none':'';
     if(!clinical){ ACCESS=RFStore.defaultAccess(); paintAccess(); }
     $('flowNote').textContent=clinical
-      ? 'Adding a provider puts them straight into the admin console under '+(ORG?ORG.name:'your organisation')+
-        '. An administrator then issues a temporary password. Providers get their clinical sections automatically.'
-      : 'Choose what this person can reach in each section. An administrator issues the password, '+
+      ? 'Adds the login straight away, under '+(ORG?ORG.name:'your organisation')+
+        ' — no separate administrator step. Providers get their clinical sections automatically.'
+      : 'Choose what this person can reach in each section. The login is created as soon as you save, '+
         'and you can change access here at any time.';
   });
 
@@ -858,20 +906,22 @@ tr:hover .pnode.done{transform:scale(1.18)}
   $('t_user').addEventListener('input',function(){this.dataset.touched='1';});
 
   $('addBtn').addEventListener('click',function(){
+    if(!CAN_ADD){toast('Only a practice manager can add team members','Ask your practice manager');return;}
     ROLE='provider';EDIT_USER=null;
     $('roleGrid').querySelectorAll('button').forEach(function(b){
       b.classList.toggle('on',b.dataset.r==='provider');});
     $('roleGrid').style.display='';
     $('accBlock').style.display='none';
+    $('pwWrap').style.display='';
     ACCESS=RFStore.defaultAccess();
-    ['t_name','t_user','t_title','t_email','t_phone','t_npi','t_tax','t_lic'].forEach(function(i){$(i).value='';});
+    ['t_name','t_user','t_title','t_email','t_phone','t_npi','t_tax','t_lic','t_pw'].forEach(function(i){$(i).value='';});
     $('t_spec').value='';$('t_team').value='Clinical';
     delete $('t_user').dataset.touched;
     $('clinBlock').style.display='';
     $('addSub').textContent=ORG?ORG.name:'';
-    $('addSave').innerHTML='<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Add and request a login';
-    $('flowNote').textContent='Adding a provider puts them straight into the admin console. '+
-      'An administrator then issues a temporary password.';
+    $('addSave').innerHTML='<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Add and create login';
+    $('flowNote').textContent='Adds the login straight away, under '+(ORG?ORG.name:'your organisation')+
+      ' — no separate administrator step.';
     openM('mAdd');
   });
 
@@ -889,10 +939,11 @@ tr:hover .pnode.done{transform:scale(1.18)}
       closeM();await refresh();
       toast('Access updated',EDIT_USER.name);
       EDIT_USER=null;
-      $('addSave').innerHTML='<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Add and request a login';
+      $('addSave').innerHTML='<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Add and create login';
       return;
     }
 
+    if(!CAN_ADD){toast('Only a practice manager can add team members','Ask your practice manager');return;}
     var name=$('t_name').value.trim();
     if(!name){toast('A name is required','');$('t_name').focus();return;}
     if((ROLE==='provider'||ROLE==='supervisor')&&$('t_npi').value&&
@@ -916,12 +967,13 @@ tr:hover .pnode.done{transform:scale(1.18)}
       phone:$('t_phone').value.trim(), specialty:$('t_spec').value,
       npi:$('t_npi').value.trim(), taxonomy:$('t_tax').value.trim(),
       license:$('t_lic').value.trim(), username:$('t_user').value.trim(),
+      password:$('t_pw').value.trim()||undefined,
       org_id:ORG.id
     });
     this.disabled=false;
     if(!r.ok){toast('Could not add',r.error||'');return;}
     closeM();await refresh();
-    toast(name+' added','An administrator will issue the password · suggested username '+r.username);
+    showCreds(name,r.username,r.tempPassword);
   });
 
   var EDIT_USER=null;
@@ -939,6 +991,7 @@ tr:hover .pnode.done{transform:scale(1.18)}
       $('roleGrid').style.display='none';
       $('clinBlock').style.display='none';
       $('accBlock').style.display='';
+      $('pwWrap').style.display='none';
       paintAccess();
       $('addSub').textContent='Section access · '+px.name;
       $('flowNote').textContent='Changes apply the next time '+px.name.split(' ')[0]+' loads a page.';
