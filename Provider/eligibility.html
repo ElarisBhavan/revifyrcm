@@ -264,6 +264,7 @@ select:disabled{opacity:.6;cursor:not-allowed}
 <script src="../_notify.js"></script>
 <link rel="stylesheet" href="../_session.css">
 <script src="../_guard.js"></script>
+<script src="../_config.js"></script>
 <script src="../_store.js"></script>
 <script src="../_datepicker.js"></script>
 <script src="../_codes.js"></script>
@@ -321,11 +322,11 @@ select:disabled{opacity:.6;cursor:not-allowed}
           <h2>Provider / facility information</h2>
           <p>Who is rendering the service.</p>
         </div>
-        <span class="cnt">5 FIELDS</span>
+        <span class="cnt">6 FIELDS</span>
       </div>
 
       <div class="grid">
-        <label class="f c6">
+        <label class="f c4">
           <span>Select payer <u>*</u></span>
           <div class="ctrl">
             <select id="payer" required>
@@ -335,7 +336,17 @@ select:disabled{opacity:.6;cursor:not-allowed}
           <p class="err" id="e-payer">Select a payer.</p>
         </label>
 
-        <label class="f c6">
+        <label class="f c4">
+          <span>State</span>
+          <div class="ctrl">
+            <select id="state">
+              <option value="">All states</option>
+            </select>
+          </div>
+          <p class="hint">Narrows the payer list to those licensed there</p>
+        </label>
+
+        <label class="f c4">
           <span>Choose facility <u>*</u></span>
           <div class="ctrl">
             <select id="facility" required>
@@ -481,11 +492,11 @@ select:disabled{opacity:.6;cursor:not-allowed}
           <h2>Eligibility for</h2>
           <p>What you are checking coverage against.</p>
         </div>
-        <span class="cnt">5 FIELDS</span>
+        <span class="cnt">4 FIELDS</span>
       </div>
 
       <div class="grid">
-        <label class="f c4">
+        <label class="f c3">
           <span>Date of service <u>*</u></span>
           <div class="ctrl">
             <input type="date" id="dos" min="1900-01-01" max="2100-12-31" required>
@@ -494,7 +505,18 @@ select:disabled{opacity:.6;cursor:not-allowed}
           <p class="err" id="e-dos">Select a date of service.</p>
         </label>
 
-        <label class="f c4">
+        <label class="f c3">
+          <span>Type <u>*</u></span>
+          <div class="ctrl">
+            <select id="svctype" required>
+              <option value="Outpatient">Outpatient</option>
+              <option value="Inpatient">Inpatient</option>
+            </select>
+          </div>
+          <p class="hint">Defaults to Outpatient</p>
+        </label>
+
+        <label class="f c3">
           <span>Place of service <u>*</u></span>
           <div class="ctrl">
             <select id="pos" required>
@@ -512,7 +534,7 @@ select:disabled{opacity:.6;cursor:not-allowed}
           <p class="err" id="e-pos">Select a place of service.</p>
         </label>
 
-        <label class="f c4">
+        <label class="f c3">
           <span>Category <u>*</u></span>
           <div class="ctrl">
             <select id="category" required>
@@ -520,24 +542,6 @@ select:disabled{opacity:.6;cursor:not-allowed}
             </select>
           </div>
           <p class="err" id="e-category">Select a category.</p>
-        </label>
-
-        <label class="f c6">
-          <span>Type <u>*</u></span>
-          <div class="ctrl">
-            <select id="svctype" required>
-              <option value="Outpatient">Outpatient</option>
-              <option value="Inpatient">Inpatient</option>
-            </select>
-          </div>
-          <p class="hint">Defaults to Outpatient</p>
-        </label>
-
-        <label class="f c6">
-          <span>CPT code</span>
-          <div class="ctrl"><input type="text" id="cpt" maxlength="5" placeholder="99213"></div>
-          <p class="hint" id="cptHint">Optional — narrows the response to one procedure.
-            Not every payer supports this; if the check fails, clear it and try again.</p>
         </label>
       </div>
     </section>
@@ -591,7 +595,7 @@ select:disabled{opacity:.6;cursor:not-allowed}
   dos.value=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
 
   // digits only
-  ['npi','taxid','cpt'].forEach(function(id){
+  ['npi','taxid'].forEach(function(id){
     var el=document.getElementById(id);
     el.addEventListener('input',function(){el.value=el.value.replace(/\D/g,'');});
   });
@@ -678,22 +682,39 @@ select:disabled{opacity:.6;cursor:not-allowed}
 
       if(window.RFCodes&&RFCodes.sync)await RFCodes.sync();
 
-      /* payers, as "Payer ID — Name" */
-      var payers=RFCodes.payers();
-      var pel=document.getElementById('payer');
-      if(pel&&!payers.length){
-        pel.innerHTML='<option value="">No payers set up yet</option>';
-        pel.disabled=true;
-        var ph=pel.closest('label');
-        if(ph&&!ph.querySelector('.setup')){
-          var n=document.createElement('p');
-          n.className='hint setup';
-          n.innerHTML='Payers are maintained in <b>Admin → Payers</b>. '+
-            'Ask an administrator to add them before running a check.';
-          ph.appendChild(n);
-        }
+      /* state — filters which payers the dropdown below offers */
+      var stateEl=document.getElementById('state');
+      if(stateEl){
+        stateEl.innerHTML='<option value="">All states</option>'+
+          RFCodes.US_STATES.map(function(s){
+            return '<option value="'+s.code+'">'+s.code+' — '+s.name+'</option>';
+          }).join('');
       }
-      if(pel&&payers.length){
+
+      /* payers, as "Payer ID — Name" — RFCodes.payersForState('') is every
+         payer, same as before this filter existed, so leaving State on
+         "All states" changes nothing about what shows up here */
+      var pel=document.getElementById('payer');
+      function paintPayerOptions(){
+        var payers=RFCodes.payersForState(stateEl?stateEl.value:'');
+        if(!pel)return;
+        if(!payers.length){
+          var keepEmpty=pel.value;
+          pel.innerHTML='<option value="">'+
+            (RFCodes.payers().length
+              ? 'No payers licensed in '+RFCodes.stateName(stateEl.value)
+              : 'No payers set up yet')+'</option>';
+          pel.disabled=true;
+          var ph=pel.closest('label');
+          if(ph&&!ph.querySelector('.setup')&&!RFCodes.payers().length){
+            var n=document.createElement('p');
+            n.className='hint setup';
+            n.innerHTML='Payers are maintained in <b>Admin → Payers</b>. '+
+              'Ask an administrator to add them before running a check.';
+            ph.appendChild(n);
+          }
+          return;
+        }
         pel.disabled=false;
         var keepP=pel.value;
         pel.innerHTML='<option value="">Select a payer</option>'+
@@ -701,8 +722,15 @@ select:disabled{opacity:.6;cursor:not-allowed}
             return '<option value="'+String(x.payer_id||x.name).replace(/"/g,'&quot;')+'">'+
               RFCodes.payerLabel(x).replace(/</g,'&lt;')+'</option>';
           }).join('');
-        if(keepP)pel.value=keepP;
+        /* keep whatever was chosen only if it's still on offer — narrowing
+           to a state the current payer isn't licensed in should not leave
+           a stale, no-longer-valid selection sitting there unnoticed */
+        var stillThere=keepP&&[].slice.call(pel.options).some(function(o){return o.value===keepP;});
+        if(stillThere)pel.value=keepP;
       }
+      paintPayerOptions();
+      window.RFEligPaintPayers=paintPayerOptions;
+      if(stateEl)stateEl.addEventListener('change',paintPayerOptions);
 
       /* place of service */
       var posEl=document.getElementById('pos');
@@ -854,36 +882,6 @@ select:disabled{opacity:.6;cursor:not-allowed}
         if(npi)npi.value=(p.npi||'').replace(/\D/g,'');
         var tax=document.getElementById('taxid');
         if(tax)tax.value=String(p.tax_id||(org&&org.tax_id)||'').replace(/\D/g,'');
-        var cpt=document.getElementById('cpt');
-        if(cpt){
-          var set=(CFG.cptSet||p.favourite_cpt||'');
-          var codes=String(set).split(',').map(function(x){return x.trim();}).filter(Boolean);
-          if(codes.length){
-            var first=codes[0].replace(/\D/g,'').slice(0,5);
-            if(first&&!cpt.value)cpt.value=first;
-            /* offer the rest as quick picks */
-            var host=cpt.closest('.f');
-            if(host&&!host.querySelector('.cptquick')&&codes.length>1){
-              var bar=document.createElement('div');
-              bar.className='cptquick';
-              bar.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:8px';
-              bar.innerHTML=codes.map(function(c){
-                var v=c.replace(/\D/g,'').slice(0,5);
-                return v?'<button type="button" data-cpt="'+v+'" style="padding:4px 10px;border-radius:7px;'+
-                  'border:1px solid var(--line-2);background:var(--paper);font-family:var(--mono);'+
-                  'font-size:10.4px;font-weight:600;cursor:pointer">'+v+'</button>':'';
-              }).join('');
-              bar.addEventListener('click',function(e){
-                var b=e.target.closest('[data-cpt]');if(!b)return;
-                cpt.value=b.dataset.cpt;
-                bar.querySelectorAll('button').forEach(function(x){
-                  x.style.borderColor=x===b?'var(--accent)':'var(--line-2)';
-                  x.style.background=x===b?'var(--accent-soft)':'var(--paper)';});
-              });
-              host.appendChild(bar);
-            }
-          }
-        }
         var ct=document.getElementById('claimtype');
         if(ct&&!ct.value)ct.value='Professional';
       }
@@ -912,7 +910,6 @@ select:disabled{opacity:.6;cursor:not-allowed}
         setv('memberid',(qs.get('member')||'').toUpperCase());
         setv('dob',qs.get('dob')||'');
         setv('dos',qs.get('dos')||'');
-        setv('cpt',(qs.get('cpt')||'').replace(/\D/g,'').slice(0,5));
 
         /* an explicit payer id from the chart wins over a loose name match */
         var pid=qs.get('payerid'),pel0=document.getElementById('payer');
@@ -1008,12 +1005,6 @@ select:disabled{opacity:.6;cursor:not-allowed}
     };
     var tax=document.getElementById('taxid').value.trim();
     if(tax)req.provider.taxId=tax;
-    var cpt=document.getElementById('cpt').value.trim();
-    if(cpt){
-      req.encounter.procedureCode=cpt;
-      /* Stedi rejects a procedureCode without its qualifier — HC is HCPCS/CPT */
-      req.encounter.productOrServiceIDQualifier='HC';
-    }
     var rel=document.getElementById('relationship').value;
     if(rel&&rel!=='Self'){
       req.dependents=[{
@@ -1161,9 +1152,9 @@ select:disabled{opacity:.6;cursor:not-allowed}
   });
 
   /* ── CLEAR FORM — delegated so binding can never be missed ── */
-  var FIELDS=['payer','facility','provider','claimtype','npi','taxid',
+  var FIELDS=['payer','state','facility','provider','claimtype','npi','taxid',
               'memberid','mfirst','mlast','suffix','dob','gender','relationship','sfirst','slast',
-              'dos','pos','category','svctype','cpt'];
+              'dos','pos','category','svctype'];
 
   function clearForm(){
     FIELDS.forEach(function(id){
@@ -1178,6 +1169,8 @@ select:disabled{opacity:.6;cursor:not-allowed}
     // date of service goes back to today
     var d=document.getElementById('dos');
     if(d)d.value=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
+    // state reset to "All states" — bring the payer list back with it
+    if(window.RFEligPaintPayers)window.RFEligPaintPayers();
     // wipe any lingering error / result state
     document.querySelectorAll('#elig .bad').forEach(function(el){el.classList.remove('bad');});
     document.querySelectorAll('#elig .err').forEach(function(el){el.classList.remove('show');});

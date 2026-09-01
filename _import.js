@@ -69,6 +69,7 @@
       appeal_address:['appeal address','appeals address','appeal'],
       website:['website','web','url','portal','website link'],
       plan_type:['plan type','type','line of business'],
+      states:['state','states','state(s)','licensed states','service states','coverage states'],
       notes:['notes','note','remarks']
     },
     master: {
@@ -122,6 +123,31 @@
     return Math.round((parseFloat(String(v).replace(/[^0-9.\-]/g,'')) || 0) * 100) / 100;
   }
   var str = v => String(v == null ? '' : v).trim();
+
+  /* "TX, OK" -> ['TX','OK']; "All", "All states" or "*" -> ['ALL'] (the same
+     sentinel Admin/payers.html's picker uses for "not restricted to a
+     state"); a full name like "Texas" is matched against RFCodes.US_STATES
+     and converted to its code, so the spreadsheet doesn't have to use
+     abbreviations. An unrecognized token is kept, uppercased, rather than
+     silently dropped — the payer's row in Admin > Payers will show it
+     plainly as an unfamiliar code so it isn't lost without a trace. */
+  function toStates(v){
+    var s = str(v);
+    if(!s) return [];
+    var tokens = s.split(/[,;/|]+/).map(function(t){ return t.trim(); }).filter(Boolean);
+    var isAll = tokens.some(function(t){
+      var u = t.toUpperCase();
+      return u === 'ALL' || u === 'ALL STATES' || u === 'ALL STATE' || u === '*';
+    });
+    if(isAll) return ['ALL'];
+    var known = (window.RFCodes && RFCodes.US_STATES) || [];
+    return tokens.map(function(t){
+      var u = t.toUpperCase();
+      if(known.some(function(x){ return x.code === u; })) return u;
+      var byName = known.filter(function(x){ return x.name.toUpperCase() === u; })[0];
+      return byName ? byName.code : u;
+    });
+  }
 
   /* ── read a File into a grid ── */
   async function readGrid(file){
@@ -217,6 +243,7 @@
       if(kind === 'payer'){
         ['name','payer_id','mailing_address','phone','fax','appeal_address',
          'website','plan_type','notes'].forEach(function(f){ rec[f] = str(get(row,f)); });
+        rec.states = toStates(get(row,'states'));
         rec.status = 'active';
       }
 
@@ -279,13 +306,16 @@
     payer: {
       file: 'reviflow-payer-import-template.csv',
       headers: ['Payer Name','Payer ID','Mailing Address','Phone','Fax',
-                'Appeal Address','Website','Plan Type','Notes'],
+                'Appeal Address','Website','Plan Type','State(s)','Notes'],
       sample: [
         ['Blue Cross Blue Shield of Texas','84980','PO Box 660044, Dallas, TX 75266',
          '(800) 451-0287','(972) 766-2000','PO Box 660044, Dallas, TX 75266',
-         'https://www.bcbstx.com','PPO','Submit corrected claims within 180 days'],
+         'https://www.bcbstx.com','PPO','TX','Submit corrected claims within 180 days'],
         ['Aetna','60054','PO Box 981106, El Paso, TX 79998','(888) 632-3862',
-         '(859) 455-8650','PO Box 14020, Lexington, KY 40512','https://www.aetna.com','PPO','']
+         '(859) 455-8650','PO Box 14020, Lexington, KY 40512','https://www.aetna.com','PPO',
+         'TX, OK, NM',''],
+        ['Stedi Test Payer','STEDITEST','','','','','','Commercial','ALL',
+         'Not state-restricted — shows for every state']
       ]
     },
     master: {

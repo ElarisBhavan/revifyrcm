@@ -58,9 +58,20 @@
   background:var(--paper-2);font-size:10.6px;color:var(--muted)}
 .usedby svg{width:11px;height:11px;stroke:var(--green-d);fill:none;stroke-width:2.4}
 
+/* a multi-select listbox, not a dropdown — the shared .f select rule adds a
+   dropdown chevron and right-padding that only make sense for a one-line
+   select, so undo those here */
+#p_states{appearance:auto;background-image:none;padding:6px;height:auto}
+#p_states option{padding:5px 7px;border-radius:5px}
+.stpills{display:flex;gap:4px;flex-wrap:wrap;max-width:220px}
+.stpill{display:inline-flex;padding:2px 7px;border-radius:6px;background:var(--paper-2);
+  font-family:var(--mono);font-size:9.6px;font-weight:700;color:var(--muted)}
+.stpill.all{background:var(--green-s);color:var(--green-d)}
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="../_guard.js"></script>
+<script src="../_config.js"></script>
 <script src="../_store.js"></script>
 <script src="../_session.js"></script>
 <script src="../_import.js"></script>
@@ -118,7 +129,7 @@
     <div class="tblwrap">
       <table class="tbl">
         <thead><tr>
-          <th style="width:24%">Payer</th><th>Payer ID</th><th>Plan type</th>
+          <th style="width:22%">Payer</th><th>Payer ID</th><th>Plan type</th><th style="width:15%">State(s)</th>
           <th>Contact</th><th>Fax</th><th>Website</th><th class="r" style="width:76px"></th>
         </tr></thead>
         <tbody id="rows"></tbody>
@@ -152,6 +163,16 @@
           <option>Tricare</option><option>CHAMPVA</option><option>Other</option>
         </select></label>
       <label class="f"><span>Website</span><input type="url" id="p_web" placeholder="https://www.bcbstx.com"></label>
+      <label class="f full">
+        <span>State(s)</span>
+        <select id="p_states" multiple size="6"></select>
+        <p style="font-size:11px;color:var(--dim);margin-top:5px;line-height:1.5">
+          Hold Ctrl (⌘ on Mac) to pick more than one — most payers operate in several states.
+          Choose <b>All states</b> on its own for a payer that isn't state-restricted; picking it
+          clears any specific states you'd also selected. Leaving this blank also shows the payer
+          everywhere, the same as before this field existed.
+        </p>
+      </label>
     </div>
 
     <div class="subhead">Contact</div>
@@ -226,6 +247,41 @@
   document.addEventListener('click',function(e){if(e.target.closest('[data-close]'))closeM();});
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeM();});
 
+  /* the state picker's options never change while the page is open, so
+     build it once — 'All states' first and set apart, since picking it
+     means "not restricted" rather than "restricted to one more state" */
+  $('p_states').innerHTML='<option value="ALL">★ All states</option>'+
+    RFCodes.US_STATES.map(function(s){
+      return '<option value="'+s.code+'">'+s.code+' — '+esc(s.name)+'</option>';
+    }).join('');
+  /* choosing "All states" makes any specific state redundant, and vice
+     versa — keep the selection meaningful instead of letting both sit
+     selected at once */
+  $('p_states').addEventListener('change',function(){
+    var opts=Array.prototype.slice.call(this.options);
+    var allOpt=opts[0]; // 'ALL' is always first
+    if(allOpt.selected){
+      opts.forEach(function(o){ if(o!==allOpt)o.selected=false; });
+    }
+  });
+  function statesOf(sel){
+    return Array.prototype.slice.call(sel.options)
+      .filter(function(o){return o.selected;}).map(function(o){return o.value;});
+  }
+  function setStates(sel,list){
+    var set={}; (list||[]).forEach(function(v){set[v]=true;});
+    Array.prototype.slice.call(sel.options).forEach(function(o){o.selected=!!set[o.value];});
+  }
+  function statePills(states){
+    if(!states||!states.length)
+      return '<span style="color:var(--dim);font-size:11px">Any (not set)</span>';
+    if(states.indexOf('ALL')>-1)
+      return '<span class="stpill all">ALL STATES</span>';
+    return '<span class="stpills">'+states.map(function(s){
+      return '<span class="stpill">'+esc(s)+'</span>';
+    }).join('')+'</span>';
+  }
+
   (async function(){
     await RFStore.ready();
     var s=(window.RFSession?RFSession.require(['admin']):RFStore.getSession());
@@ -260,6 +316,7 @@
           '<span><b>'+esc(p.name)+'</b><small>'+esc(p.mailing_address||'No claims address')+'</small></span></div></td>'+
         '<td class="mono">'+(p.payer_id?esc(p.payer_id):'<span style="color:var(--dim)">—</span>')+'</td>'+
         '<td>'+(p.plan_type?'<span class="pill info">'+esc(p.plan_type)+'</span>':'<span style="color:var(--dim)">—</span>')+'</td>'+
+        '<td>'+statePills(p.states)+'</td>'+
         '<td class="mono">'+esc(p.phone||'—')+'</td>'+
         '<td class="mono">'+esc(p.fax||'—')+'</td>'+
         '<td>'+(p.website?'<a href="'+esc(p.website)+'" target="_blank" rel="noopener" style="color:var(--blue)">Open</a>'
@@ -278,6 +335,7 @@
     ['p_name','p_id','p_web','p_phone','p_fax','p_addr','p_appeal','p_notes']
       .forEach(function(i){$(i).value='';});
     $('p_type').value='';
+    setStates($('p_states'),[]);
   }
   /* Stedi's test payer, so a full submission can be rehearsed safely */
   $('addTest')&&$('addTest').addEventListener('click',async function(){
@@ -306,6 +364,7 @@
       $('p_phone').value=p.phone||'';$('p_fax').value=p.fax||'';
       $('p_addr').value=p.mailing_address||'';$('p_appeal').value=p.appeal_address||'';
       $('p_notes').value=p.notes||'';
+      setStates($('p_states'),p.states);
       openM('mPay');return;
     }
     if(dl){
@@ -328,7 +387,8 @@
       phone:$('p_phone').value.trim(), fax:$('p_fax').value.trim(),
       mailing_address:$('p_addr').value.trim(),
       appeal_address:$('p_appeal').value.trim(),
-      notes:$('p_notes').value.trim()
+      notes:$('p_notes').value.trim(),
+      states:statesOf($('p_states'))
     };
     if(!EDIT)delete rec.id;
     this.disabled=true;
@@ -369,10 +429,12 @@
     }
     IMP=res.rows;
     $('impName').textContent=file.name;$('impDrop').classList.add('has');
-    $('impTbl').innerHTML='<thead><tr><th>Row</th><th>Payer</th><th>Payer ID</th><th>Phone</th></tr></thead><tbody>'+
+    $('impTbl').innerHTML='<thead><tr><th>Row</th><th>Payer</th><th>Payer ID</th><th>State(s)</th><th>Phone</th></tr></thead><tbody>'+
       IMP.slice(0,5).map(function(r){
         return '<tr><td>'+r._row+'</td><td>'+esc(r.name)+'</td>'+
-          '<td>'+esc(r.payer_id||'—')+'</td><td>'+esc(r.phone||'—')+'</td></tr>';
+          '<td>'+esc(r.payer_id||'—')+'</td>'+
+          '<td>'+esc((r.states&&r.states.length)?r.states.join(', '):'—')+'</td>'+
+          '<td>'+esc(r.phone||'—')+'</td></tr>';
       }).join('')+'</tbody>';
     $('impNote').textContent=(IMP.length>5?'Showing 5 of '+IMP.length+' rows':IMP.length+' rows')+
       ' · '+res.matched+' columns matched';

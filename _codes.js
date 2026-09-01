@@ -13,6 +13,28 @@ window.RFCodes = {
     {code:'21',desc:'Inpatient hospital'},{code:'23',desc:'Emergency room'},
     {code:'81',desc:'Independent laboratory'},{code:'99',desc:'Other place of service'}
   ],
+  /* the 50 states + DC — shared by the payer editor's state picker
+     (Admin/payers.html) and the eligibility form's state filter
+     (Provider/eligibility.html), so the two never drift apart */
+  US_STATES: [
+    {code:'AL',name:'Alabama'},{code:'AK',name:'Alaska'},{code:'AZ',name:'Arizona'},
+    {code:'AR',name:'Arkansas'},{code:'CA',name:'California'},{code:'CO',name:'Colorado'},
+    {code:'CT',name:'Connecticut'},{code:'DE',name:'Delaware'},{code:'DC',name:'District of Columbia'},
+    {code:'FL',name:'Florida'},{code:'GA',name:'Georgia'},{code:'HI',name:'Hawaii'},
+    {code:'ID',name:'Idaho'},{code:'IL',name:'Illinois'},{code:'IN',name:'Indiana'},
+    {code:'IA',name:'Iowa'},{code:'KS',name:'Kansas'},{code:'KY',name:'Kentucky'},
+    {code:'LA',name:'Louisiana'},{code:'ME',name:'Maine'},{code:'MD',name:'Maryland'},
+    {code:'MA',name:'Massachusetts'},{code:'MI',name:'Michigan'},{code:'MN',name:'Minnesota'},
+    {code:'MS',name:'Mississippi'},{code:'MO',name:'Missouri'},{code:'MT',name:'Montana'},
+    {code:'NE',name:'Nebraska'},{code:'NV',name:'Nevada'},{code:'NH',name:'New Hampshire'},
+    {code:'NJ',name:'New Jersey'},{code:'NM',name:'New Mexico'},{code:'NY',name:'New York'},
+    {code:'NC',name:'North Carolina'},{code:'ND',name:'North Dakota'},{code:'OH',name:'Ohio'},
+    {code:'OK',name:'Oklahoma'},{code:'OR',name:'Oregon'},{code:'PA',name:'Pennsylvania'},
+    {code:'RI',name:'Rhode Island'},{code:'SC',name:'South Carolina'},{code:'SD',name:'South Dakota'},
+    {code:'TN',name:'Tennessee'},{code:'TX',name:'Texas'},{code:'UT',name:'Utah'},
+    {code:'VT',name:'Vermont'},{code:'VA',name:'Virginia'},{code:'WA',name:'Washington'},
+    {code:'WV',name:'West Virginia'},{code:'WI',name:'Wisconsin'},{code:'WY',name:'Wyoming'}
+  ],
   findCpt: function(q){
     q=String(q||'').toLowerCase().trim(); if(!q)return this.cpt.slice(0,12);
     return this.cpt.filter(function(c){
@@ -166,6 +188,28 @@ window.RFCodes = {
   /* "60054 — Aetna" for the eligibility dropdown */
   C.payerLabel = function(p){
     return (p.payer_id ? p.payer_id + ' — ' : '') + (p.name||'');
+  };
+
+  /* state name for a two-letter code, e.g. 'TX' -> 'Texas' */
+  C.stateName = function(code){
+    var s = C.US_STATES.filter(function(x){ return x.code === String(code||'').toUpperCase(); })[0];
+    return s ? s.name : String(code||'');
+  };
+
+  /* Which payers are licensed to sell/administer plans in a given state.
+     A payer with no states set at all has never been tagged one way or
+     the other — treating that as "every state" (rather than hiding it the
+     moment anyone filters) is what keeps every payer entered before this
+     feature existed visible exactly as before. 'ALL' is the explicit,
+     deliberate version of the same thing, set from the payer editor. */
+  C.payersForState = function(state){
+    var list = C.payers();
+    if(!state) return list;
+    return list.filter(function(p){
+      var st = p.states;
+      if(!st || !st.length) return true;
+      return st.indexOf('ALL') > -1 || st.indexOf(state) > -1;
+    });
   };
 
   /* fill any <select data-rf-codes="pos|servicetype|payer"> on the page */
