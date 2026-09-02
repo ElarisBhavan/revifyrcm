@@ -1286,12 +1286,19 @@ select:disabled{opacity:.6;cursor:not-allowed}
     try{
       sessionStorage.setItem('rf_last_271',JSON.stringify(data));
       sessionStorage.setItem('rf_last_svctype',svctype);
+      sessionStorage.setItem('rf_last_category',stcOf());
     }catch(e){}
     pushHist(name||'Member', document.getElementById('dob').value, data,
       {status:(status&&status.status)||(errs&&errs.length?'Rejected':'Returned'),
        payer:document.getElementById('payer').value,
        dos:document.getElementById('dos').value,
        svctype:svctype,
+       /* the service type you actually picked on this form — Stedi's own
+          271 rarely echoes back an "encounter" block with the code you
+          requested, so the result page can't always tell afterwards which
+          service the Cost summary should be scoped to unless we save it
+          ourselves here, the same way svctype already is above */
+       category:stcOf(),
        ms:ms}).then(function(id){
       var link=document.getElementById('rwho');
       if(link&&id)link.setAttribute('href','eligibility-result.html?e='+encodeURIComponent(id));
