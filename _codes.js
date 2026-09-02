@@ -174,6 +174,145 @@ window.RFCodes = {
     return s ? s.desc : '';
   };
 
+  /* ── Service Type Category (STC) names and grouping ──
+     Shared by the eligibility check page (the instant Copay/Coinsurance
+     read right after you submit) and the full eligibility result page (the
+     Cost summary), so the two never disagree with each other about what a
+     benefit line means or which lines count as "this service". */
+
+  /* Stedi's own Service Type Category table, in full — every code a payer
+     might send back gets a real name instead of "Service type XX". */
+  C.STC_NAMES = {
+    '1':'Medical care','2':'Surgical','3':'Consultation','4':'Diagnostic X-ray',
+    '5':'Diagnostic lab','6':'Radiation therapy','7':'Anesthesia','8':'Surgical assistance',
+    '9':'Other medical','10':'Blood charges','11':'Used durable medical equipment',
+    '12':'Durable medical equipment purchase','13':'Ambulatory service center facility',
+    '14':'Renal supplies in the home','15':'Alternate method dialysis',
+    '16':'Chronic renal disease (CRD) equipment','17':'Pre-admission testing',
+    '18':'Durable medical equipment rental','19':'Pneumonia vaccine',
+    '20':'Second surgical opinion','21':'Third surgical opinion','22':'Social work',
+    '23':'Diagnostic dental','24':'Periodontics','25':'Restorative','26':'Endodontics',
+    '27':'Maxillofacial prosthetics','28':'Adjunctive dental services',
+    '30':'Health benefit plan coverage','32':'Plan waiting period','33':'Chiropractic',
+    '34':'Chiropractic office visits','35':'Dental care','36':'Dental crowns',
+    '37':'Dental accident','38':'Orthodontics','39':'Prosthodontics','40':'Oral surgery',
+    '41':'Routine (preventive) dental','42':'Home health care','43':'Home health prescriptions',
+    '44':'Home health visits','45':'Hospice','46':'Respite care','47':'Hospital',
+    '48':'Hospital inpatient','49':'Hospital room and board','50':'Hospital outpatient',
+    '51':'Hospital emergency accident','52':'Hospital emergency medical',
+    '53':'Hospital ambulatory surgical','54':'Long term care','55':'Major medical',
+    '56':'Medically related transportation','57':'Air transportation','58':'Cabulance',
+    '59':'Licensed ambulance','60':'General benefits','61':'In-vitro fertilization',
+    '62':'MRI / CAT scan','63':'Donor procedures','64':'Acupuncture','65':'Newborn care',
+    '66':'Pathology','67':'Smoking cessation','68':'Well baby care','69':'Maternity',
+    '70':'Transplants','71':'Audiology exam','72':'Inhalation therapy',
+    '73':'Diagnostic medical','74':'Private duty nursing','75':'Prosthetic device',
+    '76':'Dialysis','77':'Otological exam','78':'Chemotherapy','79':'Allergy testing',
+    '80':'Immunizations','81':'Routine physical','82':'Family planning','83':'Infertility',
+    '84':'Abortion','85':'AIDS','86':'Emergency services','87':'Cancer','88':'Pharmacy',
+    '89':'Free standing prescription drug','90':'Mail order prescription drug',
+    '91':'Brand name prescription drug','92':'Generic prescription drug','93':'Podiatry',
+    '94':'Podiatry office visits','95':'Podiatry nursing home visits',
+    '96':'Professional (physician)','97':'Anesthesiologist',
+    '98':'Professional visit, office','99':'Professional visit, inpatient',
+    'A0':'Professional visit, outpatient','A1':'Professional visit, nursing home',
+    'A2':'Professional visit, skilled nursing facility','A3':'Professional visit, home',
+    'A4':'Psychiatric','A5':'Psychiatric room and board','A6':'Psychotherapy',
+    'A7':'Psychiatric inpatient','A8':'Psychiatric outpatient','A9':'Rehabilitation',
+    'AA':'Rehabilitation room and board','AB':'Rehabilitation inpatient',
+    'AC':'Rehabilitation outpatient','AD':'Occupational therapy','AE':'Physical medicine',
+    'AF':'Speech therapy','AG':'Skilled nursing care','AH':'Skilled nursing room and board',
+    'AI':'Substance abuse','AJ':'Alcoholism','AK':'Drug addiction','AL':'Vision',
+    'AM':'Frames','AN':'Routine vision exam','AO':'Lenses','AQ':'Nonmedically necessary physical',
+    'AR':'Experimental drug therapy','B1':'Burn care',
+    'B2':'Brand name prescription drug, formulary','B3':'Brand name prescription drug, non-formulary',
+    'BA':'Independent medical evaluation','BB':'Partial hospitalization (psychiatric)',
+    'BC':'Day care (psychiatric)','BD':'Cognitive therapy','BE':'Massage therapy',
+    'BF':'Pulmonary rehabilitation','BG':'Cardiac rehabilitation','BH':'Pediatric',
+    'BI':'Nursery','BJ':'Skin','BK':'Orthopedic','BL':'Cardiac','BM':'Lymphatic',
+    'BN':'Gastrointestinal','BP':'Endocrine','BQ':'Neurology','BR':'Eye',
+    'BS':'Invasive procedures','BT':'Gynecological','BU':'Obstetrical',
+    'BV':'Obstetrical / gynecological','BW':'Mail order prescription drug, brand name',
+    'BX':'Mail order prescription drug, generic','BY':'Physician visit, office: sick',
+    'BZ':'Physician visit, office: well','C1':'Coronary care',
+    'CA':'Private duty nursing, inpatient','CB':'Private duty nursing, home',
+    'CC':'Surgical benefits, professional','CD':'Surgical benefits, facility',
+    'CE':'Mental health provider, inpatient','CF':'Mental health provider, outpatient',
+    'CG':'Mental health facility, inpatient','CH':'Mental health facility, outpatient',
+    'CI':'Substance abuse facility, inpatient','CJ':'Substance abuse facility, outpatient',
+    'CK':'Screening x-ray','CL':'Screening laboratory','CM':'Mammogram, high risk patient',
+    'CN':'Mammogram, low risk patient','CO':'Flu vaccination',
+    'CP':'Eyewear and eyewear accessories','CQ':'Case management','DG':'Dermatology',
+    'DM':'Durable medical equipment','DS':'Diabetic supplies',
+    'GF':'Generic prescription drug, formulary','GN':'Generic prescription drug, non-formulary',
+    'GY':'Allergy','IC':'Intensive care','MH':'Mental health','NI':'Neonatal intensive care',
+    'ON':'Oncology','PT':'Physical therapy','PU':'Pulmonary','RN':'Renal',
+    'RT':'Residential psychiatric treatment','TC':'Transitional care',
+    'TN':'Transitional nursery care','UC':'Urgent care'
+  };
+
+  /* Which STCs to treat as the same clinical service when matching a
+     returned benefit line against the one STC actually requested. Built
+     straight from Stedi's own "type of care -> STCs to try" guide: payers
+     routinely attach a benefit (a copay, in particular) to a neighbouring
+     code from that same recommended group rather than the exact one you
+     asked about — checking Mental Health as MH alone and getting no copay,
+     then checking again as 98 (Professional visit, office) and finding it,
+     is that guide's own documented behaviour, not a data error.
+     `keys` — the STCs for which this group is the authoritative family
+     (i.e. what to use when THIS is the one code actually requested).
+     `accept` — every STC a returned benefit line may carry and still count
+     as this same service. A generic, cross-discipline code like 98 or 96
+     is deliberately never a `key` anywhere except its own Office visit
+     group — it may be *accepted* inside several groups (a copay can land
+     there instead of the specific code), but requesting 98 or 96 directly
+     gets the Office visit family, never Mental health's wider net, just
+     because 98 happens to be one of the codes Mental health will accept. */
+  var STC_GROUPS=[
+    { keys:['MH','A4','BD','CF','A6','A8','AI','AJ','AK'],
+      accept:['MH','96','98','A4','BD','CF','A6','A8','AI','AJ','AK'] },
+    { keys:['98','96','BY','BZ'], accept:['98','96','1','BY','BZ'] },
+    { keys:['47','48','50','51','52'], accept:['47','48','50','51','52'] },
+    { keys:['AL','AM','AN','AO'], accept:['AL','AM','AN','AO'] },
+    { keys:['ON','78','87','91'], accept:['ON','78','87','91'] },
+    { keys:['PT','AE'], accept:['PT','AE'] },
+    { keys:['AD'], accept:['AD','98'] },
+    { keys:['AF'], accept:['AF','98'] },
+    { keys:['A9','AA','AB','AC'], accept:['A9','AA','AB','AC'] },
+    { keys:['93'], accept:['93','98'] },
+    { keys:['3'], accept:['3','98'] },
+    { keys:['9'], accept:['9','98'] },
+    { keys:['AG','AH'], accept:['AG','AH'] },
+    { keys:['65','BI'], accept:['65','BI'] },
+    { keys:['BT','BU','BV','69'], accept:['BT','BU','BV','69'] },
+    { keys:['DM','11','12','18'], accept:['DM','11','12','18'] }
+  ];
+  var STC_FAMILY=(function(){
+    var fam={ '30':null };   /* the whole plan — do not narrow */
+    STC_GROUPS.forEach(function(g){
+      g.keys.forEach(function(code){
+        if(!(code in fam)) fam[code]=g.accept;
+      });
+    });
+    return fam;
+  })();
+  C.stcName = function(code){ return C.STC_NAMES[code]||null; };
+  /* the family (array) a requested STC should also accept, or null for
+     '30' (the whole plan — never narrowed), or undefined for a code with
+     no defined grouping (caller should then fall back to [code] itself) */
+  C.stcFamily = function(code){ return STC_FAMILY[code]; };
+  /* does this benefit line's serviceTypeCodes count as a match for the
+     STC actually requested? */
+  C.stcMatches = function(benefitCodes, stc){
+    if(!stc||stc==='30')return true;
+    var codes=benefitCodes||[];
+    if(!codes.length)return false;
+    var fam=C.stcFamily(stc);
+    if(fam===null)return true;
+    fam=fam||[stc];
+    return codes.some(function(c){return fam.indexOf(c)>-1;});
+  };
+
   /* payers, for every picker that needs one */
   C.payers = function(){ return C._admin.payers || []; };
   C.findPayers = function(q){
