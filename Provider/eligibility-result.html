@@ -454,11 +454,6 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   color:var(--muted);transition:all .24s var(--ease)}
 .lvlseg button:hover{color:var(--ink)}
 .lvlseg button.on{background:var(--accent-deep);color:#F2FBF7}
-.stcswitch{margin-left:8px;padding:5px 9px;border-radius:8px;border:1px solid var(--line);
-  background:#fff;font-family:inherit;font-size:10.6px;font-weight:600;color:var(--ink);
-  max-width:230px;cursor:pointer}
-.stcswitch:hover{border-color:var(--accent)}
-@media print{.stcswitch{display:none}}
 .scell dt em.famtag{font-style:normal;font-family:var(--mono);font-size:7.6px;letter-spacing:.06em;
   padding:1px 5px;border-radius:4px;background:var(--amber-soft);color:var(--amber);
   margin-left:5px;text-transform:none}
@@ -653,10 +648,6 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
      271 usually doesn't echo the requested code back in "encounter" for
      this to read directly. See requestedStc() below. */
   var REQUESTED_STC=null;
-  /* explicit override once someone uses the service type switcher in the
-     Cost summary header — undefined means "nothing picked yet, use
-     REQUESTED_STC"; '' means "All service types" was picked on purpose. */
-  var STC_OVERRIDE;
   /* the place of service actually requested on the check form (e.g. "11"
      for Office) — same idea as REQUESTED_STC, and used to prefer the
      benefit line for that setting when a payer reports different copay or
@@ -742,6 +733,19 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     return (b.serviceTypeCodes||[]).map(function(c,i){
       return (b.serviceTypes&&b.serviceTypes[i])||c;
     });
+  }
+
+  /* a benefit line's own description — its "name", or failing that the
+     service types it lists — normalized for comparison. Some payers file
+     two genuinely different clinical services (a plain office visit vs.
+     "Psychological Testing", say) under the identical service type code,
+     place of service, network and coverage level, distinguishable only by
+     this text. Used to keep the Cost summary's "also" line to real
+     place-of-service variance of the SAME service, instead of a second,
+     unrelated procedure that happens to tie on every structured field. */
+  function svcDescKeyOf(b){
+    var raw=b.name||(b.serviceTypes&&b.serviceTypes.length?b.serviceTypes.join(' '):'')||'';
+    return String(raw).trim().toLowerCase();
   }
 
   /* common CMS place-of-service codes, used only when the payer sends the
@@ -1278,7 +1282,6 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   var STC_NAMES=RFCodes.STC_NAMES;
 
   function requestedStc(N){
-    if(STC_OVERRIDE!==undefined)return STC_OVERRIDE||null;   /* the switcher below was used */
     var e=N.raw.encounter||{};
     var c=(e.serviceTypeCodes&&e.serviceTypeCodes[0])||e.serviceTypeCode||null;
     return c||REQUESTED_STC||null;
@@ -1377,10 +1380,16 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
          breakdown. Labelled by place of service first — that's what
          actually distinguishes two otherwise-identical-looking amounts —
          skipping one that's just a restatement of the number already shown
-         as the main figure. */
+         as the main figure — and, separately, never a different clinical
+         service (e.g. Psychological Testing alongside a plain office
+         visit) that only ties because it shares the same STC/POS/network/
+         level; svcDescKeyOf requires it to actually be the same named
+         benefit before it can appear as an "also". */
       var bestSpec=RFCodes.stcSpecificity(best.serviceTypeCodes,stc);
+      var bestDesc=svcDescKeyOf(best);
       var extra=opts.noExtra?'':list.slice(1,4).filter(function(b){
-        return RFCodes.stcSpecificity(b.serviceTypeCodes,stc)===bestSpec;
+        return RFCodes.stcSpecificity(b.serviceTypeCodes,stc)===bestSpec &&
+          (!bestDesc||svcDescKeyOf(b)===bestDesc);
       }).map(function(b){
         var a=amountOf(b);
         if(!a||(a===amt&&posOf(b)===pos))return '';
@@ -1423,13 +1432,9 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     var preferRemaining=preferIndividual;
 
     /* the same service-type vocabulary the check form itself offers
-       (Admin → Master data → Service type) — matching it here is what
-       keeps "what you can switch to" mapped onto "what you can search by",
-       rather than a raw dump of every individual code the payer's response
-       happens to mention (this payer, for one, reports Anesthesia, Home
-       Health, Skilled Nursing and two Professional-visit codes all bundled
-       into a single line — as nine separate switcher entries that would
-       be nine copies of the same figure and no real choice at all) */
+       (Admin → Master data → Service type) — used below just to label the
+       Cost summary with the practice's own configured name for the
+       service type that was actually searched, when there is one. */
     var adminTypes=(RFCodes.serviceTypes()||[]).filter(function(x){return x.code&&String(x.code)!=='30';});
     var adminHit=adminTypes.filter(function(x){return String(x.code).toUpperCase()===String(stc||'').toUpperCase();})[0];
 
@@ -1451,31 +1456,9 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       return /family|employee and/i.test(String(levelOf(b)||''))&&
              (net==='all'||!netOf(b)||netOf(b)===net)&&matchesType(b); });
 
-    /* only offer a service type as a switcher option when this response
-       actually carries cost data (copay, coinsurance, deductible or out of
-       pocket) for it — lets you switch what the Cost summary is scoped to
-       right here, without running a new check, even when you originally
-       searched under just one of them (e.g. MH) */
-    var stcOptions=adminTypes.filter(function(x){
-      return N.benefits.some(function(b){
-        return ['A','B','C','G'].indexOf(b.code)>-1 && stcMatches(b,x.code);
-      });
-    }).map(function(x){ return {code:String(x.code).toUpperCase(),desc:x.desc}; })
-      .sort(function(a,b){ return (a.desc||a.code).localeCompare(b.desc||b.code); });
-    var stcSwitcher=stcOptions.length?(
-      '<select class="stcswitch" id="stcSwitch" title="Switch which service type the Cost summary shows">'+
-        '<option value=""'+(!stc||stc==='30'?' selected':'')+'>All service types</option>'+
-        stcOptions.map(function(x){
-          return '<option value="'+esc(x.code)+'"'+(x.code===String(stc||'').toUpperCase()?' selected':'')+'>'+
-            esc(x.desc||('Service type '+x.code))+' ('+esc(x.code)+')</option>';
-        }).join('')+
-      '</select>'
-    ):'';
-
     return '<div class="sumhead"><b>'+esc(label)+'</b>'+
         (stc?'<span class="stcchip">'+esc(stc)+'</span>':'')+
         (REQUESTED_CPT?'<span class="stcchip" title="CPT code entered on the check form">CPT '+esc(REQUESTED_CPT)+'</span>':'')+
-        stcSwitcher+
         (hasFamily?'<span class="lvlseg" id="lvlSeg">'+
           '<button data-l="individual"'+(LEVEL==='individual'?' class="on"':'')+'>Individual</button>'+
           '<button data-l="family"'+(LEVEL==='family'?' class="on"':'')+'>Family</button>'+
@@ -1661,19 +1644,6 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       var net=(document.querySelector('#netfilter button.on')||{dataset:{n:'In network'}}).dataset.n;
       var sb=$('sumBox');
       if(sb)sb.innerHTML=summaryHTML(N,net);
-    });
-
-    /* switch which service type the Cost summary is scoped to, without
-       running a new check */
-    document.addEventListener('change',function(e){
-      var sel=e.target.closest('#stcSwitch');
-      if(!sel)return;
-      STC_OVERRIDE=sel.value;
-      var net=(document.querySelector('#netfilter button.on')||{dataset:{n:'In network'}}).dataset.n;
-      var sb=$('sumBox');
-      if(sb)sb.innerHTML=summaryHTML(N,net);
-      var ac=$('accs');
-      if(ac)ac.innerHTML=accHTML(acc,net,requestedStc(N));
     });
 
     var acc=N.benefits.filter(function(b){return ['C','G'].indexOf(b.code)>-1;});
