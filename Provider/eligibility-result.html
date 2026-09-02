@@ -1457,7 +1457,6 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
              (net==='all'||!netOf(b)||netOf(b)===net)&&matchesType(b); });
 
     return '<div class="sumhead"><b>'+esc(label)+'</b>'+
-        (stc?'<span class="stcchip">'+esc(stc)+'</span>':'')+
         (REQUESTED_CPT?'<span class="stcchip" title="CPT code entered on the check form">CPT '+esc(REQUESTED_CPT)+'</span>':'')+
         (hasFamily?'<span class="lvlseg" id="lvlSeg">'+
           '<button data-l="individual"'+(LEVEL==='individual'?' class="on"':'')+'>Individual</button>'+
@@ -1465,10 +1464,17 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         '</span>':'')+
         '<span>'+esc(SVCTYPE)+' · '+(net==='all'?'All networks':esc(net))+' · '+scopedCount+' line'+
         (scopedCount===1?'':'s')+'</span></div>'+
+      /* just the four numbers, no "also" breakdown underneath any of them —
+         a payer's raw benefit lines carry enough incidental variance (an
+         identical figure restated for another place of service, a
+         different clinical service that happens to tie on every field a
+         sub-list could key off of) that showing more than the one, best-
+         matched figure per box reads as noise or outright contradiction
+         rather than a useful breakdown. */
       '<div class="sumgrid">'+
-        cell('Copay','B')+
+        cell('Copay','B',{noExtra:true})+
         cell('Deductible','C',{prefer:preferRemaining,noExtra:true})+
-        cell('Coinsurance','A')+
+        cell('Coinsurance','A',{noExtra:true})+
         cell('Out of pocket','G',{prefer:preferRemaining,noExtra:true})+
       '</div>';
   }
