@@ -322,15 +322,26 @@ window.RFCodes = {
      requested STC's accept list. Both are real, payer-reported numbers —
      this just decides which one actually describes the service being asked
      about.
-       When a specific service was requested, the narrowest (smallest
-     serviceTypeCodes) line is the best description of it. When nothing
-     specific was requested ('30'/"All service types"), it's the reverse —
-     the broadest line is the one plan-wide figure that makes sense to show,
-     and a narrow per-service line would be a misleadingly specific stand-in
-     for "the whole plan". */
+       A line that literally carries the STC actually requested always beats
+     one that only qualifies through the wider accept list — e.g. 98 (Office
+     visit) and 96 (Specialist) are grouped together because a payer's copay
+     for one can legitimately land under the other, but when a payer reports
+     BOTH separately (a real, seen-in-production case: 96 tagged "SPECIALIST"
+     at $75, 98 untagged at $35), asking for 98 must not come back with 96's
+     figure just because the two tied on array length. Without this, which
+     one won was pure array order — correct by luck as often as not.
+       Among lines that are equally exact (or equally inexact), when a
+     specific service was requested, the narrowest (smallest serviceTypeCodes)
+     line is the best description of it. When nothing specific was requested
+     ('30'/"All service types"), it's the reverse — the broadest line is the
+     one plan-wide figure that makes sense to show, and a narrow per-service
+     line would be a misleadingly specific stand-in for "the whole plan". */
   C.stcSpecificity = function(benefitCodes, stc){
-    var n=(benefitCodes||[]).length||999;
-    return (!stc||stc==='30') ? -n : n;
+    var codes=benefitCodes||[];
+    var n=codes.length||999;
+    if(!stc||stc==='30')return -n;
+    var exact=codes.indexOf(stc)>-1;
+    return (exact?0:1000)+n;
   };
 
   /* payers, for every picker that needs one */
