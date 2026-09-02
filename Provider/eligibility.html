@@ -574,6 +574,13 @@ select:disabled{opacity:.6;cursor:not-allowed}
           </div>
           <p class="err" id="e-category">Select a category.</p>
         </label>
+
+        <label class="f c6">
+          <span>CPT code</span>
+          <div class="ctrl"><input type="text" id="cpt" maxlength="5" placeholder="99213"></div>
+          <p class="hint" id="cptHint">Optional — narrows the response to one procedure.
+            Not every payer supports this; if the check fails, clear it and try again.</p>
+        </label>
       </div>
     </section>
 
@@ -1211,6 +1218,12 @@ select:disabled{opacity:.6;cursor:not-allowed}
     };
     var tax=document.getElementById('taxid').value.trim();
     if(tax)req.provider.taxId=tax;
+    var cptEl=document.getElementById('cpt'), cpt=cptEl?cptEl.value.trim():'';
+    if(cpt){
+      req.encounter.procedureCode=cpt;
+      /* Stedi rejects a procedureCode without its qualifier — HC is HCPCS/CPT */
+      req.encounter.productOrServiceIDQualifier='HC';
+    }
     var rel=document.getElementById('relationship').value;
     if(rel&&rel!=='Self'){
       req.dependents=[{
@@ -1234,12 +1247,40 @@ select:disabled{opacity:.6;cursor:not-allowed}
      read and that page never disagree. Falls back to a plan-wide line
      (code 30, or no service type at all) when nothing scoped to the
      requested service exists, same two-step search eligibility-result.html
-     uses. */
-  function pickBenefit(list,code,stc){
+     uses.
+       Some payers report more than one line that qualifies for the same
+     STC — a combined line covering several unrelated services at once, or
+     a plan-wide line that only matches through a shared code — alongside
+     the one actually reported just for this service. RFCodes.stcSpecificity
+     (same ranking the full result page uses) breaks that tie so the exact,
+     narrowly-reported line wins over the broader one.
+       wantRemaining, when true, further limits the candidates to lines
+     tagged as a running balance ("Remaining") rather than the flat period
+     limit — scoped the same way, so a Mental health search doesn't pick up
+     an unrelated service's remaining balance just because it happened to
+     be first in the response.
+       This quick panel never asked for a network — same as the full
+     result page, in-network is what it reports by default, so an
+     out-of-network line for the same service doesn't win just because a
+     payer happened to list it first. A line that doesn't state a network
+     at all still counts (it applies either way). */
+  function pickBenefit(list,code,stc,wantRemaining){
     var scoped=(list||[]).filter(function(b){
-      return b.code===code && RFCodes.stcMatches(b.serviceTypeCodes,stc);
+      return b.code===code && RFCodes.stcMatches(b.serviceTypeCodes,stc) &&
+        (!wantRemaining || /remain/i.test(b.timeQualifier||''));
     });
-    if(scoped.length)return scoped[0];
+    if(scoped.length){
+      var inNet=scoped.filter(function(b){
+        var n=b.inPlanNetworkIndicator||b.inPlanNetworkIndicatorCode||'';
+        return !n||/^y/i.test(n);
+      });
+      var pool=inNet.length?inNet:scoped;
+      pool.sort(function(a,b){
+        return RFCodes.stcSpecificity(a.serviceTypeCodes,stc)-RFCodes.stcSpecificity(b.serviceTypeCodes,stc);
+      });
+      return pool[0];
+    }
+    if(wantRemaining)return null;
     if(!stc||stc==='30')return null;
     return (list||[]).filter(function(b){
       return b.code===code && (!b.serviceTypeCodes||!b.serviceTypeCodes.length||
@@ -1282,11 +1323,11 @@ select:disabled{opacity:.6;cursor:not-allowed}
       pill.className='pill'+(active?'':' warn');
       pill.innerHTML='<i></i>'+((status&&status.status)||'Coverage returned');
       var ded=pickBenefit(bens,'C',stcOf()),
-          dedRem=(bens||[]).filter(function(b){return b.code==='C'&&/remain/i.test(b.timeQualifier||'');})[0],
+          dedRem=pickBenefit(bens,'C',stcOf(),true),
           copay=pickBenefit(bens,'B',stcOf()),
           coins=pickBenefit(bens,'A',stcOf()),
           oop=pickBenefit(bens,'G',stcOf()),
-          oopRem=(bens||[]).filter(function(b){return b.code==='G'&&/remain/i.test(b.timeQualifier||'');})[0];
+          oopRem=pickBenefit(bens,'G',stcOf(),true);
       grid.innerHTML=
         '<div><dt>COPAY</dt><dd>'+(amt(copay)||'—')+'</dd></div>'+
         '<div><dt>COINSURANCE</dt><dd>'+(amt(coins)||'—')+'</dd></div>'+
@@ -1297,11 +1338,13 @@ select:disabled{opacity:.6;cursor:not-allowed}
     }
 
     var svctype=(document.getElementById('svctype')&&document.getElementById('svctype').value)||'Outpatient';
+    var cptVal=(document.getElementById('cpt')&&document.getElementById('cpt').value.trim())||'';
     try{
       sessionStorage.setItem('rf_last_271',JSON.stringify(data));
       sessionStorage.setItem('rf_last_svctype',svctype);
       sessionStorage.setItem('rf_last_category',stcOf());
       sessionStorage.setItem('rf_last_pos',posOf());
+      sessionStorage.setItem('rf_last_cpt',cptVal);
     }catch(e){}
     pushHist(name||'Member', document.getElementById('dob').value, data,
       {status:(status&&status.status)||(errs&&errs.length?'Rejected':'Returned'),
@@ -1316,6 +1359,7 @@ select:disabled{opacity:.6;cursor:not-allowed}
           the same way svctype already is above */
        category:stcOf(),
        pos:posOf(),
+       cpt:cptVal,
        ms:ms}).then(function(id){
       var link=document.getElementById('rwho');
       if(link&&id)link.setAttribute('href','eligibility-result.html?e='+encodeURIComponent(id));
@@ -1396,7 +1440,7 @@ select:disabled{opacity:.6;cursor:not-allowed}
   /* ── CLEAR FORM — delegated so binding can never be missed ── */
   var FIELDS=['payer','state','facility','provider','claimtype','npi','taxid','searchby',
               'memberid','mfirst','mlast','suffix','dob','gender','relationship','sfirst','slast',
-              'dos','pos','category','svctype'];
+              'dos','pos','category','svctype','cpt'];
 
   function clearForm(){
     FIELDS.forEach(function(id){
