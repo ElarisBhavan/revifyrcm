@@ -1491,9 +1491,23 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
      the per-category label entirely, since it no longer adds information
      once that collapse has happened. */
   function accHTML(acc,net,stc){
-    var rows=acc.filter(function(b){
-      return (net==='all'||netOf(b)===net)&&matchesType(b)&&stcMatches(b,stc);
-    });
+    function inScope(b){ return (net==='all'||netOf(b)===net)&&matchesType(b); }
+    /* same two-tier fallback the Cost summary cells use (pickSet, above):
+       prefer a line actually scoped to the requested service; only when
+       the payer reported NOTHING under that service specifically, fall
+       back to the plan-wide figure. Deductible and out of pocket are
+       often sent with no serviceTypeCodes at all (a true plan-wide line,
+       not even tagged '30') — stcMatches alone treats that as "doesn't
+       match" for a specific service type, which used to make this
+       section say "Nothing reported" even while the Cost summary tile
+       above it, using the same plan-wide number via its own fallback,
+       showed a real figure. */
+    var rows=acc.filter(function(b){ return inScope(b)&&stcMatches(b,stc); });
+    if(!rows.length){
+      rows=acc.filter(function(b){
+        return inScope(b)&&(!(b.serviceTypeCodes||[]).length||(b.serviceTypeCodes||[]).indexOf('30')>-1);
+      });
+    }
     if(!rows.length)return '<p class="none" style="padding:20px">Nothing reported for this network, care setting and service type.</p>';
 
     var buckets={};
