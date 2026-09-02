@@ -13,6 +13,7 @@
 <script src="_prefs.js"></script>
 <script src="../_guard.js"></script>
 <script src="../_config.js"></script>
+<script src="../_codes.js"></script>
 <script src="../_store.js"></script>
 <script src="../_session.js"></script>
 <script src="../_notify.js"></script>
@@ -453,6 +454,11 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
   color:var(--muted);transition:all .24s var(--ease)}
 .lvlseg button:hover{color:var(--ink)}
 .lvlseg button.on{background:var(--accent-deep);color:#F2FBF7}
+.stcswitch{margin-left:8px;padding:5px 9px;border-radius:8px;border:1px solid var(--line);
+  background:#fff;font-family:inherit;font-size:10.6px;font-weight:600;color:var(--ink);
+  max-width:230px;cursor:pointer}
+.stcswitch:hover{border-color:var(--accent)}
+@media print{.stcswitch{display:none}}
 .scell dt em.famtag{font-style:normal;font-family:var(--mono);font-size:7.6px;letter-spacing:.06em;
   padding:1px 5px;border-radius:4px;background:var(--amber-soft);color:var(--amber);
   margin-left:5px;text-transform:none}
@@ -647,6 +653,16 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
      271 usually doesn't echo the requested code back in "encounter" for
      this to read directly. See requestedStc() below. */
   var REQUESTED_STC=null;
+  /* explicit override once someone uses the service type switcher in the
+     Cost summary header — undefined means "nothing picked yet, use
+     REQUESTED_STC"; '' means "All service types" was picked on purpose. */
+  var STC_OVERRIDE;
+  /* the place of service actually requested on the check form (e.g. "11"
+     for Office) — same idea as REQUESTED_STC, and used to prefer the
+     benefit line for that setting when a payer reports different copay or
+     coinsurance by place of service under one STC (very common for
+     office vs. telehealth vs. hospital-outpatient visits). */
+  var REQUESTED_POS=null;
 
   function esc(v){return String(v==null?'':v).replace(/[&<>"]/g,function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -763,6 +779,18 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       }
     }
     return '';
+  }
+
+  /* just the leading CMS code from posOf(b) ("11 — Office" -> "11"), for
+     comparing a benefit line against the place of service actually
+     requested (REQUESTED_POS). A line with several places of service
+     listed ("11 — Office, 02 — Telehealth…") never claims a single code
+     here — it's ambiguous which one it means, so it falls through to the
+     ordinary level/period preference instead of a false match. */
+  function posCodeOf(b){
+    var s=posOf(b);
+    if(!s||s.indexOf(',')>-1)return '';
+    return s.split('—')[0].trim();
   }
 
   /* Outpatient vs inpatient vs "applies either way" — the payer usually
@@ -1237,165 +1265,21 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
   /* Copay, deductible, coinsurance and out of pocket for the service type
      that was actually requested — MH returns mental health only.
-     The full code -> name list below is Stedi's own Service Type Category
-     table (from their eligibility STC guide), not just the handful this
-     practice happens to check most often, so any code a payer sends back
-     gets a real label instead of "Service type XX". */
-  var STC_NAMES={
-    '1':'Medical care','2':'Surgical','3':'Consultation','4':'Diagnostic X-ray',
-    '5':'Diagnostic lab','6':'Radiation therapy','7':'Anesthesia','8':'Surgical assistance',
-    '9':'Other medical','10':'Blood charges','11':'Used durable medical equipment',
-    '12':'Durable medical equipment purchase','13':'Ambulatory service center facility',
-    '14':'Renal supplies in the home','15':'Alternate method dialysis',
-    '16':'Chronic renal disease (CRD) equipment','17':'Pre-admission testing',
-    '18':'Durable medical equipment rental','19':'Pneumonia vaccine',
-    '20':'Second surgical opinion','21':'Third surgical opinion','22':'Social work',
-    '23':'Diagnostic dental','24':'Periodontics','25':'Restorative','26':'Endodontics',
-    '27':'Maxillofacial prosthetics','28':'Adjunctive dental services',
-    '30':'Health benefit plan coverage','32':'Plan waiting period','33':'Chiropractic',
-    '34':'Chiropractic office visits','35':'Dental care','36':'Dental crowns',
-    '37':'Dental accident','38':'Orthodontics','39':'Prosthodontics','40':'Oral surgery',
-    '41':'Routine (preventive) dental','42':'Home health care','43':'Home health prescriptions',
-    '44':'Home health visits','45':'Hospice','46':'Respite care','47':'Hospital',
-    '48':'Hospital inpatient','49':'Hospital room and board','50':'Hospital outpatient',
-    '51':'Hospital emergency accident','52':'Hospital emergency medical',
-    '53':'Hospital ambulatory surgical','54':'Long term care','55':'Major medical',
-    '56':'Medically related transportation','57':'Air transportation','58':'Cabulance',
-    '59':'Licensed ambulance','60':'General benefits','61':'In-vitro fertilization',
-    '62':'MRI / CAT scan','63':'Donor procedures','64':'Acupuncture','65':'Newborn care',
-    '66':'Pathology','67':'Smoking cessation','68':'Well baby care','69':'Maternity',
-    '70':'Transplants','71':'Audiology exam','72':'Inhalation therapy',
-    '73':'Diagnostic medical','74':'Private duty nursing','75':'Prosthetic device',
-    '76':'Dialysis','77':'Otological exam','78':'Chemotherapy','79':'Allergy testing',
-    '80':'Immunizations','81':'Routine physical','82':'Family planning','83':'Infertility',
-    '84':'Abortion','85':'AIDS','86':'Emergency services','87':'Cancer','88':'Pharmacy',
-    '89':'Free standing prescription drug','90':'Mail order prescription drug',
-    '91':'Brand name prescription drug','92':'Generic prescription drug','93':'Podiatry',
-    '94':'Podiatry office visits','95':'Podiatry nursing home visits',
-    '96':'Professional (physician)','97':'Anesthesiologist',
-    '98':'Professional visit, office','99':'Professional visit, inpatient',
-    'A0':'Professional visit, outpatient','A1':'Professional visit, nursing home',
-    'A2':'Professional visit, skilled nursing facility','A3':'Professional visit, home',
-    'A4':'Psychiatric','A5':'Psychiatric room and board','A6':'Psychotherapy',
-    'A7':'Psychiatric inpatient','A8':'Psychiatric outpatient','A9':'Rehabilitation',
-    'AA':'Rehabilitation room and board','AB':'Rehabilitation inpatient',
-    'AC':'Rehabilitation outpatient','AD':'Occupational therapy','AE':'Physical medicine',
-    'AF':'Speech therapy','AG':'Skilled nursing care','AH':'Skilled nursing room and board',
-    'AI':'Substance abuse','AJ':'Alcoholism','AK':'Drug addiction','AL':'Vision',
-    'AM':'Frames','AN':'Routine vision exam','AO':'Lenses','AQ':'Nonmedically necessary physical',
-    'AR':'Experimental drug therapy','B1':'Burn care',
-    'B2':'Brand name prescription drug, formulary','B3':'Brand name prescription drug, non-formulary',
-    'BA':'Independent medical evaluation','BB':'Partial hospitalization (psychiatric)',
-    'BC':'Day care (psychiatric)','BD':'Cognitive therapy','BE':'Massage therapy',
-    'BF':'Pulmonary rehabilitation','BG':'Cardiac rehabilitation','BH':'Pediatric',
-    'BI':'Nursery','BJ':'Skin','BK':'Orthopedic','BL':'Cardiac','BM':'Lymphatic',
-    'BN':'Gastrointestinal','BP':'Endocrine','BQ':'Neurology','BR':'Eye',
-    'BS':'Invasive procedures','BT':'Gynecological','BU':'Obstetrical',
-    'BV':'Obstetrical / gynecological','BW':'Mail order prescription drug, brand name',
-    'BX':'Mail order prescription drug, generic','BY':'Physician visit, office: sick',
-    'BZ':'Physician visit, office: well','C1':'Coronary care',
-    'CA':'Private duty nursing, inpatient','CB':'Private duty nursing, home',
-    'CC':'Surgical benefits, professional','CD':'Surgical benefits, facility',
-    'CE':'Mental health provider, inpatient','CF':'Mental health provider, outpatient',
-    'CG':'Mental health facility, inpatient','CH':'Mental health facility, outpatient',
-    'CI':'Substance abuse facility, inpatient','CJ':'Substance abuse facility, outpatient',
-    'CK':'Screening x-ray','CL':'Screening laboratory','CM':'Mammogram, high risk patient',
-    'CN':'Mammogram, low risk patient','CO':'Flu vaccination',
-    'CP':'Eyewear and eyewear accessories','CQ':'Case management','DG':'Dermatology',
-    'DM':'Durable medical equipment','DS':'Diabetic supplies',
-    'GF':'Generic prescription drug, formulary','GN':'Generic prescription drug, non-formulary',
-    'GY':'Allergy','IC':'Intensive care','MH':'Mental health','NI':'Neonatal intensive care',
-    'ON':'Oncology','PT':'Physical therapy','PU':'Pulmonary','RN':'Renal',
-    'RT':'Residential psychiatric treatment','TC':'Transitional care',
-    'TN':'Transitional nursery care','UC':'Urgent care'
-  };
-  /* Which STCs to treat as the same clinical service for matching a
-     returned benefit line against the one STC your practice actually
-     requested. Built straight from Stedi's own "type of care -> STCs to
-     try" guide: payers routinely attach a benefit (a copay, in
-     particular) to a neighbouring code from that same recommended group
-     rather than the exact one you asked about — checking Mental Health
-     as MH alone and getting no copay, then checking again as 98
-     (Professional visit, office) and finding it, is that guide's own
-     documented behaviour, not a data error. Only STCs the guide actually
-     lists together are merged; a code that merely shows up once as one of
-     several options for an unrelated procedure (say, 98 as an add-on for
-     dermatology or podiatry) is deliberately left out so an unrelated
-     copay never gets attributed to the wrong service. */
-  var STC_FAMILY=(function(){
-    /* `keys` — the STCs for which this group is the authoritative family
-       (i.e. what to use when THIS is the one code your practice actually
-       requested). `accept` — every STC a returned benefit line may carry
-       and still count as this same service. A generic, cross-discipline
-       code like 98 or 96 is deliberately never a `key` anywhere except its
-       own Office visit group below — it may be *accepted* inside several
-       groups (a copay can land there instead of the specific code), but a
-       practice that explicitly requests 98 or 96 gets the Office visit
-       family, never Mental health's wider net, just because 98 happens to
-       be one of the codes Mental health will also accept. */
-    var groups=[
-      /* Mental / behavioral health — merges every behavioral-health row in
-         the guide: Mental health; Psychotherapy; Psychological testing
-         evaluation; Substance Abuse/Addiction; Transcranial magnetic
-         stimulation; ABA Therapy (BD). */
-      { keys:['MH','A4','BD','CF','A6','A8','AI','AJ','AK'],
-        accept:['MH','96','98','A4','BD','CF','A6','A8','AI','AJ','AK'] },
-      /* Physician office visit — "Physician office visit" (1, 98, BY) plus
-         the well-visit variant (BZ) and the generic professional code (96)
-         the guide lists alongside 98 for nearly every office-visit type of
-         care (Primary care, Psychotherapy, Psychological testing, …). */
-      { keys:['98','96','BY','BZ'], accept:['98','96','1','BY','BZ'] },
-      /* Hospital / facility */
-      { keys:['47','48','50','51','52'], accept:['47','48','50','51','52'] },
-      /* Vision — the guide's own STC list groups these four; the previous
-         table here accidentally paired Vision (AL) with the Alcoholism and
-         Drug Addiction codes (AJ/AK) instead of Frames/Exam/Lenses. */
-      { keys:['AL','AM','AN','AO'], accept:['AL','AM','AN','AO'] },
-      /* Chemotherapy / oncology infusion */
-      { keys:['ON','78','87','91'], accept:['ON','78','87','91'] },
-      /* Physical therapy */
-      { keys:['PT','AE'], accept:['PT','AE'] },
-      /* Occupational therapy */
-      { keys:['AD'], accept:['AD','98'] },
-      /* Speech therapy */
-      { keys:['AF'], accept:['AF','98'] },
-      /* Rehabilitation */
-      { keys:['A9','AA','AB','AC'], accept:['A9','AA','AB','AC'] },
-      /* Podiatry */
-      { keys:['93'], accept:['93','98'] },
-      /* Dermatology */
-      { keys:['3'], accept:['3','98'] },
-      /* Telehealth */
-      { keys:['9'], accept:['9','98'] },
-      /* Skilled nursing */
-      { keys:['AG','AH'], accept:['AG','AH'] },
-      /* Newborn / nursery */
-      { keys:['65','BI'], accept:['65','BI'] },
-      /* Maternity / OB-GYN (also covers Doula, same three codes) */
-      { keys:['BT','BU','BV','69'], accept:['BT','BU','BV','69'] },
-      /* Durable medical equipment */
-      { keys:['DM','11','12','18'], accept:['DM','11','12','18'] }
-    ];
-    var fam={ '30':null };   /* the whole plan — do not narrow */
-    groups.forEach(function(g){
-      g.keys.forEach(function(code){
-        if(!(code in fam)) fam[code]=g.accept;
-      });
-    });
-    return fam;
-  })();
+     The STC name table and family/grouping logic (which neighbouring
+     codes count as "the same service") live in _codes.js as
+     RFCodes.STC_NAMES / RFCodes.stcMatches, shared with the quick
+     Copay/Coinsurance read on the check page itself so the two never
+     disagree about what a benefit line means. */
+  var STC_NAMES=RFCodes.STC_NAMES;
 
   function requestedStc(N){
+    if(STC_OVERRIDE!==undefined)return STC_OVERRIDE||null;   /* the switcher below was used */
     var e=N.raw.encounter||{};
     var c=(e.serviceTypeCodes&&e.serviceTypeCodes[0])||e.serviceTypeCode||null;
     return c||REQUESTED_STC||null;
   }
   function stcMatches(b, stc){
-    if(!stc||stc==='30')return true;                 /* whole plan: everything counts */
-    var codes=b.serviceTypeCodes||[];
-    if(!codes.length)return false;                   /* unscoped lines are plan-wide, not this service */
-    var fam=STC_FAMILY[stc]||[stc];
-    return codes.some(function(c){return fam.indexOf(c)>-1;});
+    return RFCodes.stcMatches(b.serviceTypeCodes, stc);
   }
 
   var LEVEL='individual';   /* what the tiles report on */
@@ -1429,13 +1313,30 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
        line happened to come first */
     function typeRank(b){ return svcTypeOf(b)===SVCTYPE ? 0 : 1; }
 
+    /* Same STC, same network, same coverage level — and still two
+       different amounts. That's not the payer contradicting itself, it's
+       a benefit that genuinely varies by place of service (an office
+       visit and a hospital-outpatient visit under the same Mental Health
+       benefit are a common real example). Prefer whichever line names the
+       place of service actually picked on the check form; a line naming a
+       *different* one ranks behind even an unscoped line, since it's the
+       least likely of the three to be the one that applies. */
+    function posRank(b){
+      if(!REQUESTED_POS)return 1;
+      var p=posCodeOf(b);
+      if(!p)return 1;
+      return p===REQUESTED_POS?0:2;
+    }
+
     function cell(label,code,opts){
       opts=opts||{};
       var set=pickSet(code);
       var base=opts.prefer||preferIndividual;
       var list=set.list.slice().sort(function(a,b){
         var tr=typeRank(a)-typeRank(b);
-        return tr||base(a,b);
+        if(tr)return tr;
+        var pr=posRank(a)-posRank(b);
+        return pr||base(a,b);
       });
       if(!list.length){
         return '<div class="scell"><dt>'+label+'</dt>'+
@@ -1443,18 +1344,23 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
           '<small>Payer sent nothing for this'+(stc&&stc!=='30'?' service type':'')+'</small></div>';
       }
       var best=list[0], amt=amountOf(best);
-      var lvl=levelOf(best);
+      var lvl=levelOf(best), pos=posOf(best);
       var isFamily=/family|employee and|spouse|child/i.test(String(lvl||''));
-      var extra=list.slice(1,3).map(function(b){
+      /* label each further line by place of service first — that's what
+         actually distinguishes two otherwise-identical-looking amounts —
+         and skip one that's just a restatement of the number already shown
+         as the main figure */
+      var extra=list.slice(1,4).map(function(b){
         var a=amountOf(b);
-        return a?('<span>'+esc([levelOf(b),netOf(b),periodOf(b)].filter(Boolean).join(' · ')||'Also')+
-          ' <b>'+a+'</b></span>'):'';
-      }).filter(Boolean).join('');
+        if(!a||(a===amt&&posOf(b)===pos))return '';
+        var bits=[posOf(b)||null,levelOf(b),periodOf(b)].filter(Boolean);
+        return '<span>'+esc(bits.join(' · ')||'Also')+' <b>'+a+'</b></span>';
+      }).filter(Boolean).slice(0,2).join('');
       return '<div class="scell"><dt>'+label+
           (set.scoped?'':' <em class="planwide">plan-wide</em>')+
           (isFamily?' <em class="famtag">family only</em>':'')+'</dt>'+
         '<dd class="big">'+(amt||'—')+'</dd>'+
-        '<small>'+esc([lvl||'Individual',netOf(best),periodOf(best)]
+        '<small>'+esc([pos||null,lvl||'Individual',netOf(best),periodOf(best)]
           .filter(Boolean).join(' · ')||'As reported')+'</small>'+
         (extra?'<div class="salso">'+extra+'</div>':'')+
       '</div>';
@@ -1502,8 +1408,35 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       return /family|employee and/i.test(String(levelOf(b)||''))&&
              (net==='all'||!netOf(b)||netOf(b)===net)&&matchesType(b); });
 
+    /* every distinct service type this response actually carries data for
+       (besides the whole-plan code 30, which "All service types" already
+       covers) — lets you switch what the Cost summary is scoped to right
+       here, without running a new check, even when you originally
+       searched under just one of them (e.g. MH). */
+    var stcOptions=(function(){
+      var seen={}, list=[];
+      N.benefits.forEach(function(b){
+        (b.serviceTypeCodes||[]).forEach(function(c){
+          if(c==='30'||seen[c])return;
+          seen[c]=true; list.push(c);
+        });
+      });
+      list.sort(function(a,b){ return (STC_NAMES[a]||a).localeCompare(STC_NAMES[b]||b); });
+      return list;
+    })();
+    var stcSwitcher=stcOptions.length?(
+      '<select class="stcswitch" id="stcSwitch" title="Switch which service type the Cost summary shows">'+
+        '<option value=""'+(!stc||stc==='30'?' selected':'')+'>All service types</option>'+
+        stcOptions.map(function(c){
+          return '<option value="'+esc(c)+'"'+(c===stc?' selected':'')+'>'+
+            esc(STC_NAMES[c]||('Service type '+c))+' ('+esc(c)+')</option>';
+        }).join('')+
+      '</select>'
+    ):'';
+
     return '<div class="sumhead"><b>'+esc(label)+'</b>'+
         (stc?'<span class="stcchip">'+esc(stc)+'</span>':'')+
+        stcSwitcher+
         (hasFamily?'<span class="lvlseg" id="lvlSeg">'+
           '<button data-l="individual"'+(LEVEL==='individual'?' class="on"':'')+'>Individual</button>'+
           '<button data-l="family"'+(LEVEL==='family'?' class="on"':'')+'>Family</button>'+
@@ -1589,6 +1522,13 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       try{ REQUESTED_STC=sessionStorage.getItem('rf_last_category')||null; }catch(e){}
     }
 
+    /* the place of service chosen on the check form — same idea, used to
+       prefer the matching line when Copay/Coinsurance varies by setting */
+    REQUESTED_POS=(rec&&rec.meta&&rec.meta.pos)||null;
+    if(!REQUESTED_POS){
+      try{ REQUESTED_POS=sessionStorage.getItem('rf_last_pos')||null; }catch(e){}
+    }
+
     /* the Type chosen on the check form (Outpatient by default) carries
        over so the summary opens already showing the right care setting */
     var wantType=(rec&&rec.meta&&rec.meta.svctype)||null;
@@ -1639,6 +1579,17 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       var b=e.target.closest('#lvlSeg [data-l]');
       if(!b)return;
       LEVEL=b.dataset.l;
+      var net=(document.querySelector('#netfilter button.on')||{dataset:{n:'In network'}}).dataset.n;
+      var sb=$('sumBox');
+      if(sb)sb.innerHTML=summaryHTML(N,net);
+    });
+
+    /* switch which service type the Cost summary is scoped to, without
+       running a new check */
+    document.addEventListener('change',function(e){
+      var sel=e.target.closest('#stcSwitch');
+      if(!sel)return;
+      STC_OVERRIDE=sel.value;
       var net=(document.querySelector('#netfilter button.on')||{dataset:{n:'In network'}}).dataset.n;
       var sb=$('sumBox');
       if(sb)sb.innerHTML=summaryHTML(N,net);

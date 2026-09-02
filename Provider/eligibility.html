@@ -142,7 +142,7 @@ input,select{font:inherit}
 .rhint{padding:11px 20px;border-top:1px solid var(--line);background:var(--paper);font-size:11.8px;color:var(--muted);display:flex;align-items:center;gap:8px}
 .rhint svg{width:14px;height:14px;stroke:var(--accent);fill:none;stroke-width:2;flex:none}
 .rhead .tid{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--dim)}
-.rgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line)}
+.rgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line)}
 .rgrid>div{background:#fff;padding:14px 18px}
 .rgrid dt{font-size:10.6px;color:var(--dim);margin-bottom:4px;letter-spacing:.04em}
 .rgrid dd{font-family:'Sora',sans-serif;font-size:16px;font-weight:600;letter-spacing:-.028em}
@@ -150,13 +150,13 @@ input,select{font:inherit}
 @media (max-width:900px){
   .c2,.c3,.c4,.c5{grid-column:span 6}
   .c6,.c8{grid-column:span 12}
-  .rgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rgrid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .crumb{display:none}
 }
 @media (max-width:560px){
   .grid{gap:12px}
   .c2,.c3,.c4,.c5,.c6,.c8{grid-column:span 12}
-  .rgrid{grid-template-columns:minmax(0,1fr)}
+  .rgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .actions .run,.actions .ghost{flex:1 1 100%}
   .note{margin-left:0;width:100%}
 }
@@ -1227,12 +1227,23 @@ select:disabled{opacity:.6;cursor:not-allowed}
     return req;
   }
 
-  /* ── render whatever Stedi returns ── */
+  /* ── render whatever Stedi returns ──
+     Same family-aware matching as the full result page (RFCodes.stcMatches,
+     shared via _codes.js) — a copay tagged 98 still counts when you
+     checked MH, exactly as it does on the result page, so this instant
+     read and that page never disagree. Falls back to a plan-wide line
+     (code 30, or no service type at all) when nothing scoped to the
+     requested service exists, same two-step search eligibility-result.html
+     uses. */
   function pickBenefit(list,code,stc){
+    var scoped=(list||[]).filter(function(b){
+      return b.code===code && RFCodes.stcMatches(b.serviceTypeCodes,stc);
+    });
+    if(scoped.length)return scoped[0];
+    if(!stc||stc==='30')return null;
     return (list||[]).filter(function(b){
-      if(b.code!==code)return false;
-      if(!stc)return true;
-      return !b.serviceTypeCodes||b.serviceTypeCodes.indexOf(stc)>-1;
+      return b.code===code && (!b.serviceTypeCodes||!b.serviceTypeCodes.length||
+        b.serviceTypeCodes.indexOf('30')>-1);
     })[0];
   }
   function amt(b){
@@ -1270,14 +1281,17 @@ select:disabled{opacity:.6;cursor:not-allowed}
       var active=status&&/active/i.test(status.status||'');
       pill.className='pill'+(active?'':' warn');
       pill.innerHTML='<i></i>'+((status&&status.status)||'Coverage returned');
-      var ded=pickBenefit(bens,'C'),
+      var ded=pickBenefit(bens,'C',stcOf()),
           dedRem=(bens||[]).filter(function(b){return b.code==='C'&&/remain/i.test(b.timeQualifier||'');})[0],
           copay=pickBenefit(bens,'B',stcOf()),
-          coins=pickBenefit(bens,'A',stcOf());
+          coins=pickBenefit(bens,'A',stcOf()),
+          oop=pickBenefit(bens,'G',stcOf()),
+          oopRem=(bens||[]).filter(function(b){return b.code==='G'&&/remain/i.test(b.timeQualifier||'');})[0];
       grid.innerHTML=
-        '<div><dt>PLAN</dt><dd>'+((status&&(status.planDetails||status.planCoverage))||(bens[0]&&bens[0].planCoverage)||'—')+'</dd></div>'+
-        '<div><dt>DEDUCTIBLE '+(dedRem?'REMAINING':'')+'</dt><dd>'+(amt(dedRem||ded)||'—')+'</dd></div>'+
-        '<div><dt>COPAY / COINSURANCE</dt><dd>'+(amt(copay)||amt(coins)||'—')+'</dd></div>'+
+        '<div><dt>COPAY</dt><dd>'+(amt(copay)||'—')+'</dd></div>'+
+        '<div><dt>COINSURANCE</dt><dd>'+(amt(coins)||'—')+'</dd></div>'+
+        '<div><dt>DEDUCTIBLE'+(dedRem?' REMAINING':'')+'</dt><dd>'+(amt(dedRem||ded)||'—')+'</dd></div>'+
+        '<div><dt>OUT OF POCKET'+(oopRem?' REMAINING':'')+'</dt><dd>'+(amt(oopRem||oop)||'—')+'</dd></div>'+
         '<div><dt>RESPONSE TIME</dt><dd>'+ms+' ms</dd></div>';
       hint.style.display='';
     }
@@ -1287,18 +1301,21 @@ select:disabled{opacity:.6;cursor:not-allowed}
       sessionStorage.setItem('rf_last_271',JSON.stringify(data));
       sessionStorage.setItem('rf_last_svctype',svctype);
       sessionStorage.setItem('rf_last_category',stcOf());
+      sessionStorage.setItem('rf_last_pos',posOf());
     }catch(e){}
     pushHist(name||'Member', document.getElementById('dob').value, data,
       {status:(status&&status.status)||(errs&&errs.length?'Rejected':'Returned'),
        payer:document.getElementById('payer').value,
        dos:document.getElementById('dos').value,
        svctype:svctype,
-       /* the service type you actually picked on this form — Stedi's own
-          271 rarely echoes back an "encounter" block with the code you
-          requested, so the result page can't always tell afterwards which
-          service the Cost summary should be scoped to unless we save it
-          ourselves here, the same way svctype already is above */
+       /* the service type and place of service you actually picked on
+          this form — Stedi's own 271 rarely echoes either back, so the
+          result page can't always tell afterwards what the Cost summary
+          should be scoped to, or which line to prefer when a benefit
+          varies by place of service, unless we save both ourselves here,
+          the same way svctype already is above */
        category:stcOf(),
+       pos:posOf(),
        ms:ms}).then(function(id){
       var link=document.getElementById('rwho');
       if(link&&id)link.setAttribute('href','eligibility-result.html?e='+encodeURIComponent(id));
