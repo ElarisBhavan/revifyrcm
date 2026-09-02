@@ -312,6 +312,26 @@ window.RFCodes = {
     fam=fam||[stc];
     return codes.some(function(c){return fam.indexOf(c)>-1;});
   };
+  /* Ranks how well a benefit line's serviceTypeCodes fits the STC actually
+     asked about — lower ranks first. Only meant to break a tie among lines
+     that already passed stcMatches, where more than one legitimately
+     qualifies: e.g. a line reported only for the exact service (['96','98'])
+     alongside a payer's own combined line covering several unrelated
+     services at once (['4','5','62','96','98']), or a plan-wide line that
+     only qualifies because it happens to share a code (like '1') with the
+     requested STC's accept list. Both are real, payer-reported numbers —
+     this just decides which one actually describes the service being asked
+     about.
+       When a specific service was requested, the narrowest (smallest
+     serviceTypeCodes) line is the best description of it. When nothing
+     specific was requested ('30'/"All service types"), it's the reverse —
+     the broadest line is the one plan-wide figure that makes sense to show,
+     and a narrow per-service line would be a misleadingly specific stand-in
+     for "the whole plan". */
+  C.stcSpecificity = function(benefitCodes, stc){
+    var n=(benefitCodes||[]).length||999;
+    return (!stc||stc==='30') ? -n : n;
+  };
 
   /* payers, for every picker that needs one */
   C.payers = function(){ return C._admin.payers || []; };
