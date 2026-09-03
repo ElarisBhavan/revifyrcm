@@ -144,6 +144,7 @@
       '<button class="cf-btn ghost" id="cfCancel">Cancel</button>'+
       '<span class="sp"></span>'+
       '<button class="cf-btn" id="cfPrint"><svg viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 19H5a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2h-2"/><path d="M7 15h10v6H7z"/></svg>Print</button>'+
+      '<button class="cf-btn" id="cfDownload" title="Download a filled CMS-1500 as a PDF"><svg viewBox="0 0 24 24"><path d="M12 3v13M7 12l5 5 5-5"/><path d="M4 20h16"/></svg>Download PDF</button>'+
       '<button class="cf-btn pri" id="cfSave"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Save claim</button>'+
     '</div>';
   }
@@ -256,7 +257,8 @@
         row(fld('cf_pataddr2','Line 2',{w:'w3'}))+
         row(fld('cf_patcity','City',{w:'w2'}),
             fld('cf_patstate','State',{sm:true,options:STATES}),
-            fld('cf_patzip','ZIP',{sm:true,mono:true,max:10}))) +
+            fld('cf_patzip','ZIP',{sm:true,mono:true,max:10}))+
+        row(fld('cf_patphone','Telephone (include area code)',{w:'w2',ph:'(312) 555-1212'}))) +
     bx('6','Patient relationship to insured',
         radios('cf_rel',[['18','Self'],['01','Spouse'],['19','Child'],['G8','Other']]),
         {req:true}) +
@@ -265,7 +267,8 @@
         row(fld('cf_subaddr2','Line 2',{w:'w3'}))+
         row(fld('cf_subcity','City',{w:'w2'}),
             fld('cf_substate','State',{sm:true,options:STATES}),
-            fld('cf_subzip','ZIP',{sm:true,mono:true,max:10}))) +
+            fld('cf_subzip','ZIP',{sm:true,mono:true,max:10}))+
+        row(fld('cf_subphone','Telephone (include area code)',{w:'w2',ph:'(312) 555-1212'}))) +
 
     bx('9',"Other insured's name",
         row(fld('cf_oi_last','Last',{}), fld('cf_oi_first','First',{}),
@@ -570,6 +573,303 @@
   }
 
 
+  /* ══════════════════════════════════════════════════════════════
+     DOWNLOAD — a filled CMS-1500, as its own PDF
+     Stedi (and any other clearinghouse) prints a CMS-1500 from the 837
+     it is sent, and by X12 convention that omits the whole patient loop
+     — box 3, 4 and 5 with it — whenever the patient IS the insured,
+     because that loop is genuinely redundant on the wire. That is
+     correct EDI, but it is a paper form with blank boxes on it, and this
+     is the one place ReviFlow controls the rendering end to end. So this
+     PDF always fills box 3/4/5 — mirroring the subscriber when the
+     patient is the same person — instead of leaving them blank the way
+     an omitted loop would.
+     One page, laid out in the same box groups the on-screen review
+     uses, numbered the way the paper form numbers them, so a payer
+     rejection that names a box points at something on this PDF too. */
+
+  function pdfUp(v){ return String(v==null?'':v).trim().toUpperCase(); }
+  function pdfName(last,first,mid){
+    var n=[pdfUp(last),pdfUp(first)].filter(Boolean).join(' ');
+    return mid?(n+' '+pdfUp(mid).charAt(0)):n;
+  }
+  /* the patient loop is skipped on the wire when self, but a downloaded
+     paper form reads better filled in than blank — mirror the
+     subscriber's own answer whenever the patient's own field is empty
+     and the patient IS the subscriber */
+  function pdfMirror(own, subVal, isSelf){
+    var v = String(own==null?'':own).trim();
+    if(v) return v;
+    return isSelf ? String(subVal==null?'':subVal).trim() : '';
+  }
+  function pdfAddrLines(line1,line2,city,state,zip){
+    var l2 = [line1,line2].filter(Boolean).join(', ');
+    var l3 = [city,state,zip].filter(Boolean).join(', ').replace(/, ([A-Z]{2}), /,' $1 ');
+    var out=[]; if(l2) out.push(l2); if(l3) out.push(l3);
+    return out;
+  }
+  function pdfPhone(v){
+    var d=String(v||'').replace(/\D/g,'');
+    if(d.length===10) return '('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6);
+    return v||'';
+  }
+
+  function downloadClaimPdf(c){
+    var jl = window.jspdf;
+    if(!jl || !jl.jsPDF){
+      notify('Could not build the PDF','The PDF library did not load — try again in a moment');
+      return;
+    }
+    var doc = new jl.jsPDF({unit:'pt',format:'letter'});
+    var M=32, PW=612, RX=PW-M;
+    var GREEN=[10,92,70], INK=[18,26,23], MUT=[110,118,114], LINE=[176,181,178];
+    var y=M;
+
+    /* ── shared drawing helpers ── */
+    function setLine(){ doc.setDrawColor(LINE[0],LINE[1],LINE[2]); doc.setLineWidth(0.65); }
+    function box(x,yy,w,h){ setLine(); doc.rect(x,yy,w,h); }
+    function label(x,yy,n,text){
+      doc.setFont('helvetica','bold'); doc.setFontSize(6.1);
+      doc.setTextColor(MUT[0],MUT[1],MUT[2]);
+      doc.text(((n?n+'. ':'')+text).toUpperCase(), x+4, yy+8);
+    }
+    function val(x,yy,w,text,opts){
+      opts=opts||{};
+      doc.setFont(opts.mono?'courier':'helvetica','normal');
+      doc.setFontSize(opts.size||8.2);
+      doc.setTextColor(INK[0],INK[1],INK[2]);
+      var t = (text==null||text==='') ? '—' : String(text);
+      var lines = doc.splitTextToSize(t, w-8);
+      doc.text(lines.slice(0, opts.maxLines||2), x+4, yy+(opts.top||18));
+    }
+    function field(x,yy,w,h,n,lbl,text,opts){
+      box(x,yy,w,h); label(x,yy,n,lbl); val(x,yy,w,text,opts);
+    }
+    /* a run of checkbox+label pairs, wrapping to a second line inside its
+       own cell rather than overlapping the next one */
+    function checkRow(x0,y0,maxX,items,checked){
+      var x=x0, yy=y0, s=6, gap=5, lineH=10;
+      items.forEach(function(it){
+        var w = doc.getTextWidth(it[1])+s+3;
+        if(x+w>maxX){ x=x0; yy+=lineH; }
+        setLine(); doc.rect(x,yy-s+2,s,s);
+        if(checked===it[0]){
+          doc.setDrawColor(INK[0],INK[1],INK[2]); doc.setLineWidth(0.9);
+          doc.line(x+1,yy-s+3,x+s-1,yy+1); doc.line(x+1,yy+1,x+s-1,yy-s+3);
+        }
+        doc.setFont('helvetica','normal'); doc.setFontSize(6.4);
+        doc.setTextColor(INK[0],INK[1],INK[2]);
+        doc.text(it[1], x+s+3, yy);
+        x += w+gap;
+      });
+      return yy+lineH;
+    }
+
+    var isSelf = String(c.relationship||'18')==='18';
+    var patLast=pdfUp(c.patient_last), patFirst=pdfUp(c.patient_first);
+    var subLast=pdfMirror(c.sub_last, c.patient_last, isSelf) || (isSelf?patLast:'');
+    var subFirst=pdfMirror(c.sub_first, c.patient_first, isSelf) || (isSelf?patFirst:'');
+    var patDob=pdfMirror(c.patient_dob, c.sub_dob, isSelf);
+    var patSex=pdfMirror(c.patient_sex, c.sub_sex, isSelf);
+    var patAddrLine=pdfMirror(c.pat_addr, c.sub_addr, isSelf);
+    var patCity=pdfMirror(c.pat_city, c.sub_city, isSelf);
+    var patState=pdfMirror(c.pat_state, c.sub_state, isSelf);
+    var patZip=pdfMirror(c.pat_zip, c.sub_zip, isSelf);
+    var patPhone=pdfMirror(c.pat_phone, c.sub_phone, isSelf);
+    var subAddrLine=pdfMirror(c.sub_addr, c.pat_addr, isSelf);
+    var subCity=pdfMirror(c.sub_city, c.pat_city, isSelf);
+    var subState=pdfMirror(c.sub_state, c.pat_state, isSelf);
+    var subZip=pdfMirror(c.sub_zip, c.pat_zip, isSelf);
+    var subPhone=pdfMirror(c.sub_phone, c.pat_phone, isSelf);
+    var subDob=pdfMirror(c.sub_dob, c.patient_dob, isSelf);
+    var subSex=pdfMirror(c.sub_sex, c.patient_sex, isSelf);
+
+    /* ── header ── */
+    doc.setFont('helvetica','bold'); doc.setFontSize(15);
+    doc.setTextColor(GREEN[0],GREEN[1],GREEN[2]);
+    doc.text('HEALTH INSURANCE CLAIM FORM', M, y+12);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.4);
+    doc.setTextColor(MUT[0],MUT[1],MUT[2]);
+    doc.text('APPROVED BY NATIONAL UNIFORM CLAIM COMMITTEE (NUCC) 02/12', M, y+23);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.6);
+    doc.setTextColor(INK[0],INK[1],INK[2]);
+    doc.text('CMS-1500 · '+(c.claim_no||'DRAFT'), RX, y+11, {align:'right'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.4);
+    doc.setTextColor(MUT[0],MUT[1],MUT[2]);
+    doc.text('Downloaded '+new Date().toLocaleDateString(), RX, y+22, {align:'right'});
+    doc.setDrawColor(GREEN[0],GREEN[1],GREEN[2]); doc.setLineWidth(1.3);
+    doc.line(M,y+30,RX,y+30);
+    y += 40;
+
+    /* ── row: 1 programme · 1a insured ID ── */
+    var h=32, wA=330;
+    box(M,y,wA,h); label(M,y,'1','Insurance programme this claim is filed under');
+    var KINDS=[['MB','MEDICARE'],['MC','MEDICAID'],['CH','TRICARE'],['CH2','CHAMPVA'],
+      ['HM','GROUP HEALTH PLAN'],['WC','FECA / BLACK LUNG'],['OT','OTHER']];
+    checkRow(M+4,y+18,M+wA-4,KINDS,c.insurance_type||'OT');
+    field(M+wA,y,RX-(M+wA),h,'1a',"Insured's I.D. number",c.member_id,{mono:true});
+    y+=h;
+
+    /* ── row: 2 patient name · 3 birth date/sex · 4 insured name ── */
+    h=30;
+    var w2=(RX-M)/3;
+    field(M,y,w2,h,'2','Patient name (Last, First)', pdfName(patLast,patFirst));
+    field(M+w2,y,w2,h,'3',"Birth date · sex",
+      (patDob?fmtShort(patDob):'—')+(patSex?'  ·  '+pdfUp(patSex):''));
+    field(M+2*w2,y,RX-(M+2*w2),h,'4',"Insured's name (Last, First)", pdfName(subLast,subFirst));
+    y+=h;
+
+    /* ── row: 5 patient address · 6 relationship · 7 insured address ── */
+    h=48;
+    var w5=RX-M, colA=w5*0.42, colB=w5*0.16, colC=w5-colA-colB;
+    box(M,y,colA,h); label(M,y,'5','Patient address');
+    var pLines=pdfAddrLines(patAddrLine,'',patCity,patState,patZip);
+    if(patPhone) pLines.push('Tel '+pdfPhone(patPhone));
+    val(M,y,colA,pLines.join('\n'),{top:18,maxLines:3});
+    box(M+colA,y,colB,h); label(M+colA,y,'6','Relationship');
+    checkRow(M+colA+4,y+18,M+colA+colB-4,
+      [['18','Self'],['01','Spouse'],['19','Child'],['G8','Other']], c.relationship||'18');
+    box(M+colA+colB,y,colC,h); label(M+colA+colB,y,'7',"Insured's address");
+    var sLines=pdfAddrLines(subAddrLine,'',subCity,subState,subZip);
+    if(subPhone) sLines.push('Tel '+pdfPhone(subPhone));
+    val(M+colA+colB,y,colC,sLines.join('\n'),{top:18,maxLines:3});
+    y+=h;
+
+    /* ── row: 11 policy group · 11a insured DOB/sex · 11c plan name ── */
+    h=28;
+    field(M,y,w2,h,'11','Insured policy or group number', c.group_id, {mono:true});
+    field(M+w2,y,w2,h,'11a',"Insured's DOB · sex",
+      (subDob?fmtShort(subDob):'—')+(subSex?'  ·  '+pdfUp(subSex):''));
+    field(M+2*w2,y,RX-(M+2*w2),h,'11c','Insurance plan or programme name', c.payer);
+    y+=h;
+
+    /* ── row: 12 patient signature · 13 insured signature · 23 prior auth ── */
+    h=26;
+    var w3=(RX-M)/3;
+    field(M,y,w3,h,'12',"Patient's signature", 'SIGNATURE ON FILE', {size:7.6});
+    field(M+w3,y,w3,h,'13',"Insured's signature", 'SIGNATURE ON FILE', {size:7.6});
+    field(M+2*w3,y,RX-(M+2*w3),h,'23','Prior authorization number', c.prior_auth, {mono:true});
+    y+=h;
+
+    /* ── row: 21 diagnosis · 26 patient account no. ── */
+    var dx=(c.dx||[]).filter(Boolean);
+    h=58;
+    var wDx=RX-M-140;
+    box(M,y,wDx,h); label(M,y,'21','Diagnosis or nature of illness or injury (ICD ind. 0)');
+    (function(){
+      doc.setFont('courier','normal'); doc.setFontSize(7.8);
+      doc.setTextColor(INK[0],INK[1],INK[2]);
+      var cols=2, perCol=6, colW=(wDx-8)/cols;
+      dx.slice(0,12).forEach(function(code,i){
+        var col=Math.floor(i/perCol), row=i%perCol;
+        var xx=M+4+col*colW, yy=y+20+row*8.6;
+        doc.text(String.fromCharCode(65+i)+'. '+pdfUp(code), xx, yy);
+      });
+      if(!dx.length){ doc.setTextColor(MUT[0],MUT[1],MUT[2]); doc.text('—', M+4, y+20); }
+    })();
+    field(M+wDx,y,RX-(M+wDx),h,'26','Patient account number', c.control, {mono:true,size:7.6});
+    y+=h;
+
+    /* ── 24: the service lines ── */
+    var lines=c.lines||[];
+    var cols=[
+      {t:'24A. DATES OF SERVICE', w:0.17},{t:'24B. POS', w:0.06},
+      {t:'24D. CPT/HCPCS · MOD', w:0.20},{t:'24E. DX', w:0.08},
+      {t:'24F. CHARGES', w:0.13},{t:'24G. UNITS', w:0.08},
+      {t:'24I / 24J. RENDERING ID · NPI', w:0.28}
+    ];
+    var tW=RX-M, x=M, thH=16;
+    doc.setFillColor(244,242,236);
+    doc.rect(M,y,tW,thH,'F'); setLine(); doc.rect(M,y,tW,thH);
+    doc.setFont('helvetica','bold'); doc.setFontSize(6);
+    doc.setTextColor(MUT[0],MUT[1],MUT[2]);
+    var cx=M;
+    cols.forEach(function(cdef){
+      doc.text(cdef.t, cx+3, y+10);
+      cx += tW*cdef.w;
+    });
+    y+=thH;
+    var rowH=17;
+    (lines.length?lines:[null]).forEach(function(l){
+      box(M,y,tW,rowH);
+      var cx2=M;
+      cols.forEach(function(cdef,ci){
+        if(ci>0){ setLine(); doc.line(cx2,y,cx2,y+rowH); }
+        cx2 += tW*cdef.w;
+      });
+      if(l){
+        var dxPtrs=(Array.isArray(l.dxptrs)&&l.dxptrs.length?l.dxptrs:['1']);
+        var dxTxt=dxPtrs.map(function(p){ return String.fromCharCode(64+(parseInt(p,10)||1)); }).join(',');
+        var dateTxt=(l.from?fmtShort(l.from):(c.dos?fmtShort(c.dos):'—'))+
+          ((l.to && l.to!==l.from) ? '–'+fmtShort(l.to) : '');
+        var cptTxt=pdfUp(l.cpt)+([l.mod,l.mod2].filter(Boolean).length?' '+[l.mod,l.mod2].filter(Boolean).join(' '):'');
+        var vals=[dateTxt, l.pos||c.pos||'11', cptTxt, dxTxt,
+          money((+l.charge||0)*(+l.units||1)), String(l.units||1),
+          (c.provider_npi?'NPI '+c.provider_npi:'—')];
+        var cx3=M;
+        doc.setFont('helvetica','normal'); doc.setFontSize(7.4);
+        doc.setTextColor(INK[0],INK[1],INK[2]);
+        cols.forEach(function(cdef,ci){
+          var w=tW*cdef.w;
+          var lines2=doc.splitTextToSize(String(vals[ci]||'—'), w-6);
+          doc.text(lines2.slice(0,2), cx3+3, y+10);
+          cx3+=w;
+        });
+      }else{
+        doc.setFont('helvetica','normal'); doc.setFontSize(7.6);
+        doc.setTextColor(MUT[0],MUT[1],MUT[2]);
+        doc.text('No service lines on this claim', M+6, y+11);
+      }
+      y+=rowH;
+    });
+
+    /* ── row: 25 tax id · 27 accept assignment · 28 total · 29 paid ── */
+    h=30;
+    var w4=(RX-M)/4;
+    field(M,y,w4,h,'25','Federal tax I.D.', c.tax_id, {mono:true});
+    box(M+w4,y,w4,h); label(M+w4,y,'27','Accept assignment');
+    checkRow(M+w4+4,y+20,M+2*w4-4,[['Y','Yes'],['N','No']], c.accept_assignment==='N'?'N':'Y');
+    field(M+2*w4,y,w4,h,'28','Total charge', money(c.total), {mono:true});
+    field(M+3*w4,y,RX-(M+3*w4),h,'29','Amount paid', money(c.amount_paid||0), {mono:true});
+    y+=h;
+
+    /* ── row: 31 physician signature · 32 service facility · 33 billing provider ── */
+    h=62;
+    var w6=(RX-M)/3;
+    box(M,y,w6,h); label(M,y,'31','Signature of physician or supplier');
+    val(M,y,w6,[pdfName(c.prov_last,c.prov_first)||'—',
+      (c.dos?fmtShort(c.dos):'')].filter(Boolean).join('\n'),{top:18});
+
+    box(M+w6,y,w6,h); label(M+w6,y,'32','Service facility location');
+    var facLines=[c.facility_name||c.org_name||'—']
+      .concat(pdfAddrLines(c.facility_addr||c.org_addr,'',
+        c.facility_city||c.org_city, c.facility_state||c.org_state, c.facility_zip||c.org_zip));
+    facLines.push('a. NPI '+(c.facility_npi||c.org_npi||'—'));
+    val(M+w6,y,w6,facLines.join('\n'),{top:16,size:7.4,maxLines:4});
+
+    box(M+2*w6,y,RX-(M+2*w6),h); label(M+2*w6,y,'33','Billing provider info & phone');
+    var billLines=[c.org_name||'—'];
+    if(c.org_phone) billLines.push(pdfPhone(c.org_phone));
+    billLines=billLines.concat(pdfAddrLines(c.org_addr,c.org_addr2,c.org_city,c.org_state,c.org_zip));
+    billLines.push('a. NPI '+(c.org_npi||'—')+(c.taxonomy?'  b. '+c.taxonomy:''));
+    val(M+2*w6,y,RX-(M+2*w6),billLines.join('\n'),{top:16,size:7.4,maxLines:5});
+    y+=h;
+
+    /* ── footer ── */
+    y+=14;
+    doc.setFont('helvetica','normal'); doc.setFontSize(6.8);
+    doc.setTextColor(MUT[0],MUT[1],MUT[2]);
+    doc.text('Generated by ReviFlow from the saved claim record, laid out to the NUCC CMS-1500 (02-12) '+
+      'box numbering. This copy is for reference, printing or mailing — it is not itself the EDI '+
+      'transaction filed with the payer. NUCC Instruction Manual: www.nucc.org', M, y, {maxWidth:RX-M});
+
+    var last = (c.patient_last||'claim').replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+    var dos = (c.dos||'').replace(/[^0-9]/g,'') || 'draft';
+    doc.save('cms1500-'+last+'-'+dos+'.pdf');
+    notify('CMS-1500 downloaded','Every field on the saved claim is included, including patient and insured contact details');
+  }
+
+
   window.RFClaimForm = {
     open: function(claim, opts){
       build();
@@ -678,7 +978,8 @@
     cf_subcity:'sub_city', cf_substate:'sub_state', cf_subzip:'sub_zip',
     cf_patfirst:'patient_first', cf_patlast:'patient_last', cf_patdob:'patient_dob',
     cf_patsex:'patient_sex', cf_pataddr:'pat_addr', cf_pataddr2:'pat_addr2',
-    cf_patcity:'pat_city', cf_patstate:'pat_state', cf_patzip:'pat_zip',
+    cf_patcity:'pat_city', cf_patstate:'pat_state', cf_patzip:'pat_zip', cf_patphone:'pat_phone',
+    cf_subphone:'sub_phone',
     cf_rel_autost:'rel_auto_state',
     cf_oi_last:'oi_last', cf_oi_first:'oi_first', cf_oi_mid:'oi_mid',
     cf_oi_policy:'oi_policy', cf_oi_plan:'oi_plan',
@@ -1228,6 +1529,13 @@
         show('review');
         setTimeout(function(){ window.print(); },180);
       }, 'cfPrint click');
+    });
+
+    on('cfDownload', 'click', function(){
+      safe(function(){
+        read();
+        downloadClaimPdf(C);
+      }, 'cfDownload click');
     });
 
 

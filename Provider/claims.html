@@ -16,6 +16,7 @@
 <script src="../_config.js"></script>
 <script src="../_store.js"></script>
 <script src="../_codes.js"></script>
+<script src="../_jspdf.min.js"></script>
 <script src="../_claimform.js"></script>
 <script src="../_datepicker.js"></script>
 <script src="../_session.js"></script>
@@ -1411,55 +1412,96 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
     return '<div class="fc'+(cls?' '+cls:'')+'"><u>'+n+'. '+label+'</u><span>'+esc(val||'')+'</span></div>';
   }
 
+  /* The patient loop is correctly left off the 837 sent to the payer
+     whenever the patient IS the insured — that loop is genuinely
+     redundant on the wire. But that means a claim built for a
+     self-insured patient never gets pat_* fields filled in, only sub_*
+     ones, and this preview used to read from a c.cms.* shape that
+     buildClaim() (in the patient chart) never actually writes to, which
+     is why boxes 3, 4, 5, 17, 18, 19, 32b and 33b always rendered
+     blank here regardless. Reading the same flat fields the editor and
+     the patient chart both use — mirroring the subscriber into the
+     patient boxes when they are the same person — is what makes this
+     preview (and its Print / Download) show what is actually on file. */
+  function cmsMirror(own,subVal,isSelf){
+    var v=String(own==null?'':own).trim();
+    if(v)return v;
+    return isSelf?String(subVal==null?'':subVal).trim():'';
+  }
   function cms1500(c){
-    var m=c.cms||{},L=c.lines||[];
-    var dx=(c.dx||[]);
+    var L=c.lines||[];
+    var dx=(c.dx||[]).filter(Boolean);
+    var isSelf=String(c.relationship||'18')==='18';
+    var patLast=cmsMirror(c.patient_last,c.sub_last,isSelf)||c.patient_last||'';
+    var patFirst=cmsMirror(c.patient_first,c.sub_first,isSelf)||c.patient_first||'';
+    var subLast=cmsMirror(c.sub_last,c.patient_last,isSelf)||c.sub_last||'';
+    var subFirst=cmsMirror(c.sub_first,c.patient_first,isSelf)||c.sub_first||'';
+    var patDob=cmsMirror(c.patient_dob,c.sub_dob,isSelf);
+    var patSex=cmsMirror(c.patient_sex,c.sub_sex,isSelf);
+    var patAddr=[cmsMirror(c.pat_addr,c.sub_addr,isSelf),cmsMirror(c.pat_city,c.sub_city,isSelf),
+      cmsMirror(c.pat_state,c.sub_state,isSelf),cmsMirror(c.pat_zip,c.sub_zip,isSelf)].filter(Boolean).join(', ');
+    var patPhone=cmsMirror(c.pat_phone,c.sub_phone,isSelf);
+    var subAddr=[cmsMirror(c.sub_addr,c.pat_addr,isSelf),cmsMirror(c.sub_city,c.pat_city,isSelf),
+      cmsMirror(c.sub_state,c.pat_state,isSelf),cmsMirror(c.sub_zip,c.pat_zip,isSelf)].filter(Boolean).join(', ');
+    var subPhone=cmsMirror(c.sub_phone,c.pat_phone,isSelf);
+    var relLabel={'18':'Self','01':'Spouse','19':'Child','G8':'Other'}[String(c.relationship||'18')]||'Self';
+    var KINDS={MB:'Medicare',MC:'Medicaid',CH:'TRICARE',CH2:'CHAMPVA',HM:'Group health plan',
+      WC:'FECA / black lung',OT:'Other'};
     return '<div class="paper form" style="position:relative">'+
       '<span class="stamp">'+(c.status||'draft').toUpperCase()+'</span>'+
       '<div class="frm-h"><b>HEALTH INSURANCE CLAIM FORM</b>'+
-        '<small>APPROVED BY NUCC 02/12 · '+esc(c.claim_no)+' · '+fmtD(c.created_at)+'</small></div>'+
+        '<small>APPROVED BY NUCC 02/12 · '+esc(c.claim_no||'DRAFT')+' · '+fmtD(c.created_at)+'</small></div>'+
       '<div class="fbox">'+
-        '<div class="fr">'+box('1','INSURANCE TYPE',m.type,'w2')+box('1a',"INSURED'S I.D. NUMBER",c.member_id,'w2')+'</div>'+
-        '<div class="fr">'+box('2','PATIENT NAME',c.patient_last+', '+c.patient_first,'w2')+
-          box('3','BIRTH DATE',fmtS(c.patient_dob))+box('4',"INSURED'S NAME",m.iname,'w2')+'</div>'+
-        '<div class="fr">'+box('5','PATIENT ADDRESS',m.paddr,'w3')+
-          box('6','RELATIONSHIP',m.rel)+box('7',"INSURED'S ADDRESS",m.iaddr,'w2')+'</div>'+
-        '<div class="fr">'+box('10a','EMPLOYMENT',m.emp?'YES':'NO')+box('10b','AUTO ACCIDENT',(m.auto?'YES':'NO')+(m.accst?' · '+m.accst:''))+
-          box('10c','OTHER ACCIDENT',m.other?'YES':'NO')+box('11','POLICY GROUP / FECA',c.group_id,'w2')+'</div>'+
+        '<div class="fr">'+box('1','INSURANCE TYPE',KINDS[c.insurance_type]||c.filing||'Other','w2')+
+          box('1a',"INSURED'S I.D. NUMBER",c.member_id,'w2')+'</div>'+
+        '<div class="fr">'+box('2','PATIENT NAME',[patLast,patFirst].filter(Boolean).join(', '),'w2')+
+          box('3','BIRTH DATE · SEX',(patDob?fmtS(patDob):'—')+(patSex?' · '+esc(patSex):''))+
+          box('4',"INSURED'S NAME",[subLast,subFirst].filter(Boolean).join(', '),'w2')+'</div>'+
+        '<div class="fr">'+box('5','PATIENT ADDRESS',patAddr+(patPhone?' · '+patPhone:''),'w3')+
+          box('6','RELATIONSHIP',relLabel)+box('7',"INSURED'S ADDRESS",subAddr+(subPhone?' · '+subPhone:''),'w2')+'</div>'+
+        '<div class="fr">'+box('11','POLICY GROUP / FECA',c.group_id,'w2')+
+          box('11a',"INSURED'S DOB · SEX",(c.sub_dob?fmtS(c.sub_dob):'—')+(c.sub_sex?' · '+esc(c.sub_sex):''))+
+          box('11c','INSURANCE PLAN NAME',c.payer)+'</div>'+
         '<div class="fr">'+box('12','PATIENT SIGNATURE','SIGNATURE ON FILE','w2')+
-          box('13',"INSURED'S SIGNATURE",'SIGNATURE ON FILE','w2')+'</div>'+
-        '<div class="fr">'+box('14','DATE OF CURRENT ILLNESS',fmtS(m.d14)+(m.q14?' · '+m.q14:''),'w2')+
-          box('17','REFERRING PROVIDER',m.ref,'w2')+box('17b','NPI',m.refnpi)+'</div>'+
-        '<div class="fr">'+box('18','HOSPITALISATION',(m.h18a?fmtS(m.h18a):'—')+' – '+(m.h18b?fmtS(m.h18b):'—'),'w2')+
-          box('19','ADDITIONAL CLAIM INFO',m.d19,'w3')+'</div>'+
-        '<div class="fr">'+
-          '<div class="fc w3"><u>21. DIAGNOSIS OR NATURE OF ILLNESS (ICD IND. '+(m.icd||'0')+')</u><span>'+
-            (dx.length?dx.map(function(d,i){return String.fromCharCode(65+i)+'. '+esc(d);}).join('   '):'—')+'</span></div>'+
-          box('22','RESUBMISSION',(m.resub||'—')+(m.origref?' · '+m.origref:''))+
+          box('13',"INSURED'S SIGNATURE",'SIGNATURE ON FILE','w2')+
           box('23','PRIOR AUTHORISATION',c.prior_auth)+'</div>'+
+        '<div class="fr">'+
+          '<div class="fc w3"><u>21. DIAGNOSIS OR NATURE OF ILLNESS (ICD IND. 0)</u><span>'+
+            (dx.length?dx.map(function(d,i){return String.fromCharCode(65+i)+'. '+esc(d);}).join('   '):'—')+'</span></div>'+
+          box('26','PATIENT ACCOUNT NO.',c.control||c.patient_mid)+'</div>'+
       '</div>'+
       '<table class="svct"><thead><tr>'+
         '<th style="width:16%">24A. DATE(S) OF SERVICE</th><th style="width:6%">24B. POS</th>'+
         '<th style="width:20%">24D. PROCEDURES / MODIFIER</th><th style="width:8%">24E. DX PTR</th>'+
         '<th style="width:13%">24F. $ CHARGES</th><th style="width:7%">24G. UNITS</th>'+
         '<th style="width:20%">24J. RENDERING PROVIDER NPI</th></tr></thead><tbody>'+
-      L.map(function(l){
-        return '<tr><td>'+fmtS(l.from)+(l.to&&l.to!==l.from?' – '+fmtS(l.to):'')+'</td>'+
-          '<td>'+esc(l.pos||'11')+'</td>'+
-          '<td>'+esc(l.cpt)+(l.mod?' · '+esc(l.mod):'')+'</td>'+
-          '<td>'+esc(l.dx||'A')+'</td><td>'+money((+l.charge||0)*(+l.units||1))+'</td>'+
-          '<td>'+(l.units||1)+'</td><td>'+esc(m.rnpi||c.provider_npi||'—')+'</td></tr>';
-      }).join('')+'</tbody></table>'+
+      (L.length?L.map(function(l){
+        var ptrs=(Array.isArray(l.dxptrs)&&l.dxptrs.length)?l.dxptrs:(l.dxptr?[l.dxptr]:['1']);
+        var dxTxt=ptrs.map(function(p){return String.fromCharCode(64+(parseInt(p,10)||1));}).join(',');
+        return '<tr><td>'+fmtS(l.from||c.dos)+(l.to&&l.to!==l.from?' – '+fmtS(l.to):'')+'</td>'+
+          '<td>'+esc(l.pos||c.pos||'11')+'</td>'+
+          '<td>'+esc(l.cpt)+([l.mod,l.mod2].filter(Boolean).length?' · '+[l.mod,l.mod2].filter(Boolean).join(' '):'')+'</td>'+
+          '<td>'+esc(dxTxt)+'</td><td>'+money((+l.charge||0)*(+l.units||1))+'</td>'+
+          '<td>'+(l.units||1)+'</td><td>'+esc(c.provider_npi||'—')+'</td></tr>';
+      }).join(''):'<tr><td colspan="7" style="text-align:center;color:#999">No service lines</td></tr>')+
+      '</tbody></table>'+
       '<div class="fbox" style="margin-top:-1px">'+
-        '<div class="fr">'+box('25','FEDERAL TAX I.D.',c.tax_id)+box('26','PATIENT ACCOUNT NO.',m.acct||c.patient_mid)+
-          box('27','ACCEPT ASSIGNMENT',m.assign==='N'?'NO':'YES')+
-          box('28','TOTAL CHARGE',money(c.total))+box('29','AMOUNT PAID',money(m.paid||0))+'</div>'+
+        '<div class="fr">'+box('25','FEDERAL TAX I.D.',c.tax_id)+
+          box('27','ACCEPT ASSIGNMENT',c.accept_assignment==='N'?'NO':'YES')+
+          box('28','TOTAL CHARGE',money(c.total))+box('29','AMOUNT PAID',money(c.amount_paid||0))+'</div>'+
         '<div class="fr">'+
           '<div class="fc w2"><u>31. SIGNATURE OF PHYSICIAN OR SUPPLIER</u><span>'+
-            esc(c.provider_name)+' · '+fmtS(c.dos)+'</span></div>'+
-          '<div class="fc w2"><u>32. SERVICE FACILITY LOCATION</u><span>'+esc(m.fac||c.org_name)+'</span></div>'+
-          '<div class="fc w2"><u>33. BILLING PROVIDER INFO &amp; PH #</u><span>'+esc(c.org_name)+
-            (m.bphone?'<br>'+esc(m.bphone):'')+'<br>NPI '+esc(m.bnpi||c.org_npi||'—')+'</span></div>'+
+            esc([c.prov_first,c.prov_last].filter(Boolean).join(' ')||c.provider_name||'—')+' · '+fmtS(c.dos)+'</span></div>'+
+          '<div class="fc w2"><u>32. SERVICE FACILITY LOCATION</u><span>'+
+            esc(c.facility_name||c.org_name||'—')+
+            ((c.facility_addr||c.org_addr)?'<br>'+esc([c.facility_addr||c.org_addr,
+              c.facility_city||c.org_city,c.facility_state||c.org_state,c.facility_zip||c.org_zip]
+              .filter(Boolean).join(', ')):'')+
+            '<br>a. '+esc(c.facility_npi||c.org_npi||'—')+'</span></div>'+
+          '<div class="fc w2"><u>33. BILLING PROVIDER INFO &amp; PH #</u><span>'+esc(c.org_name||'—')+
+            (c.org_phone?'<br>'+esc(c.org_phone):'')+
+            (c.org_addr?'<br>'+esc([c.org_addr,c.org_city,c.org_state,c.org_zip].filter(Boolean).join(', ')):'')+
+            '<br>a. '+esc(c.org_npi||'—')+(c.taxonomy?'  b. '+esc(c.taxonomy):'')+'</span></div>'+
         '</div>'+
       '</div>'+
       '<p class="foot-note">Created by '+esc(c.created_name||c.created_by)+' on '+fmtD(c.created_at)+

@@ -17,6 +17,7 @@
 <script src="../_session.js"></script>
 <script src="../_codes.js"></script>
 <script src="../_note-templates.js"></script>
+<script src="../_jspdf.min.js"></script>
 <script src="../_claimform.js"></script>
 <script src="../_notify.js"></script>
 <style>
@@ -3131,10 +3132,12 @@ input,select,textarea{font:inherit}
       sub_dob:rel==='18'?(P.dob||''):(P.sub_dob||(sub&&sub.dob)||''),
       sub_sex:rel==='18'?sexChar(P.sex):sexChar(P.sub_sex),
       sub_addr:sa.line, sub_city:sa.city, sub_state:sa.state, sub_zip:sa.zip,
+      sub_phone:rel==='18'?(P.phone||''):((sub&&sub.phone)||''),
       /* patient */
       patient_ref:P.id, patient_first:P.first_name||'', patient_last:P.last_name||'',
       patient_dob:P.dob||'', patient_sex:sexChar(P.sex),
       pat_addr:pa.line, pat_city:pa.city, pat_state:pa.state, pat_zip:pa.zip,
+      pat_phone:P.phone||'',
       patient_mid:P.internal_id||'',
       /* claim */
       control:P.internal_id||('ENC'+e.id), dos:e.dos, pos:e.pos||'11',
@@ -3158,10 +3161,24 @@ input,select,textarea{font:inherit}
 
 
   /* A printable CMS-1500 view of the claim, used on the Review tab.
-     Boxes reserved for NUCC use are left out. */
+     Boxes reserved for NUCC use are left out.
+
+     Box 3, 4 and 5 come straight off the claim, but when the patient IS
+     the insured (the near-totality of claims), the 837 sent to the payer
+     correctly omits the whole patient loop those boxes would otherwise
+     come from — buildClaim() already mirrors the subscriber's own
+     answers into patient_dob/pat_addr/etc. for that reason. This mirrors
+     defensively in the other direction too, so a claim edited by hand
+     still shows every box filled rather than blank. */
   function claimHTML(c){
     if(!c) return '';
     var L=c.lines||[], dx=(c.dx||[]).filter(Boolean);
+    var isSelf=String(c.relationship||'18')==='18';
+    function mirror(own,subVal){
+      var v=String(own==null?'':own).trim();
+      if(v) return v;
+      return isSelf?String(subVal==null?'':subVal).trim():'';
+    }
     function fc(n,label,val,w){
       return '<div class="fc'+(w?' '+w:'')+'"><u>'+n+'. '+label+'</u><span>'+
         esc(val==null||val===''?'—':val)+'</span></div>';
@@ -3169,6 +3186,16 @@ input,select,textarea{font:inherit}
     function tick(on){ return on?'<b class="tk">X</b>':'<span class="tk"></span>'; }
     var KINDS=[['MB','Medicare'],['MC','Medicaid'],['TV','TRICARE'],
                ['CH','CHAMPVA'],['HM','Group health'],['WC','FECA black lung'],['CI','Other']];
+
+    var patLast=mirror(c.patient_last,c.sub_last), patFirst=mirror(c.patient_first,c.sub_first);
+    var subLast=mirror(c.sub_last,c.patient_last), subFirst=mirror(c.sub_first,c.patient_first);
+    var patDob=mirror(c.patient_dob,c.sub_dob), patSex=mirror(c.patient_sex,c.sub_sex);
+    var patAddr=[mirror(c.pat_addr,c.sub_addr),mirror(c.pat_city,c.sub_city),
+      mirror(c.pat_state,c.sub_state),mirror(c.pat_zip,c.sub_zip)].filter(Boolean).join(', ');
+    var patPhone=mirror(c.pat_phone,c.sub_phone);
+    var subAddr=[mirror(c.sub_addr,c.pat_addr),mirror(c.sub_city,c.pat_city),
+      mirror(c.sub_state,c.pat_state),mirror(c.sub_zip,c.pat_zip)].filter(Boolean).join(', ');
+    var subPhone=mirror(c.sub_phone,c.pat_phone);
 
     return '<div class="paper" style="position:relative">'+
       (c.status&&c.status!=='draft'
@@ -3188,22 +3215,22 @@ input,select,textarea{font:inherit}
 
         '<div class="fr">'+
           fc('2','PATIENT NAME (Last, First)',
-             [c.patient_last,c.patient_first].filter(Boolean).join(', '),'w2')+
+             [patLast,patFirst].filter(Boolean).join(', '),'w2')+
           '<div class="fc"><u>3. BIRTH DATE · SEX</u><span>'+
-            (c.patient_dob?fmtShort(c.patient_dob):'—')+
-            (c.patient_sex?' · '+esc(c.patient_sex):'')+'</span></div>'+
+            (patDob?fmtShort(patDob):'—')+
+            (patSex?' · '+esc(patSex):'')+'</span></div>'+
           fc('4',"INSURED'S NAME (Last, First)",
-             [c.sub_last,c.sub_first].filter(Boolean).join(', '),'w2')+'</div>'+
+             [subLast,subFirst].filter(Boolean).join(', '),'w2')+'</div>'+
 
         '<div class="fr">'+
           fc('5','PATIENT ADDRESS',
-             [c.pat_addr,c.pat_city,c.pat_state,c.pat_zip].filter(Boolean).join(', '),'w2')+
+             patAddr+(patPhone?' · '+patPhone:''),'w2')+
           '<div class="fc"><u>6. RELATIONSHIP TO INSURED</u><span class="ticks">'+
             [['18','Self'],['01','Spouse'],['19','Child'],['G8','Other']].map(function(r){
               return '<span class="tw">'+tick(String(c.relationship)===r[0])+r[1]+'</span>';
             }).join('')+'</span></div>'+
           fc('7',"INSURED'S ADDRESS",
-             [c.sub_addr,c.sub_city,c.sub_state,c.sub_zip].filter(Boolean).join(', '),'w2')+'</div>'+
+             subAddr+(subPhone?' · '+subPhone:''),'w2')+'</div>'+
 
         '<div class="fr">'+
           fc('11','POLICY GROUP OR FECA NUMBER',c.group_id)+
