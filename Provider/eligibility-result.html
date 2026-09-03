@@ -904,7 +904,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
 
   /* Stamped so a stale copy of this file is visible in the console. */
-  var RESULT_BUILD='2026.08.30-c';
+  var RESULT_BUILD='2026.09.02-e';
   console.info('%cReviFlow eligibility result '+RESULT_BUILD+
     ' · planDates '+(typeof planDates==='function'?'present':'MISSING'),
     'color:#0A5C46;font-weight:700');
@@ -1303,14 +1303,31 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         return strict ? stcMatches(b,stc) : true;
       });
     }
-    /* prefer lines scoped to the requested service; fall back to plan-wide */
-    function pickSet(code){
-      var exact=relevant(code,true);
-      if(exact.length)return {list:exact,scoped:true};
+    /* prefer lines scoped to the requested service; fall back to plan-wide.
+       Deductible and Out of pocket are the one exception: they accumulate at
+       the PLAN level, not per procedure, so when the payer also sent a true
+       plan-wide figure (no serviceTypeCodes at all, or tagged '30') that
+       figure is the real answer even when a same-STC line also exists —
+       real payers (UHC/SCHOOLEY is the example that surfaced this) report
+       $0 combo-scoped Deductible/OOP lines (e.g. ['33','98','PT','UC']) as
+       incidental status noise alongside the genuine plan-wide $2,500/$5,000
+       deductible, and a strict "any same-STC line wins" rule was showing
+       the misleading $0 instead. Copay and Coinsurance keep the opposite,
+       scoped-first priority, since those two genuinely vary by the exact
+       service + place of service + care setting combination requested. */
+    function pickSet(code,opts){
+      opts=opts||{};
       var any=relevant(code,false).filter(function(b){
         return !(b.serviceTypeCodes||[]).length ||
                (b.serviceTypeCodes||[]).indexOf('30')>-1;
       });
+      /* only swap the order once a specific service type narrows things
+         down — with the whole plan requested (stc is '30' or unset) every
+         line already qualifies as "exact" via stcMatches, so there is
+         nothing to prefer plan-wide over */
+      if(opts.planWideFirst&&stc&&stc!=='30'&&any.length)return {list:any,scoped:false};
+      var exact=relevant(code,true);
+      if(exact.length)return {list:exact,scoped:true};
       return {list:any,scoped:false};
     }
 
@@ -1338,7 +1355,7 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
 
     function cell(label,code,opts){
       opts=opts||{};
-      var set=pickSet(code);
+      var set=pickSet(code,opts);
       var base=opts.prefer||preferIndividual;
       var list=set.list.slice().sort(function(a,b){
         var tr=typeRank(a)-typeRank(b);
@@ -1358,9 +1375,27 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
         return pr||base(a,b);
       });
       if(!list.length){
+        /* Distinguish "the payer never sent this at all" from "the payer
+           sent it, but only for the OTHER network" — pickSet/relevant
+           already exclude a line reported solely out-of-network when
+           in-network is what's shown (real data: BCBS-TX-via-Kansas/ROOD
+           reports Coinsurance for STC 98 only out-of-network, at 50%), so
+           silently falling through to "Not reported" would hide that a
+           number exists, just not for this network. */
+        var otherNetOnly=net!=='all'&&N.benefits.some(function(b){
+          if(b.code!==code||!matchesType(b))return false;
+          if(stc&&stc!=='30'){
+            var qualifies=stcMatches(b,stc)||!(b.serviceTypeCodes||[]).length||
+              (b.serviceTypeCodes||[]).indexOf('30')>-1;
+            if(!qualifies)return false;
+          }
+          return true;
+        });
+        var noNetLabel=net==='Out of network'?'No out-of-network benefits':'No in-network benefits';
         return '<div class="scell"><dt>'+label+'</dt>'+
-          '<dd class="none">Not reported</dd>'+
-          '<small>Payer sent nothing for this'+(stc&&stc!=='30'?' service type':'')+'</small></div>';
+          '<dd class="none">'+(otherNetOnly?noNetLabel:'Not reported')+'</dd>'+
+          '<small>'+(otherNetOnly?'Payer only reported this for the other network':
+            'Payer sent nothing for this'+(stc&&stc!=='30'?' service type':''))+'</small></div>';
       }
       var best=list[0], amt=amountOf(best);
       var lvl=levelOf(best), pos=posOf(best);
@@ -1473,9 +1508,9 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
          rather than a useful breakdown. */
       '<div class="sumgrid">'+
         cell('Copay','B',{noExtra:true})+
-        cell('Deductible','C',{prefer:preferRemaining,noExtra:true})+
+        cell('Deductible','C',{prefer:preferRemaining,noExtra:true,planWideFirst:true})+
         cell('Coinsurance','A',{noExtra:true})+
-        cell('Out of pocket','G',{prefer:preferRemaining,noExtra:true})+
+        cell('Out of pocket','G',{prefer:preferRemaining,noExtra:true,planWideFirst:true})+
       '</div>';
   }
 
@@ -1515,17 +1550,34 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
        whole pool meant that as soon as ANY scoped line existed for either
        code, the fallback never ran for the other — silently dropping its
        whole card even though the Cost summary tile right above it, falling
-       back per code the way pickSet already does, still showed a number. */
+       back per code the way pickSet already does, still showed a number.
+         This card only ever handles Deductible and Out of pocket (acc is
+       pre-filtered to codes C and G before it reaches this function), so —
+       matching pickSet's planWideFirst behaviour for those same two codes —
+       the true plan-wide figure (no serviceTypeCodes at all, or tagged
+       '30') is preferred FIRST; a same-STC line is used only when the payer
+       sent no plan-wide figure at all for that code. Real data can report
+       $0 combo-scoped Deductible/OOP lines (status noise, not a genuine
+       per-service accumulator) right alongside the real plan-wide dollar
+       figure, and this card must show the same number the Cost summary
+       tile above it just showed, not the misleading $0. */
+    var hasSpecificStc=!!stc&&stc!=='30';
     var codes=[];
     acc.forEach(function(b){ if(codes.indexOf(b.code)<0)codes.push(b.code); });
     var rows=[];
     codes.forEach(function(code){
       var pool=acc.filter(function(b){ return b.code===code&&inScope(b); });
+      var planWide=pool.filter(function(b){
+        return !(b.serviceTypeCodes||[]).length||(b.serviceTypeCodes||[]).indexOf('30')>-1;
+      });
+      /* the plan-wide-first swap only makes sense once a specific service
+         type narrows things down — with the whole plan requested (stc is
+         '30' or unset) stcMatches lets every line through anyway, so the
+         old exact-first order (equivalent to "show everything") is kept */
+      if(hasSpecificStc&&planWide.length){ rows=rows.concat(planWide); return; }
       var exact=pool.filter(function(b){ return stcMatches(b,stc); });
       if(exact.length){ rows=rows.concat(exact); return; }
-      rows=rows.concat(pool.filter(function(b){
-        return !(b.serviceTypeCodes||[]).length||(b.serviceTypeCodes||[]).indexOf('30')>-1;
-      }));
+      rows=rows.concat(planWide);
     });
     if(!rows.length)return '<p class="none" style="padding:20px">Nothing reported for this network, care setting and service type.</p>';
 

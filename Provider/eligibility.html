@@ -1264,28 +1264,70 @@ select:disabled{opacity:.6;cursor:not-allowed}
      out-of-network line for the same service doesn't win just because a
      payer happened to list it first. A line that doesn't state a network
      at all still counts (it applies either way). */
-  function pickBenefit(list,code,stc,wantRemaining){
-    var scoped=(list||[]).filter(function(b){
-      return b.code===code && RFCodes.stcMatches(b.serviceTypeCodes,stc) &&
-        (!wantRemaining || /remain/i.test(b.timeQualifier||''));
-    });
-    if(scoped.length){
-      var inNet=scoped.filter(function(b){
-        var n=b.inPlanNetworkIndicator||b.inPlanNetworkIndicatorCode||'';
-        return !n||/^y/i.test(n);
-      });
-      var pool=inNet.length?inNet:scoped;
-      pool.sort(function(a,b){
+  /* Returns a benefit line, null (the payer sent nothing usable at all for
+     this code/service), or the string 'OON_ONLY' — a specific sentinel
+     meaning the payer DID report something for this code/service, but only
+     under an explicitly out-of-network line, never in-network. This quick
+     panel always reports in-network by default, so a same-STC line that's
+     tagged out-of-network must never be silently shown as if it were the
+     in-network figure (real data: BCBS-TX-via-Kansas/ROOD reports a
+     Coinsurance line for STC 98 only out-of-network, at 50% — very
+     different from the in-network rate the desk actually needs) — callers
+     check for the sentinel and render "No in-network benefits" instead of
+     a dollar/percent figure. */
+  function pickBenefit(list,code,stc,wantRemaining,opts){
+    opts=opts||{};
+    function netOk(b){
+      var n=b.inPlanNetworkIndicator||b.inPlanNetworkIndicatorCode||'';
+      return !n||/^y/i.test(n);
+    }
+    function bestOf(pool){
+      var p=pool.filter(netOk);
+      if(!p.length)return null;
+      p=p.slice().sort(function(a,b){
         return RFCodes.stcSpecificity(a.serviceTypeCodes,stc)-RFCodes.stcSpecificity(b.serviceTypeCodes,stc);
       });
-      return pool[0];
+      return p[0];
     }
-    if(wantRemaining)return null;
-    if(!stc||stc==='30')return null;
-    return (list||[]).filter(function(b){
-      return b.code===code && (!b.serviceTypeCodes||!b.serviceTypeCodes.length||
-        b.serviceTypeCodes.indexOf('30')>-1);
-    })[0];
+    var hasSpecificStc=!!stc&&stc!=='30';
+    var consideredAny=[]; /* every line looked at for this code, any network */
+    var found=null;
+    /* Deductible and Out of pocket accumulate at the plan level, not per
+       procedure, so when the payer also sent a true plan-wide line (no
+       serviceTypeCodes at all, or tagged '30') that figure is the real
+       answer even when a same-STC line also exists — real data reports $0
+       combo-scoped Deductible/OOP status lines right alongside the genuine
+       plan-wide dollar figure. Copay and Coinsurance keep the opposite,
+       scoped-first priority (opts.planWideFirst unset), since those two
+       genuinely vary by the exact service + place of service combination
+       requested. */
+    if(opts.planWideFirst&&hasSpecificStc){
+      var planWide=(list||[]).filter(function(b){
+        return b.code===code && (!wantRemaining||/remain/i.test(b.timeQualifier||'')) &&
+          (!b.serviceTypeCodes||!b.serviceTypeCodes.length||b.serviceTypeCodes.indexOf('30')>-1);
+      });
+      consideredAny=consideredAny.concat(planWide);
+      found=bestOf(planWide);
+    }
+    if(!found){
+      var scoped=(list||[]).filter(function(b){
+        return b.code===code && RFCodes.stcMatches(b.serviceTypeCodes,stc) &&
+          (!wantRemaining || /remain/i.test(b.timeQualifier||''));
+      });
+      consideredAny=consideredAny.concat(scoped);
+      found=bestOf(scoped);
+    }
+    if(!found&&!wantRemaining&&hasSpecificStc){
+      var planWideFallback=(list||[]).filter(function(b){
+        return b.code===code && (!b.serviceTypeCodes||!b.serviceTypeCodes.length||
+          b.serviceTypeCodes.indexOf('30')>-1);
+      });
+      consideredAny=consideredAny.concat(planWideFallback);
+      found=bestOf(planWideFallback);
+    }
+    if(found)return found;
+    if(consideredAny.length&&!consideredAny.some(netOk))return 'OON_ONLY';
+    return null;
   }
   function amt(b){
     if(!b)return null;
@@ -1322,17 +1364,32 @@ select:disabled{opacity:.6;cursor:not-allowed}
       var active=status&&/active/i.test(status.status||'');
       pill.className='pill'+(active?'':' warn');
       pill.innerHTML='<i></i>'+((status&&status.status)||'Coverage returned');
-      var ded=pickBenefit(bens,'C',stcOf()),
-          dedRem=pickBenefit(bens,'C',stcOf(),true),
+      var pwf={planWideFirst:true};
+      var ded=pickBenefit(bens,'C',stcOf(),false,pwf),
+          dedRem=pickBenefit(bens,'C',stcOf(),true,pwf),
           copay=pickBenefit(bens,'B',stcOf()),
           coins=pickBenefit(bens,'A',stcOf()),
-          oop=pickBenefit(bens,'G',stcOf()),
-          oopRem=pickBenefit(bens,'G',stcOf(),true);
+          oop=pickBenefit(bens,'G',stcOf(),false,pwf),
+          oopRem=pickBenefit(bens,'G',stcOf(),true,pwf);
+      /* pickBenefit returns the 'OON_ONLY' sentinel when the payer reported
+         this code/service only out-of-network — show that plainly instead
+         of a dash (which reads as "not reported") or, worse, the
+         out-of-network figure itself as if it applied here. */
+      function fmt(b){ return b==='OON_ONLY' ? 'No in-network benefits' : (amt(b)||'—'); }
+      /* prefer whichever of the remaining/limit lookups actually found a
+         real line; only fall back to the OON_ONLY sentinel when NEITHER
+         side found real in-network data */
+      function pick2(remV,limV){
+        if(remV&&remV!=='OON_ONLY')return {v:remV,rem:true};
+        if(limV&&limV!=='OON_ONLY')return {v:limV,rem:false};
+        return remV?{v:remV,rem:true}:{v:limV,rem:false};
+      }
+      var dp=pick2(dedRem,ded), op=pick2(oopRem,oop);
       grid.innerHTML=
-        '<div><dt>COPAY</dt><dd>'+(amt(copay)||'—')+'</dd></div>'+
-        '<div><dt>COINSURANCE</dt><dd>'+(amt(coins)||'—')+'</dd></div>'+
-        '<div><dt>DEDUCTIBLE'+(dedRem?' REMAINING':'')+'</dt><dd>'+(amt(dedRem||ded)||'—')+'</dd></div>'+
-        '<div><dt>OUT OF POCKET'+(oopRem?' REMAINING':'')+'</dt><dd>'+(amt(oopRem||oop)||'—')+'</dd></div>'+
+        '<div><dt>COPAY</dt><dd>'+fmt(copay)+'</dd></div>'+
+        '<div><dt>COINSURANCE</dt><dd>'+fmt(coins)+'</dd></div>'+
+        '<div><dt>DEDUCTIBLE'+(dp.rem?' REMAINING':'')+'</dt><dd>'+fmt(dp.v)+'</dd></div>'+
+        '<div><dt>OUT OF POCKET'+(op.rem?' REMAINING':'')+'</dt><dd>'+fmt(op.v)+'</dd></div>'+
         '<div><dt>RESPONSE TIME</dt><dd>'+ms+' ms</dd></div>';
       hint.style.display='';
     }
