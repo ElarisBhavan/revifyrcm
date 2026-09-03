@@ -1370,12 +1370,24 @@ img.logo-mark{width:34px;height:34px;object-fit:contain;display:block;
       : 'All dates · by '+label;
     $('empty').hidden=list.length>0;
     $('rows').innerHTML=list.map(function(c,i){
-      return '<tr style="animation-delay:'+Math.min(.4,i*.03)+'s" data-v="'+c.id+'">'+
+      /* A claim never actually written with any patient, payer or billing
+         provider — the double-click / interrupted-save shape saveClaim()'s
+         own dedupe guard exists to prevent going forward — reads as "did my
+         submitted claim lose its data?" when it sits next to a real,
+         populated one. It never held that data; it just never should have
+         been created. Label it plainly instead of showing bare dashes, so
+         it's obviously a stray to delete, not a real claim to worry about. */
+      var blank=!c.patient_last&&!c.patient_first&&!c.payer&&!c.provider_name&&!(+c.total);
+      return '<tr style="animation-delay:'+Math.min(.4,i*.03)+'s" data-v="'+c.id+'"'+
+          (blank?' title="No patient, payer or provider was ever saved to this claim — safe to delete">':'>')+
         '<td><b style="display:block;font-family:var(--mono);font-size:12px">'+esc(c.claim_no)+'</b>'+
           '<small style="display:block;font-size:10.4px;color:var(--dim);margin-top:3px">'+
           esc(c.form)+' · DOS '+fmtS(c.dos)+'</small></td>'+
-        '<td>'+esc(c.patient_last)+', '+esc(c.patient_first)+
-          '<div style="font-family:var(--mono);font-size:9.8px;color:var(--dim);margin-top:3px">'+esc(c.patient_mid||'')+'</div></td>'+
+        '<td>'+(blank
+            ? '<span style="color:var(--dim);font-style:italic">Empty draft</span>'
+            : esc(c.patient_last)+', '+esc(c.patient_first))+
+          '<div style="font-family:var(--mono);font-size:9.8px;color:var(--dim);margin-top:3px">'+
+          (blank ? 'never saved · safe to delete' : esc(c.patient_mid||''))+'</div></td>'+
         '<td>'+esc(c.payer||'—')+'</td>'+
         '<td>'+esc(c.provider_name||'—')+'</td>'+
         '<td class="r" style="font-family:var(--mono);font-weight:600">'+money(c.total)+'</td>'+
