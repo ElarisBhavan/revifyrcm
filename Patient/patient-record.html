@@ -598,8 +598,8 @@ input,select,textarea{font:inherit}
   background:var(--coral);border:1.4px solid #fff}
 
 /* ── professional encounter editor ── */
-.encsection{margin:0 14px 12px;border:1px solid var(--line-2);border-radius:13px;background:#fff;overflow:hidden}
-.secthead{display:flex;align-items:center;gap:12px;padding:12px 13px;border-bottom:1px solid var(--line);background:var(--paper-2)}
+.encsection{margin:0 14px 12px;border:1px solid var(--line);border-radius:12px;background:var(--paper);overflow:hidden}
+.secthead{display:flex;align-items:center;gap:12px;padding:12px 13px;border-bottom:1px solid var(--line);background:transparent}
 .secthead>div:first-child{flex:1;min-width:0}.secthead b{display:block;font-size:12.5px;font-weight:700}.secthead small{display:block;margin-top:2px;color:var(--muted);font-size:10.5px;line-height:1.45}
 .noteStatus,.countpill{font-family:var(--mono);font-size:8.4px;font-weight:700;letter-spacing:.05em;padding:4px 7px;border-radius:6px;flex:none}.noteStatus.signed{background:var(--green-s);color:var(--green-d)}.noteStatus.draft{background:rgba(210,154,42,.12);color:#8b6415}.countpill{background:rgba(14,26,23,.055);color:var(--muted)}
 .notegrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:13px}.notegrid textarea{min-height:78px}.notegrid .f span{font-size:9.7px;text-transform:uppercase;letter-spacing:.045em}
@@ -607,6 +607,42 @@ input,select,textarea{font:inherit}
 .signedline{padding:10px 13px;border-top:1px solid var(--line);font-size:10.5px;color:var(--muted)}
 .dxlist{padding:11px 13px}.dxrow{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line)}.dxrow:last-child{border-bottom:0}.dxptr{width:24px;height:24px;border-radius:7px;background:var(--green-s);color:var(--green-d);display:grid;place-items:center;font-family:var(--mono);font-size:10px;font-weight:700;flex:none}.dxedit{flex:1;min-width:0}.dxedit input{width:170px;max-width:100%;padding:7px 9px;border:1px solid var(--line-2);border-radius:8px;background:#fff;font-size:11.5px}.dxdesc{margin-left:8px;font-size:10.5px;color:var(--muted)}.dxpri{font-family:var(--mono);font-size:8px;color:var(--dim);flex:none}.dxempty,.tableempty{padding:16px;text-align:center;color:var(--dim);font-size:11px}.serviceadd{padding:13px;border-top:1px solid var(--line);background:var(--paper)}.feeLine{padding:7px 1px 10px;font-family:var(--mono);font-size:10px;color:var(--dim)}.dxchoose{padding:10px 11px;border:1px solid var(--line-2);border-radius:10px;background:#fff}.dxchoose>b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.045em;margin-bottom:8px}.dxchecks{display:flex;gap:7px;flex-wrap:wrap}.dxpick{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:7px;background:var(--paper-2);font-size:10.5px;color:var(--muted);cursor:pointer}.dxpick input{width:auto}.dxpick b{font-family:var(--mono);color:var(--green-d)}.dxchips{display:flex;gap:4px;flex-wrap:wrap}.dxchip{display:inline-block;padding:3px 6px;border-radius:5px;background:var(--green-s);color:var(--green-d);font-family:var(--mono);font-size:8.5px}.subline{font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.4}.modpill{display:inline-block;margin-top:4px;padding:2px 5px;border-radius:4px;background:rgba(59,111,245,.08);color:var(--blue);font-family:var(--mono);font-size:8px}.dim{color:var(--dim);font-size:10px}.pending{margin-top:9px}.pendhint{padding:7px 9px;background:var(--green-s);color:var(--green-d);font-family:var(--mono);font-size:8.5px;font-weight:700}.pendrow{display:flex;align-items:center;gap:8px;padding:8px 9px;border:1px solid var(--line);border-top:0;background:#fff;font-size:10.5px}.pendrow>b{font-family:var(--mono);flex:none}.pendrow>span{flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pendrow>em{font-family:var(--mono);font-style:normal;color:var(--green-d);flex:none}.pendrow>button{border:0;background:none;color:var(--coral);cursor:pointer;font-size:16px;line-height:1}.ib.del{color:var(--coral);font-size:16px}
 @media(max-width:720px){.notegrid{grid-template-columns:1fr}.dxdesc{display:block;margin:3px 0 0}.dxpri{display:none}.encsection{margin-left:9px;margin-right:9px}}
+
+/* ── locked encounter: progress summary ──
+   Once an encounter is signed and locked there is nothing left to edit, so
+   the three editing boxes above (progress note / diagnoses / services, each
+   with its own header bar and add/save controls) collapse into a single
+   quiet panel: who signed the visit and when, then the diagnosis codes and
+   the CPT/HCPCS codes as plain, scannable lists. */
+.progsum{padding:15px 17px 14px}
+.psHead{display:flex;align-items:flex-start;gap:10px;margin-bottom:11px}
+.psIcon{width:27px;height:27px;flex:none;border-radius:8px;background:var(--green-s);display:grid;place-items:center;margin-top:1px}
+.psIcon svg{width:13px;height:13px;stroke:var(--green-d);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.psTitle{flex:1;min-width:0}
+.psTitle b{display:block;font-family:'Sora',sans-serif;font-size:13.6px;font-weight:600;letter-spacing:-.02em}
+.psTitle small{display:block;margin-top:2px;color:var(--muted);font-size:10.6px;line-height:1.4}
+.psWhen{flex:none;font-family:var(--mono);font-size:9.8px;color:var(--dim);white-space:nowrap;padding-top:3px}
+.psClin{display:flex;align-items:center;gap:6px;font-size:11.6px;color:var(--muted);padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:13px}
+.psClin b{color:var(--ink);font-weight:700;text-transform:uppercase;font-size:9.4px;letter-spacing:.06em;font-family:var(--mono)}
+.psClin .sep{color:var(--line-2)}
+.psGroup{margin-bottom:15px}
+.psGroup:last-of-type{margin-bottom:0}
+.psLabel{font-size:9.2px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+.psList{margin-top:6px}
+.psRow{display:flex;align-items:baseline;gap:10px;padding:7px 0}
+.psRow+.psRow{border-top:1px solid var(--line)}
+.psPtr{font-family:var(--mono);font-size:9.6px;font-weight:700;color:var(--green-d);background:var(--green-s);border-radius:5px;width:17px;height:17px;flex:none;display:inline-grid;place-items:center;align-self:center}
+.psCode{font-family:var(--mono);font-size:11.8px;font-weight:600;color:var(--ink);flex:none;align-self:center}
+.psDesc{flex:1;min-width:0;font-size:12px;color:var(--muted);line-height:1.5}
+.psDxref{font-size:9.6px;color:var(--dim)}
+.psTag{flex:none;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.05em;color:var(--dim);align-self:center}
+.psUnits{flex:none;font-family:var(--mono);font-size:10.6px;color:var(--dim);align-self:center}
+.psCharge{flex:none;font-family:var(--mono);font-size:12.2px;font-weight:600;color:var(--green-d);min-width:58px;text-align:right;align-self:center}
+.psEmpty{padding:9px 0;font-size:11px;color:var(--dim)}
+.psFoot{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:13px;border-top:1px solid var(--line)}
+.psFoot .sp{flex:1}
+.psTotal{font-family:'Sora',sans-serif;font-size:13.6px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+@media(max-width:640px){.psRow{flex-wrap:wrap}.psDesc{order:3;flex:1 0 100%;padding-left:27px}}
 
 /* ── structured progress-note templates ── */
 .ntf-head{display:flex;align-items:center;gap:10px;padding:13px;border-bottom:1px solid var(--line);background:var(--paper-2);flex-wrap:wrap}
@@ -2479,30 +2515,64 @@ input,select,textarea{font:inherit}
           '<td class="r">'+(locked?'':'<button class="ib del" data-lrm="'+e.id+':'+li+'" title="Remove service">×</button>')+'</td></tr>';
       }).join(''):'<tr><td colspan="5" class="tableempty">No services added yet.</td></tr>';
 
-      return '<div class="encbox st-'+(locked?'locked':'open')+(isOpen?' open':'')+'" data-enc="'+e.id+'">'+
-        '<div class="enchead" data-enctoggle="'+e.id+'"><span class="d"><b>'+d.toLocaleDateString(undefined,{month:'short'}).toUpperCase()+'</b><span>'+d.getDate()+'</span></span>'+ 
-        '<span class="who"><b>'+fmtD(e.dos)+'</b><small>'+esc(e.clinician||'—').toUpperCase()+' · POS '+esc(e.pos||'11')+'</small></span>'+ 
-        '<span class="pill '+(locked?'ok':'warn')+'">'+(locked?'LOCKED':'OPEN')+'</span>'+ 
-        '<span class="quick">'+money(total)+'<b>'+lines.length+' service'+(lines.length===1?'':'s')+'</b></span><span class="chev"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></div>'+ 
-        '<div class="encbody"><div class="encctx">'+fmtD(e.dos)+' · '+esc(e.clinician||'—')+' · POS '+esc(e.pos||'11')+'</div>'+ 
+      var enchead='<div class="enchead" data-enctoggle="'+e.id+'"><span class="d"><b>'+d.toLocaleDateString(undefined,{month:'short'}).toUpperCase()+'</b><span>'+d.getDate()+'</span></span>'+
+        '<span class="who"><b>'+fmtD(e.dos)+'</b><small>'+esc(e.clinician||'—').toUpperCase()+' · POS '+esc(e.pos||'11')+'</small></span>'+
+        '<span class="pill '+(locked?'ok':'warn')+'">'+(locked?'LOCKED':'OPEN')+'</span>'+
+        '<span class="quick">'+money(total)+'<b>'+lines.length+' service'+(lines.length===1?'':'s')+'</b></span><span class="chev"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></div>';
+
+      var encbody;
+      if(locked){
+        /* Locked encounters are billing-final and read-only, so they no longer
+           need the three separate editing boxes (progress note / diagnoses /
+           services) with their own headers, borders and add/save controls.
+           Instead they get one clean "Progress Summary" panel: who signed it
+           and when, then the diagnosis codes and CPT/HCPCS codes as simple
+           lists — mirroring how a finished chart entry reads elsewhere. */
+        var psDx=diagnoses.length?diagnoses.map(function(dx,i){
+          return '<div class="psRow"><span class="psPtr">'+esc(dx.pointer||String.fromCharCode(65+i))+'</span>'+
+            '<span class="psCode mono">'+esc(dx.code||'')+'</span>'+
+            '<span class="psDesc">'+esc(dx.description||dxDesc(dx.code)||'')+'</span>'+
+            '<span class="psTag">'+(i===0?'PRIMARY':'SECONDARY')+'</span></div>';
+        }).join('') : '<div class="psEmpty">No diagnoses recorded.</div>';
+        var psCpt=lines.length?lines.map(function(l){
+          var ptrs=Array.isArray(l.dxptrs)?l.dxptrs:(l.dx?[l.dx]:[]);
+          return '<div class="psRow"><span class="psCode mono">'+esc(l.cpt)+'</span>'+
+            '<span class="psDesc">'+esc(l.cpt_desc||cptDesc(l.cpt))+(ptrs.length?' <span class="psDxref mono">('+ptrs.map(function(p){return esc(p);}).join(', ')+')</span>':'')+'</span>'+
+            '<span class="psUnits">×'+(l.units||1)+'</span>'+
+            '<span class="psCharge">'+money((l.fee||0)*(l.units||1))+'</span></div>';
+        }).join('') : '<div class="psEmpty">No services recorded.</div>';
+        encbody='<div class="encbody"><div class="progsum">'+
+          '<div class="psHead"><span class="psIcon"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8 11V8a4 4 0 018 0v3"/></svg></span>'+
+            '<div class="psTitle"><b>Progress Summary</b><small>'+esc(noteTpl.name)+' · Signed by '+esc(note.signed_by||'—')+(note.signed_credentials?', '+esc(note.signed_credentials):'')+'</small></div>'+
+            '<span class="psWhen">'+esc(fmtTS(note.signed_at))+'</span></div>'+
+          '<div class="psClin"><b>Clinician</b>'+esc(e.clinician||'—')+'<span class="sep">·</span>POS '+esc(e.pos||'11')+'<span class="sep">·</span>'+fmtD(e.dos)+'</div>'+
+          '<div class="psGroup"><div class="psLabel">Diagnosis codes</div><div class="psList">'+psDx+'</div></div>'+
+          '<div class="psGroup"><div class="psLabel">CPT / HCPCS codes</div><div class="psList">'+psCpt+'</div></div>'+
+          '<div class="psFoot"><button type="button" class="btn sec sm" data-noteopen="'+e.id+'">View progress note</button><span class="sp"></span><span class="psTotal">'+money(total)+'</span><button class="btn sec sm" data-unlock="'+e.id+'">Unlock</button></div>'+
+        '</div></div>';
+      }else{
+        encbody='<div class="encbody"><div class="encctx">'+fmtD(e.dos)+' · '+esc(e.clinician||'—')+' · POS '+esc(e.pos||'11')+'</div>'+
         '<section class="encsection"><div class="secthead"><div><b>Progress note</b><small>'+esc(noteTpl.name)+'</small></div>'+
           '<span class="noteStatus '+(noteSigned?'signed':'draft')+'">'+(noteSigned?'SIGNED':'DRAFT')+'</span></div>'+
           '<div class="sectionbar"><span class="muted">'+(noteSigned?('Signed by '+esc(note.signed_by)+(note.signed_credentials?', '+esc(note.signed_credentials):'')+' · '+esc(fmtTS(note.signed_at))):(noteStarted?'Draft saved. Sign the note to lock it and enable billing.':'Open the note to document this visit.'))+'</span><button type="button" class="btn sec sm" data-noteopen="'+e.id+'">'+(noteSigned?'View progress note':'Open progress note')+'</button></div>'+
         '</section>'+
-        '<section class="encsection"><div class="secthead"><div><b>Diagnoses</b><small>Enter each diagnosis once for the encounter. Diagnoses do not create charges.</small></div><span class="countpill">'+diagnoses.length+' / 12</span></div>'+ 
-          '<div class="dxlist">'+dxHtml+'</div>'+(!locked?'<div class="sectionbar"><button class="btn sec sm" data-dxadd="'+e.id+'">+ Add diagnosis</button><button class="btn sec sm" data-dxsave="'+e.id+'">Save diagnoses</button><span class="muted">Diagnosis pointers are reused by service lines.</span></div>':'')+ 
-        '</section>'+ 
-        '<section class="encsection"><div class="secthead"><div><b>Services / CPT &amp; HCPCS</b><small>Each billable service is one charge line. Select which encounter diagnoses support that service.</small></div><span class="countpill">'+lines.length+' line'+(lines.length===1?'':'s')+'</span></div>'+ 
-          '<table class="linetbl"><thead><tr><th style="width:27%">CPT / HCPCS</th><th style="width:39%">Diagnosis linkage</th><th style="width:10%">Units</th><th style="width:14%">Charge</th><th style="width:10%"></th></tr></thead><tbody>'+lineHtml+'</tbody></table>'+ 
-          (!locked?'<div class="serviceadd"><div class="grid3"><label class="f ta"><span>CPT / HCPCS</span><input type="text" class="lcpt" data-e="'+e.id+'" placeholder="Search code or description" autocomplete="off"></label><label class="f"><span>Units</span><input type="number" class="lun" data-e="'+e.id+'" min="1" value="1"></label><label class="f"><span>Modifier</span><input type="text" class="lmod" data-e="'+e.id+'" maxlength="5" placeholder="Optional"></label></div>'+ 
+        '<section class="encsection"><div class="secthead"><div><b>Diagnoses</b><small>Enter each diagnosis once for the encounter. Diagnoses do not create charges.</small></div><span class="countpill">'+diagnoses.length+' / 12</span></div>'+
+          '<div class="dxlist">'+dxHtml+'</div><div class="sectionbar"><button class="btn sec sm" data-dxadd="'+e.id+'">+ Add diagnosis</button><button class="btn sec sm" data-dxsave="'+e.id+'">Save diagnoses</button><span class="muted">Diagnosis pointers are reused by service lines.</span></div>'+
+        '</section>'+
+        '<section class="encsection"><div class="secthead"><div><b>Services / CPT &amp; HCPCS</b><small>Each billable service is one charge line. Select which encounter diagnoses support that service.</small></div><span class="countpill">'+lines.length+' line'+(lines.length===1?'':'s')+'</span></div>'+
+          '<table class="linetbl"><thead><tr><th style="width:27%">CPT / HCPCS</th><th style="width:39%">Diagnosis linkage</th><th style="width:10%">Units</th><th style="width:14%">Charge</th><th style="width:10%"></th></tr></thead><tbody>'+lineHtml+'</tbody></table>'+
+          '<div class="serviceadd"><div class="grid3"><label class="f ta"><span>CPT / HCPCS</span><input type="text" class="lcpt" data-e="'+e.id+'" placeholder="Search code or description" autocomplete="off"></label><label class="f"><span>Units</span><input type="number" class="lun" data-e="'+e.id+'" min="1" value="1"></label><label class="f"><span>Modifier</span><input type="text" class="lmod" data-e="'+e.id+'" maxlength="5" placeholder="Optional"></label></div>'+
             '<div class="feeLine"><span id="fee'+e.id+'">Fee will fill from the CPT</span></div>'+
             '<div class="pending" id="pend'+e.id+'"></div>'+
-            '<div class="dxchoose"><b>Diagnosis pointers for this service</b><div class="dxchecks">'+(serviceDx||'<span class="muted">Add at least one diagnosis first.</span>')+'</div></div>'+ 
-            '<div class="sectionbar"><button class="btn sec sm" data-ladd="'+e.id+'">Add service</button><button class="btn pri sm" data-lsave="'+e.id+'">Save services</button><span class="muted">No charge is created for a diagnosis.</span></div></div>':'')+ 
-        '</section>'+ 
-        '<div class="encfoot"><span class="mono">'+lines.length+' service'+(lines.length===1?'':'s')+' · '+diagnoses.length+' diagnosis'+(diagnoses.length===1?'':'es')+' · '+money(total)+'</span><span class="sp"></span>'+ 
-          (locked?'<button class="btn sec sm" data-unlock="'+e.id+'">Unlock</button>':'<button class="btn pri sm" data-lock="'+e.id+'"'+((lines.length&&diagnoses.length&&noteSigned)?'':' disabled')+' title="'+(noteSigned?'':'Sign the progress note before locking this encounter for billing')+'">Sign &amp; lock encounter</button>')+ 
-        '</div></div></div>';
+            '<div class="dxchoose"><b>Diagnosis pointers for this service</b><div class="dxchecks">'+(serviceDx||'<span class="muted">Add at least one diagnosis first.</span>')+'</div></div>'+
+            '<div class="sectionbar"><button class="btn sec sm" data-ladd="'+e.id+'">Add service</button><button class="btn pri sm" data-lsave="'+e.id+'">Save services</button><span class="muted">No charge is created for a diagnosis.</span></div></div>'+
+        '</section>'+
+        '<div class="encfoot"><span class="mono">'+lines.length+' service'+(lines.length===1?'':'s')+' · '+diagnoses.length+' diagnosis'+(diagnoses.length===1?'':'es')+' · '+money(total)+'</span><span class="sp"></span>'+
+          '<button class="btn pri sm" data-lock="'+e.id+'"'+((lines.length&&diagnoses.length&&noteSigned)?'':' disabled')+' title="'+(noteSigned?'':'Sign the progress note before locking this encounter for billing')+'">Sign &amp; lock encounter</button>'+
+        '</div></div>';
+      }
+
+      return '<div class="encbox st-'+(locked?'locked':'open')+(isOpen?' open':'')+'" data-enc="'+e.id+'">'+enchead+encbody+'</div>';
     }).join('');
 
     Object.keys(PENDING).forEach(function(k){paintPending(+k);});
